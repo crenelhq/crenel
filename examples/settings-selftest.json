@@ -1,0 +1,9 @@
+{
+  "zone": "homelab.example",
+  "fake_seed": "examples/seed-rich-prod.json",
+  "granular_apply": true,
+  "origins": {
+    "crenel-selftest": "10.0.0.10:9999",
+    "vault": "127.0.0.1:8000"
+  }
+}

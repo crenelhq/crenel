@@ -1,0 +1,4 @@
+# crenel-managed v1 — nothing exposed, default-deny present
+:443 {
+	respond 403
+}

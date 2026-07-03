@@ -1,0 +1,1985 @@
+goroutine 16455 [running]:
+runtime/pprof.writeGoroutineStacks({0xe3847623f508, 0x799bb93e6db0})
+	runtime/pprof/pprof.go:819 +0x6c
+runtime/pprof.writeGoroutine({0xe3847623f508?, 0x799bb93e6db0?}, 0x799bb9ee1338?)
+	runtime/pprof/pprof.go:782 +0x2c
+runtime/pprof.(*Profile).WriteTo(0x2d35c60?, {0xe3847623f508?, 0x799bb93e6db0?}, 0xc?)
+	runtime/pprof/pprof.go:408 +0x144
+net/http/pprof.handler.ServeHTTP({0x799bb9bab7b1, 0x9}, {0x1ad84b8, 0x799bb93e6db0}, 0x799bb9ec6c80)
+	net/http/pprof/pprof.go:273 +0x414
+net/http/pprof.Index({0x1ad84b8, 0x799bb93e6db0}, 0x799bb9ec6c80)
+	net/http/pprof/pprof.go:397 +0xa4
+net/http.HandlerFunc.ServeHTTP(0x1ad8860?, {0x1ad84b8?, 0x799bb93e6db0?}, 0x799bb9ba5b80?)
+	net/http/server.go:2286 +0x38
+github.com/caddyserver/caddy/v2.(*AdminConfig).newAdminHandler.func1.instrumentHandlerCounter.1({0x1ad8860?, 0x799bb93d05a0?}, 0x799bb9ec6c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/metrics.go:56 +0x68
+net/http.HandlerFunc.ServeHTTP(0x799bb91d86c0?, {0x1ad8860?, 0x799bb93d05a0?}, 0x65f5cc?)
+	net/http/server.go:2286 +0x38
+net/http.(*ServeMux).ServeHTTP(0x799bbafa23f0?, {0x1ad8860, 0x799bb93d05a0}, 0x799bb9ec6c80)
+	net/http/server.go:2828 +0x190
+github.com/caddyserver/caddy/v2.adminHandler.serveHTTP({0x799bb91d86c0, 0x0, 0x1, {0x799bb90a20a8, 0x3, 0x3}, 0x0}, {0x1ad8860, 0x799bb93d05a0}, 0x799bb9ec6c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/admin.go:882 +0x578
+github.com/caddyserver/caddy/v2.adminHandler.ServeHTTP({0x799bb91d86c0, 0x0, 0x1, {0x799bb90a20a8, 0x3, 0x3}, 0x0}, {0x1ad8860, 0x799bb93d05a0}, 0x799bb9ec6c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/admin.go:806 +0x514
+net/http.serverHandler.ServeHTTP({0x799bb93a6d40?}, {0x1ad8860?, 0x799bb93d05a0?}, 0x1?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bba3190e0, {0x1addf08, 0x799bb90c8150})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 45
+	net/http/server.go:3464 +0x37c
+
+goroutine 1 [select (no cases), 203 minutes]:
+github.com/caddyserver/caddy/v2/cmd.cmdRun({0x0?})
+	github.com/caddyserver/caddy/v2@v2.11.4/cmd/commandfuncs.go:353 +0xa40
+github.com/caddyserver/caddy/v2/cmd.init.1.func2.WrapCommandFuncForCobra.1(0x799bb90b0608, {0x179e7a1?, 0x4?, 0x179e779?})
+	github.com/caddyserver/caddy/v2@v2.11.4/cmd/cobra.go:151 +0x34
+github.com/spf13/cobra.(*Command).execute(0x799bb90b0608, {0x799bb936a200, 0x4, 0x4})
+	github.com/spf13/cobra@v1.10.2/command.go:1015 +0x814
+github.com/spf13/cobra.(*Command).ExecuteC(0x799bb90b0008)
+	github.com/spf13/cobra@v1.10.2/command.go:1148 +0x350
+github.com/spf13/cobra.(*Command).Execute(...)
+	github.com/spf13/cobra@v1.10.2/command.go:1071
+github.com/caddyserver/caddy/v2/cmd.Main()
+	github.com/caddyserver/caddy/v2@v2.11.4/cmd/main.go:72 +0x6c
+main.main()
+	caddy/main.go:13 +0x1c
+
+goroutine 21 [chan receive, 203 minutes]:
+github.com/caddyserver/caddy/v2.trapSignalsCrossPlatform.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/sigtrap.go:43 +0xc0
+created by github.com/caddyserver/caddy/v2.trapSignalsCrossPlatform in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/sigtrap.go:38 +0x24
+
+goroutine 22 [chan receive, 203 minutes]:
+github.com/caddyserver/caddy/v2.trapSignalsPosix.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/sigtrap_posix.go:40 +0x98
+created by github.com/caddyserver/caddy/v2.trapSignalsPosix in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/sigtrap_posix.go:36 +0x50
+
+goroutine 9 [syscall, 203 minutes]:
+os/signal.signal_recv()
+	runtime/sigqueue.go:152 +0x114
+os/signal.loop()
+	os/signal/signal_unix.go:23 +0x1c
+created by os/signal.Notify.func1.1 in goroutine 21
+	os/signal/signal.go:152 +0x28
+
+goroutine 45 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847668d000, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb9863680?, 0x10d6ac?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Accept(0x799bb9863680)
+	internal/poll/fd_unix.go:613 +0x214
+net.(*netFD).accept(0x799bb9863680)
+	net/fd_unix.go:150 +0x28
+net.(*TCPListener).accept(0x799bb9342d40)
+	net/tcpsock_posix.go:159 +0x24
+net.(*TCPListener).Accept(0x799bb9342d40)
+	net/tcpsock.go:387 +0x2c
+net/http.(*Server).Serve(0x799bb9871400, {0xe38476303900, 0x799bb959f480})
+	net/http/server.go:3434 +0x244
+github.com/caddyserver/caddy/v2.replaceLocalAdminServer.func2()
+	github.com/caddyserver/caddy/v2@v2.11.4/admin.go:442 +0x178
+created by github.com/caddyserver/caddy/v2.replaceLocalAdminServer in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/admin.go:438 +0x434
+
+goroutine 46 [select, 3 minutes]:
+github.com/caddyserver/certmagic.(*Cache).maintainAssets(0x799bb9863b00, 0x0)
+	github.com/caddyserver/certmagic@v0.25.3/maintain.go:69 +0x28c
+created by github.com/caddyserver/certmagic.NewCache in goroutine 1
+	github.com/caddyserver/certmagic@v0.25.3/cache.go:110 +0x144
+
+goroutine 48 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 50 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 52 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 54 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 56 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 58 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 60 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 62 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 64 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 66 [select]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:77 +0xb8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/metrics.go:61 +0x5c
+
+goroutine 67 [select]:
+github.com/hslatman/caddy-crowdsec-bouncer/internal/bouncer.(*StreamBouncer).Run(0x799bb995c2c0, {0x1addf40, 0x799bb98b6c80})
+	github.com/hslatman/caddy-crowdsec-bouncer@v0.13.1/internal/bouncer/stream.go:156 +0x1f0
+github.com/hslatman/caddy-crowdsec-bouncer/internal/core.(*Core).Run.(*Core).startStreamingBouncer.func2()
+	github.com/hslatman/caddy-crowdsec-bouncer@v0.13.1/internal/core/decisions.go:16 +0xf8
+sync.(*WaitGroup).Go.func1()
+	sync/waitgroup.go:258 +0x48
+created by sync.(*WaitGroup).Go in goroutine 1
+	sync/waitgroup.go:238 +0x70
+
+goroutine 68 [select]:
+github.com/hslatman/caddy-crowdsec-bouncer/internal/core.(*Core).Run.(*Core).startProcessingDecisions.func3()
+	github.com/hslatman/caddy-crowdsec-bouncer@v0.13.1/internal/core/decisions.go:25 +0x13c
+sync.(*WaitGroup).Go.func1()
+	sync/waitgroup.go:258 +0x48
+created by sync.(*WaitGroup).Go in goroutine 1
+	sync/waitgroup.go:238 +0x70
+
+goroutine 28 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb9962c00, 0x799bb9862b00, 0x799bb959c1a0, {0xe384762ee430, 0x799bb939eb80}, 0x799bb9953180, 0x799bb90e4b40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb9962c00, {0xe384762ee430, 0x799bb939eb80}, 0x799bb9953180, 0x799bb90e4b40, 0x799bb95bf8e0?, {0xe?, 0x799bb938a540?, 0x2d91d40?}, 0x799bb9862b00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb9962c00, {0xe384762ee430, 0x799bb939eb80}, 0x799bb9953040, 0x799bb9952dc0, 0x799bb90c82d0, {0x799bb944d500, {0x179dc1f, 0x3}, {0x799bb95bf8e0, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb9962c00, 0x799bb9953040, 0x799bb9952dc0, {0xe384762ee430, 0x799bb939eb80}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb9962c00, {0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0, {0x1ac6f20, 0x799bb933cba0})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c9320?, {0xe384762ee430?, 0x799bb939eb80?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96cb9e0?, {0xe384762ee430?, 0x799bb939eb80?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958b600, {0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0, {0x1ac6f20, 0x799bb933cba0})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c9308?, {0xe384762ee430?, 0x799bb939eb80?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c9d8?, {0xe384762ee430?, 0x799bb939eb80?}, 0x799bb9952dc0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c948?, {0xe384762ee430?, 0x799bb939eb80?}, 0x799bb9952dc0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c8e8?, {0xe384762ee430?, 0x799bb939eb80?}, 0x799bb9952dc0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c888?, {0xe384762ee430?, 0x799bb939eb80?}, 0x799bb9952dc0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c828?, {0xe384762ee430?, 0x799bb939eb80?}, 0x799bb9952dc0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c7c8?, {0xe384762ee430?, 0x799bb939eb80?}, 0x799bb9952dc0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c768?, {0xe384762ee430?, 0x799bb939eb80?}, 0x799bb9952dc0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb939eb80?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c92f0?, {0xe384762ee430?, 0x799bb939eb80?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb939eb80?}, 0x799bb9952dc0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb97b5008?, {0xe384762ee430?, 0x799bb939eb80?}, 0xe3f9ec?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb97ef488?, {0xe384762ee430?, 0x799bb939eb80?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb939eb80?}, 0x799bb97ef5c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb9882f18?, {0xe384762ee430?, 0x799bb939eb80?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb939eb80}, 0x799bb9952dc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb926f4a0}, 0x799bb9762b40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb936b100?}, {0x1ad8860?, 0x799bb926f4a0?}, 0x1?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bb90e4990, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 70 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847668ce00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f4300?, 0x10d6ac?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Accept(0x799bb97f4300)
+	internal/poll/fd_unix.go:613 +0x214
+net.(*netFD).accept(0x799bb97f4300)
+	net/fd_unix.go:150 +0x28
+net.(*TCPListener).accept(0x799bb939e540)
+	net/tcpsock_posix.go:159 +0x24
+net.(*TCPListener).Accept(0x799bb939e540)
+	net/tcpsock.go:387 +0x2c
+crypto/tls.(*listener).Accept(0x799bb938d938)
+	crypto/tls/tls.go:78 +0x28
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*http2Listener).Accept(0x799bb933d8c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/http2listener.go:34 +0x28
+net/http.(*Server).Serve(0x799bb9179600, {0x1ad9a30, 0x799bb933d8c0})
+	net/http/server.go:3434 +0x244
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Start in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/app.go:600 +0x113c
+
+goroutine 124 [IO wait]:
+internal/poll.runtime_pollWait(0xe384762ef400, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb934bb00?, 0x799bb927b300?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb934bb00, {0x799bb927b300, 0x1300, 0x1300})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb934bb00, {0x799bb927b300?, 0x799bb98ea9c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9192240, {0x799bb927b300?, 0x30027b300?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9fab068, {0x799bb927b300?, 0x799bb98eaa88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb96550a8, {0x1ac5660, 0x799bb9fab068})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb9654e08, {0x1ac2760, 0x799bb9192240}, 0x1300?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb9654e08, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb9654e08, {0x799bb982a000, 0x8000, 0x3424c?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bb938c1e0}, {0xe384762ee868, 0x799bb9654e08}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bb91c8228, {0xe384762ee4f8?, 0x799bb938c1e0?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bb938c1e0}, {0xe384762ee6a0, 0x799bb91c8228}, {0x799bb9788000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bb938c1e0?}, {0xe384762ee6a0?, 0x799bb91c8228?}, {0x799bb9788000?, 0x0?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bb91c8228}, {0x1ad8770, 0x799bb938c1e0}, 0x799bb959c5b0, 0x0}, 0x799bb94f4000)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 29
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 13033 [select, 34 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 13046
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 71 [IO wait, 203 minutes]:
+internal/poll.runtime_pollWait(0xe3847668cc00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f4400?, 0xacbb4?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).RawRead(0x799bb97f4400, 0x799bb9594280)
+	internal/poll/fd_unix.go:710 +0x118
+net.(*rawConn).Read(0x799bb9094390, 0x500000005?)
+	net/rawconn.go:44 +0x30
+golang.org/x/net/internal/socket.(*syscaller).recvmmsg(0x799bb96ce4c8, {0x1ad8698?, 0x799bb9094390?}, {0x799bb933e000?, 0x1ab0e10?, 0x0?}, 0xe384bd153a00?)
+	golang.org/x/net@v0.55.0/internal/socket/mmsghdr_unix.go:120 +0x68
+golang.org/x/net/internal/socket.(*Conn).recvMsgs(0x799bb933d940, {0x799bb9652908, 0x8, 0x8}, 0x0)
+	golang.org/x/net@v0.55.0/internal/socket/rawconn_mmsg.go:24 +0x124
+golang.org/x/net/internal/socket.(*Conn).RecvMsgs(...)
+	golang.org/x/net@v0.55.0/internal/socket/socket.go:268
+golang.org/x/net/ipv4.(*payloadHandler).ReadBatch(0x799bb98b6d80, {0x799bb9652908?, 0x0?, 0x0?}, 0x0?)
+	golang.org/x/net@v0.55.0/ipv4/batch.go:80 +0x40
+github.com/quic-go/quic-go.(*oobConn).ReadPacket(0x799bb91b7a70)
+	github.com/quic-go/quic-go@v0.59.1/sys_conn_oob.go:174 +0x6a4
+github.com/quic-go/quic-go.(*Transport).listen(0x799bb96d2240, {0x1ae7e38, 0x799bb91b7a70})
+	github.com/quic-go/quic-go@v0.59.1/transport.go:533 +0x44
+github.com/quic-go/quic-go.(*Transport).init.func1.1()
+	github.com/quic-go/quic-go@v0.59.1/transport.go:421 +0x58
+created by github.com/quic-go/quic-go.(*Transport).init.func1 in goroutine 1
+	github.com/quic-go/quic-go@v0.59.1/transport.go:419 +0x37c
+
+goroutine 72 [select, 203 minutes]:
+github.com/quic-go/quic-go.(*Transport).runSendQueue(0x799bb96d2240)
+	github.com/quic-go/quic-go@v0.59.1/transport.go:442 +0xa4
+created by github.com/quic-go/quic-go.(*Transport).init.func1 in goroutine 1
+	github.com/quic-go/quic-go@v0.59.1/transport.go:427 +0x3bc
+
+goroutine 73 [select, 203 minutes]:
+github.com/quic-go/quic-go.(*baseServer).run(0x799bb96d2480)
+	github.com/quic-go/quic-go@v0.59.1/server.go:299 +0xbc
+created by github.com/quic-go/quic-go.newServer in goroutine 1
+	github.com/quic-go/quic-go@v0.59.1/server.go:285 +0x384
+
+goroutine 74 [select, 203 minutes]:
+github.com/quic-go/quic-go.(*baseServer).runSendQueue(0x799bb96d2480)
+	github.com/quic-go/quic-go@v0.59.1/server.go:312 +0x100
+created by github.com/quic-go/quic-go.newServer in goroutine 1
+	github.com/quic-go/quic-go@v0.59.1/server.go:286 +0x3c4
+
+goroutine 75 [select, 203 minutes]:
+github.com/quic-go/quic-go.(*baseServer).accept(0x799bb96d2480, {0x1addf40, 0x799bb98b6cd0})
+	github.com/quic-go/quic-go@v0.59.1/server.go:334 +0x80
+github.com/quic-go/quic-go.(*EarlyListener).Accept(...)
+	github.com/quic-go/quic-go@v0.59.1/server.go:159
+github.com/caddyserver/caddy/v2.(*fakeCloseQuicListener).Accept(0x799bb90bcff0, {0x64cb60?, 0x799bb967e718?})
+	github.com/caddyserver/caddy/v2@v2.11.4/listeners.go:639 +0x30
+github.com/quic-go/quic-go/http3.(*Server).serveListener(0x799bb926ec30, {0x1ad8608, 0x799bb90bcff0})
+	github.com/quic-go/quic-go@v0.59.1/http3/server.go:273 +0x50
+github.com/quic-go/quic-go/http3.(*Server).ServeListener(0x799bb926ec30, {0x1ad8608, 0x799bb90bcff0})
+	github.com/quic-go/quic-go@v0.59.1/http3/server.go:268 +0xf0
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP3 in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:699 +0x3a0
+
+goroutine 76 [IO wait, 11 minutes]:
+internal/poll.runtime_pollWait(0xe3847668c800, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f4500?, 0x10d6ac?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Accept(0x799bb97f4500)
+	internal/poll/fd_unix.go:613 +0x214
+net.(*netFD).accept(0x799bb97f4500)
+	net/fd_unix.go:150 +0x28
+net.(*TCPListener).accept(0x799bb939e700)
+	net/tcpsock_posix.go:159 +0x24
+net.(*TCPListener).Accept(0x799bb939e700)
+	net/tcpsock.go:387 +0x2c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*http2Listener).Accept(0x799bb933da20)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/http2listener.go:34 +0x28
+net/http.(*Server).Serve(0x799bb9179a00, {0x1ad9a30, 0x799bb933da20})
+	net/http/server.go:3434 +0x244
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Start in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/app.go:600 +0x113c
+
+goroutine 120 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 90
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 29 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb9962c00, 0x799bb9862280, 0x799bb959c5b0, {0xe384762ee430, 0x799bb936a380}, 0x799bb9352640, 0x799bb90e55f0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb9962c00, {0xe384762ee430, 0x799bb936a380}, 0x799bb9352640, 0x799bb90e55f0, 0x799bb959c160?, {0xe?, 0x799bb938a540?, 0x2d91d40?}, 0x799bb9862280)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb9962c00, {0xe384762ee430, 0x799bb936a380}, 0x799bb93523c0, 0x799bb9763a40, 0x799bb912c210, {0x799bb944d500, {0x179dc1f, 0x3}, {0x799bb959c160, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb9962c00, 0x799bb93523c0, 0x799bb9763a40, {0xe384762ee430, 0x799bb936a380}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb9962c00, {0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40, {0x1ac6f20, 0x799bb95ac580})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c0d8?, {0xe384762ee430?, 0x799bb936a380?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96cb9e0?, {0xe384762ee430?, 0x799bb936a380?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958b600, {0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40, {0x1ac6f20, 0x799bb95ac580})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c0c0?, {0xe384762ee430?, 0x799bb936a380?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c9d8?, {0xe384762ee430?, 0x799bb936a380?}, 0x799bb9763a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c948?, {0xe384762ee430?, 0x799bb936a380?}, 0x799bb9763a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c8e8?, {0xe384762ee430?, 0x799bb936a380?}, 0x799bb9763a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c888?, {0xe384762ee430?, 0x799bb936a380?}, 0x799bb9763a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c828?, {0xe384762ee430?, 0x799bb936a380?}, 0x799bb9763a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c7c8?, {0xe384762ee430?, 0x799bb936a380?}, 0x799bb9763a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c768?, {0xe384762ee430?, 0x799bb936a380?}, 0x799bb9763a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb936a380?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c0a8?, {0xe384762ee430?, 0x799bb936a380?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb936a380?}, 0x799bb9763a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb9111008?, {0xe384762ee430?, 0x799bb936a380?}, 0x21118?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb97a5488?, {0xe384762ee430?, 0x799bb936a380?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb936a380?}, 0x799bb97a55c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x17ad06b?, {0xe384762ee430?, 0x799bb936a380?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb936a380}, 0x799bb9763a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb93d0000}, 0x799bb9762000)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb936a080?}, {0x1ad8860?, 0x799bb93d0000?}, 0x1?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bb90e4ab0, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 79 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddytls.(*TLS).keepStorageClean.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddytls/tls.go:920 +0x88
+created by github.com/caddyserver/caddy/v2/modules/caddytls.(*TLS).keepStorageClean in goroutine 1
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddytls/tls.go:912 +0xe0
+
+goroutine 144 [select]:
+golang.org/x/net/http2.(*serverConn).serve(0x799bb96bdc20, {0xfa, 0x0, 0x1000, 0x1000, 0x100000, 0x100000, 0x100000, 0x0, 0x37e11d600, ...})
+	golang.org/x/net@v0.55.0/http2/server.go:833 +0x774
+golang.org/x/net/http2.(*Server).serveConn(0x799bb93b1740, {0x1aec510, 0x799bb97ad508}, 0x799bbb16fad8, 0x0)
+	golang.org/x/net@v0.55.0/http2/server.go:404 +0x940
+golang.org/x/net/http2.(*Server).ServeConn(...)
+	golang.org/x/net@v0.55.0/http2/server_common.go:185
+golang.org/x/net/http2.configureServer.func2(0x799bb9179600, {0x1aec510, 0x799bb97ad508}, {0x1ac2f40, 0x799bb94c2680}, 0x0)
+	golang.org/x/net@v0.55.0/http2/server.go:231 +0x108
+golang.org/x/net/http2.configureServer.func3(0x1648940?, 0x799bbb16fe98?, {0x1ac2f40?, 0x799bb94c2680?})
+	golang.org/x/net@v0.55.0/http2/server.go:239 +0x44
+net/http.(*conn).serve(0x799bb96cf830, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:1960 +0x10b8
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 81 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb9962c00, 0x799bb97f4c80, 0x799bb95bf230, {0xe384762ee430, 0x799bb939e400}, 0x799bb9952780, 0x799bb96ce6c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb9962c00, {0xe384762ee430, 0x799bb939e400}, 0x799bb9952780, 0x799bb96ce6c0, 0x799bb95bebd0?, {0xe?, 0x799bb938a540?, 0x2d91d40?}, 0x799bb97f4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb9962c00, {0xe384762ee430, 0x799bb939e400}, 0x799bb9952640, 0x799bb99523c0, 0x799bb90bc840, {0x799bb944d500, {0x179dc1f, 0x3}, {0x799bb95bebd0, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb9962c00, 0x799bb9952640, 0x799bb99523c0, {0xe384762ee430, 0x799bb939e400}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb9962c00, {0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0, {0x1ac6f20, 0x799bb933c3e0})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c8c90?, {0xe384762ee430?, 0x799bb939e400?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96cb9e0?, {0xe384762ee430?, 0x799bb939e400?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958b600, {0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0, {0x1ac6f20, 0x799bb933c3e0})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c8c30?, {0xe384762ee430?, 0x799bb939e400?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c9d8?, {0xe384762ee430?, 0x799bb939e400?}, 0x799bb99523c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c948?, {0xe384762ee430?, 0x799bb939e400?}, 0x799bb99523c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c8e8?, {0xe384762ee430?, 0x799bb939e400?}, 0x799bb99523c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c888?, {0xe384762ee430?, 0x799bb939e400?}, 0x799bb99523c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c828?, {0xe384762ee430?, 0x799bb939e400?}, 0x799bb99523c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c7c8?, {0xe384762ee430?, 0x799bb939e400?}, 0x799bb99523c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c768?, {0xe384762ee430?, 0x799bb939e400?}, 0x799bb99523c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb939e400?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c8c18?, {0xe384762ee430?, 0x799bb939e400?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb939e400?}, 0x799bb99523c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb9111008?, {0xe384762ee430?, 0x799bb939e400?}, 0xe3f9ec?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb97ef488?, {0xe384762ee430?, 0x799bb939e400?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb939e400?}, 0x799bb97ef5c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb9882d20?, {0xe384762ee430?, 0x799bb939e400?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb939e400}, 0x799bb99523c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb926f1d0}, 0x799bb9952140)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb939e280?}, {0x1ad8860?, 0x799bb926f1d0?}, 0x1?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bb91b7560, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 86 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 81
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 89 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb9962c00, 0x799bb9862d80, 0x799bb959c3e0, {0xe384762ee430, 0x799bb939ed80}, 0x799bb9352140, 0x799bb90e5170)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb9962c00, {0xe384762ee430, 0x799bb939ed80}, 0x799bb9352140, 0x799bb90e5170, 0x799bb95bfaf0?, {0xe?, 0x799bb938a540?, 0x2d91d40?}, 0x799bb9862d80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb9962c00, {0xe384762ee430, 0x799bb939ed80}, 0x799bb9953cc0, 0x799bb9953a40, 0x799bb90c8b40, {0x799bb944d500, {0x179dc1f, 0x3}, {0x799bb95bfaf0, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb9962c00, 0x799bb9953cc0, 0x799bb9953a40, {0xe384762ee430, 0x799bb939ed80}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb9962c00, {0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40, {0x1ac6f20, 0x799bb933cec0})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c9500?, {0xe384762ee430?, 0x799bb939ed80?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96cb9e0?, {0xe384762ee430?, 0x799bb939ed80?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958b600, {0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40, {0x1ac6f20, 0x799bb933cec0})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c94e8?, {0xe384762ee430?, 0x799bb939ed80?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c9d8?, {0xe384762ee430?, 0x799bb939ed80?}, 0x799bb9953a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c948?, {0xe384762ee430?, 0x799bb939ed80?}, 0x799bb9953a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c8e8?, {0xe384762ee430?, 0x799bb939ed80?}, 0x799bb9953a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c888?, {0xe384762ee430?, 0x799bb939ed80?}, 0x799bb9953a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c828?, {0xe384762ee430?, 0x799bb939ed80?}, 0x799bb9953a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c7c8?, {0xe384762ee430?, 0x799bb939ed80?}, 0x799bb9953a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c768?, {0xe384762ee430?, 0x799bb939ed80?}, 0x799bb9953a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb939ed80?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c94d0?, {0xe384762ee430?, 0x799bb939ed80?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb939ed80?}, 0x799bb9953a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb97b5008?, {0xe384762ee430?, 0x799bb939ed80?}, 0xe3f9ec?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb96df488?, {0xe384762ee430?, 0x799bb939ed80?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb939ed80?}, 0x799bb96df5c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb9882fa8?, {0xe384762ee430?, 0x799bb939ed80?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb939ed80}, 0x799bb9953a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb926f590}, 0x799bb99537c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb939ec40?}, {0x1ad8860?, 0x799bb926f590?}, 0x1?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bb96ce870, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 88 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847668c400, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f4b80?, 0x799bb965e000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb97f4b80, {0x799bb965e000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb97f4b80, {0x799bb965e000?, 0x799bb969fcf8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9094348, {0x799bb965e000?, 0x799bb969fd00?, 0x799bb969fcf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bb9856388?, {0x799bb965e000?, 0x3d5?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bb9856388}, {0xe384762ee6f0, 0x799bb91c8d68}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bb91c8f48, {0xe384762ee6f0?, 0x799bb91c8d68?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bb91c8f48}, {0xe384762ee6f0, 0x799bb91c8d68}, {0x799bb952a000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bb91c8f48?}, {0xe384762ee6f0?, 0x799bb91c8d68?}, {0x799bb952a000?, 0x0?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bb91c8f48}, {0x1ad8770, 0x799bb91c8d68}, 0x799bb95bf230, 0x0}, 0x799bb94f4770)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 81
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 87 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847668c600, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f4000?, 0x799bb91f1000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb97f4000, {0x799bb91f1000, 0x800, 0x800})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb97f4000, {0x799bb91f1000?, 0x799bb969b9c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9094280, {0x799bb91f1000?, 0x3001f1000?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9fab008, {0x799bb91f1000?, 0x799bb969ba88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb9856628, {0x1ac5660, 0x799bb9fab008})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb9856388, {0x1ac2760, 0x799bb9094280}, 0x800?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb9856388, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb9856388, {0x799bb9678000, 0x8000, 0x0?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bb91c8d68}, {0xe384762ee868, 0x799bb9856388}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bb91c8f48, {0xe384762ee4f8?, 0x799bb91c8d68?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bb91c8d68}, {0xe384762ee6a0, 0x799bb91c8f48}, {0x799bb9666000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bb91c8d68?}, {0xe384762ee6a0?, 0x799bb91c8f48?}, {0x799bb9666000?, 0xe?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bb91c8f48}, {0x1ad8770, 0x799bb91c8d68}, 0x799bb95bf230, 0x0}, 0x799bb94f4770)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 81
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 90 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb9962c00, 0x799bb9862e00, 0x799bb959c4d0, {0xe384762ee430, 0x799bb936b3c0}, 0x799bb97637c0, 0x799bb90e5290)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb9962c00, {0xe384762ee430, 0x799bb936b3c0}, 0x799bb97637c0, 0x799bb90e5290, 0x799bb959c2a0?, {0xe?, 0x799bb938a540?, 0x2d91d40?}, 0x799bb9862e00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb9962c00, {0xe384762ee430, 0x799bb936b3c0}, 0x799bb9763680, 0x799bb97632c0, 0x799bb92f3d70, {0x799bb944d500, {0x179dc1f, 0x3}, {0x799bb959c2a0, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb9962c00, 0x799bb9763680, 0x799bb97632c0, {0xe384762ee430, 0x799bb936b3c0}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb9962c00, {0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0, {0x1ac6f20, 0x799bb959fc60})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938cf30?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96cb9e0?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958b600, {0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0, {0x1ac6f20, 0x799bb959fc60})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938ce88?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c9d8?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb97632c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c948?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb97632c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c8e8?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb97632c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c888?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb97632c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c828?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb97632c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c7c8?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb97632c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c768?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb97632c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938ce70?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb97632c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x2d94440?, {0xe384762ee430?, 0x799bb936b3c0?}, 0xe3f9ec?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb96db488?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb936b3c0?}, 0x799bb96db5c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb97fe420?, {0xe384762ee430?, 0x799bb936b3c0?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb936b3c0}, 0x799bb97632c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb93d0780}, 0x799bb9762c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb936b280?}, {0x1ad8860?, 0x799bb93d0780?}, 0x1?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bb96ce900, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 91 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb9962c00, 0x799bb97f4680, 0x799bb90a4150, {0xe384762ee430, 0x799bb939e1c0}, 0x799bb9953680, 0x799bb90e5170)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb9962c00, {0xe384762ee430, 0x799bb939e1c0}, 0x799bb9953680, 0x799bb90e5170, 0x799bb95be0d0?, {0xe?, 0x799bb938a540?, 0x2d91d40?}, 0x799bb97f4680)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb9962c00, {0xe384762ee430, 0x799bb939e1c0}, 0x799bb9953180, 0x799bb9952a00, 0x799bb90c86f0, {0x799bb944d500, {0x179dc1f, 0x3}, {0x799bb95be0d0, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb9962c00, 0x799bb9953180, 0x799bb9952a00, {0xe384762ee430, 0x799bb939e1c0}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb9962c00, {0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00, {0x1ac6f20, 0x799bb933c160})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c87f8?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96cb9e0?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958b600, {0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00, {0x1ac6f20, 0x799bb933c160})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c8438?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c9d8?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb9952a00?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c948?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb9952a00?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c8e8?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb9952a00?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c888?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb9952a00?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c828?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb9952a00?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c7c8?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb9952a00?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c768?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb9952a00?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c82d0?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb9952a00?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb98f20e0?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x28?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb97a1488?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb939e1c0?}, 0x799bb97a15c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x17b69d6?, {0xe384762ee430?, 0x799bb939e1c0?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb939e1c0}, 0x799bb9952a00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb926ee10}, 0x799bb9952000)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb939e0c0?}, {0x1ad8860?, 0x799bb926ee10?}, 0x1?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bb96ce990, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 30 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 28
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 117 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 89
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 32 [IO wait]:
+internal/poll.runtime_pollWait(0xe384762ef000, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f5680?, 0x799bb9858000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb97f5680, {0x799bb9858000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb97f5680, {0x799bb9858000?, 0x799bb9109cf8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9094a70, {0x799bb9858000?, 0x799bb969ad00?, 0x799bb969acf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bb9654a88?, {0x799bb9858000?, 0x3d4?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bb9654a88}, {0xe384762ee6f0, 0x799bb938ca98}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bb938cc90, {0xe384762ee6f0?, 0x799bb938ca98?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bb938cc90}, {0xe384762ee6f0, 0x799bb938ca98}, {0x799bb982a000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bb938cc90?}, {0xe384762ee6f0?, 0x799bb938ca98?}, {0x799bb982a000?, 0x2846c?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bb938cc90}, {0x1ad8770, 0x799bb938ca98}, 0x799bb959c1a0, 0x0}, 0x799bb975c3f0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 28
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 31 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847668c200, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb934a380?, 0x799bb91e9200?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb934a380, {0x799bb91e9200, 0x900, 0x900})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb934a380, {0x799bb91e9200?, 0x799bb969e9c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9192060, {0x799bb91e9200?, 0x3001e9200?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9fab020, {0x799bb91e9200?, 0x799bb969ea88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb9654d28, {0x1ac5660, 0x799bb9fab020})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb9654a88, {0x1ac2760, 0x799bb9192060}, 0x900?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb9654a88, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb9654a88, {0x799bb98bc000, 0x8000, 0x3424c?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bb938ca98}, {0xe384762ee868, 0x799bb9654a88}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bb938cc90, {0xe384762ee4f8?, 0x799bb938ca98?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bb938ca98}, {0xe384762ee6a0, 0x799bb938cc90}, {0x799bb98a6000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bb938ca98?}, {0xe384762ee6a0?, 0x799bb938cc90?}, {0x799bb98a6000?, 0xe?, 0x799bb97c6a00?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bb938cc90}, {0x1ad8770, 0x799bb938ca98}, 0x799bb959c1a0, 0x0}, 0x799bb975c3f0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 28
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 123 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 29
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 119 [IO wait]:
+internal/poll.runtime_pollWait(0xe384762eee00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f5880?, 0x799bb9920000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb97f5880, {0x799bb9920000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb97f5880, {0x799bb9920000?, 0x799bb9109cf8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9094a80, {0x799bb9920000?, 0x799bb969dd00?, 0x799bb969dcf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bb9856708?, {0x799bb9920000?, 0x3d5?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bb9856708}, {0xe384762ee6f0, 0x799bb938d0c8}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bb938d290, {0xe384762ee6f0?, 0x799bb938d0c8?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bb938d290}, {0xe384762ee6f0, 0x799bb938d0c8}, {0x799bb9918000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bb938d290?}, {0xe384762ee6f0?, 0x799bb938d0c8?}, {0x799bb9918000?, 0x2846c?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bb938d290}, {0x1ad8770, 0x799bb938d0c8}, 0x799bb959c3e0, 0x0}, 0x799bb975d1f0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 89
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 118 [IO wait]:
+internal/poll.runtime_pollWait(0xe384762ef800, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f5280?, 0x799bb91e9b00?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb97f5280, {0x799bb91e9b00, 0x900, 0x900})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb97f5280, {0x799bb91e9b00?, 0x799bb98ef9c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9094a30, {0x799bb91e9b00?, 0x3001e9b00?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9fab080, {0x799bb91e9b00?, 0x799bb98efa88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb98569a8, {0x1ac5660, 0x799bb9fab080})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb9856708, {0x1ac2760, 0x799bb9094a30}, 0x900?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb9856708, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb9856708, {0x799bb997c000, 0x8000, 0x3424c?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bb938d0c8}, {0xe384762ee868, 0x799bb9856708}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bb938d290, {0xe384762ee4f8?, 0x799bb938d0c8?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bb938d0c8}, {0xe384762ee6a0, 0x799bb938d290}, {0x799bb9928000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bb938d0c8?}, {0xe384762ee6a0?, 0x799bb938d290?}, {0x799bb9928000?, 0x1addd00?, 0x2dbc220?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bb938d290}, {0x1ad8770, 0x799bb938d0c8}, 0x799bb959c3e0, 0x0}, 0x799bb975d1f0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 89
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 122 [IO wait]:
+internal/poll.runtime_pollWait(0xe384762eec00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb9862d00?, 0x799bb9994000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb9862d00, {0x799bb9994000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb9862d00, {0x799bb9994000?, 0x799bb910a4f8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9192510, {0x799bb9994000?, 0x799bb98d3d00?, 0x799bb98d3cf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bb9857188?, {0x799bb9994000?, 0x3d5?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bb9857188}, {0xe384762ee6f0, 0x799bb938d470}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bb938d6c8, {0xe384762ee6f0?, 0x799bb938d470?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bb938d6c8}, {0xe384762ee6f0, 0x799bb938d470}, {0x799bb998c000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bb938d6c8?}, {0xe384762ee6f0?, 0x799bb938d470?}, {0x799bb998c000?, 0x0?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bb938d6c8}, {0x1ad8770, 0x799bb938d470}, 0x799bb959c4d0, 0x0}, 0x799bb975d2d0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 90
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 121 [IO wait]:
+internal/poll.runtime_pollWait(0xe384762ef600, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f5300?, 0x799bb9593000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb97f5300, {0x799bb9593000, 0x1000, 0x1000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb97f5300, {0x799bb9593000?, 0x799bb98d59c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9094a38, {0x799bb9593000?, 0x300593000?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9fab038, {0x799bb9593000?, 0x799bb98d5a88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb9857428, {0x1ac5660, 0x799bb9fab038})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb9857188, {0x1ac2760, 0x799bb9094a38}, 0x1000?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb9857188, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb9857188, {0x799bb99a4000, 0x8000, 0x3424c?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bb938d470}, {0xe384762ee868, 0x799bb9857188}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bb938d6c8, {0xe384762ee4f8?, 0x799bb938d470?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bb938d470}, {0xe384762ee6a0, 0x799bb938d6c8}, {0x799bb999c000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bb938d470?}, {0xe384762ee6a0?, 0x799bb938d6c8?}, {0x799bb999c000?, 0x2846c?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bb938d6c8}, {0x1ad8770, 0x799bb938d470}, 0x799bb959c4d0, 0x0}, 0x799bb975d2d0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 90
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 110 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb9962c00, 0x799bb9862780, 0x799bbace5d30, {0xe384762ee430, 0x799bb9378f00}, 0x799bb93e5680, 0x799bb96cf290)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb9962c00, {0xe384762ee430, 0x799bb9378f00}, 0x799bb93e5680, 0x799bb96cf290, 0x799bbaedcdc0?, {0xe?, 0x799bb938a540?, 0x2d91d40?}, 0x799bb9862780)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb9962c00, {0xe384762ee430, 0x799bb9378f00}, 0x799bb93e5540, 0x799bb93e4c80, 0x799bbb1407b0, {0x799bb944d500, {0x179dc1f, 0x3}, {0x799bbaedcdc0, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb9962c00, 0x799bb93e5540, 0x799bb93e4c80, {0xe384762ee430, 0x799bb9378f00}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb9962c00, {0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80, {0x1ac6f20, 0x799bb94a7be0})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c94d0?, {0xe384762ee430?, 0x799bb9378f00?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96cb9e0?, {0xe384762ee430?, 0x799bb9378f00?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958b600, {0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80, {0x1ac6f20, 0x799bb94a7be0})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c9440?, {0xe384762ee430?, 0x799bb9378f00?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c9d8?, {0xe384762ee430?, 0x799bb9378f00?}, 0x799bb93e4c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c948?, {0xe384762ee430?, 0x799bb9378f00?}, 0x799bb93e4c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c8e8?, {0xe384762ee430?, 0x799bb9378f00?}, 0x799bb93e4c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c888?, {0xe384762ee430?, 0x799bb9378f00?}, 0x799bb93e4c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c828?, {0xe384762ee430?, 0x799bb9378f00?}, 0x799bb93e4c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c7c8?, {0xe384762ee430?, 0x799bb9378f00?}, 0x799bb93e4c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c768?, {0xe384762ee430?, 0x799bb9378f00?}, 0x799bb93e4c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb9378f00?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb91c9428?, {0xe384762ee430?, 0x799bb9378f00?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb9378f00?}, 0x799bb93e4c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb97a13b8?, {0xe384762ee430?, 0x799bb9378f00?}, 0xe3f9ec?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb97a1488?, {0xe384762ee430?, 0x799bb9378f00?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb9378f00?}, 0x799bb97a15c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bbaedcd57?, {0xe384762ee430?, 0x799bb9378f00?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb9378f00}, 0x799bb93e4c80)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb926f3b0}, 0x799bb93e4780)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb9378e00?}, {0x1ad8860?, 0x799bb926f3b0?}, 0x1?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bb90e5950, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 107 [IO wait]:
+internal/poll.runtime_pollWait(0xe384762ef200, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f5400?, 0x799bb9adc000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb97f5400, {0x799bb9adc000, 0xa80, 0xa80})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb97f5400, {0x799bb9adc000?, 0x799bb98d49c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9094a40, {0x799bb9adc000?, 0x300adc000?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9fab098, {0x799bb9adc000?, 0x799bb98d4a88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb9857ea8, {0x1ac5660, 0x799bb9fab098})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb9857c08, {0x1ac2760, 0x799bb9094a40}, 0xa80?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb9857c08, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb9857c08, {0x799bb98da000, 0x8000, 0x3424c?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bb91c8c90}, {0xe384762ee868, 0x799bb9857c08}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bb91c8e40, {0xe384762ee4f8?, 0x799bb91c8c90?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bb91c8c90}, {0xe384762ee6a0, 0x799bb91c8e40}, {0x799bb98a6000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bb91c8c90?}, {0xe384762ee6a0?, 0x799bb91c8e40?}, {0x799bb98a6000?, 0x0?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bb91c8e40}, {0x1ad8770, 0x799bb91c8c90}, 0x799bb90a4150, 0x0}, 0x799bb975ce00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 91
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 108 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476309200, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb97f4600?, 0x799bb9666000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb97f4600, {0x799bb9666000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb97f4600, {0x799bb9666000?, 0x799bb9698cf8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9094a88, {0x799bb9666000?, 0x799bb9698d00?, 0x799bb9698cf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bb9857c08?, {0x799bb9666000?, 0x3d5?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bb9857c08}, {0xe384762ee6f0, 0x799bb91c8c90}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bb91c8e40, {0xe384762ee6f0?, 0x799bb91c8c90?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bb91c8e40}, {0xe384762ee6f0, 0x799bb91c8c90}, {0x799bb952a000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bb91c8e40?}, {0xe384762ee6f0?, 0x799bb91c8c90?}, {0x799bb952a000?, 0x0?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bb91c8e40}, {0x1ad8770, 0x799bb91c8c90}, 0x799bb90a4150, 0x0}, 0x799bb975ce00)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 91
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 125 [IO wait]:
+internal/poll.runtime_pollWait(0xe384762eea00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb9862200?, 0x799bb96d8000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb9862200, {0x799bb96d8000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb9862200, {0x799bb96d8000?, 0x799bb966d4f8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9192238, {0x799bb96d8000?, 0x799bb98ebd00?, 0x799bb98ebcf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bb9654e08?, {0x799bb96d8000?, 0x3f9?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bb9654e08}, {0xe384762ee6f0, 0x799bb938c1e0}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bb91c8228, {0xe384762ee6f0?, 0x799bb938c1e0?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bb91c8228}, {0xe384762ee6f0, 0x799bb938c1e0}, {0x799bb96ae000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bb91c8228?}, {0xe384762ee6f0?, 0x799bb938c1e0?}, {0x799bb96ae000?, 0x0?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bb91c8228}, {0x1ad8770, 0x799bb938c1e0}, 0x799bb959c5b0, 0x0}, 0x799bb94f4000)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 29
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 106 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 91
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 129 [chan receive, 203 minutes]:
+github.com/DeRuina/timberjack.(*Logger).millRun(0x799bb9881040)
+	github.com/DeRuina/timberjack@v1.4.2/timberjack.go:1011 +0x78
+created by github.com/DeRuina/timberjack.(*Logger).mill.func1 in goroutine 109
+	github.com/DeRuina/timberjack@v1.4.2/timberjack.go:1026 +0xac
+
+goroutine 130 [select, 203 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 110
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 154 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476308600, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb9863200?, 0x799bb9744000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb9863200, {0x799bb9744000, 0x240, 0x240})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb9863200, {0x799bb9744000?, 0x799bbb1a0a08?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb91927c8, {0x799bb9744000?, 0x3008b0db0?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9faad38, {0x799bb9744000?, 0x799bbb1a0ac8?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb97ad7a8, {0x1ac5660, 0x799bb9faad38})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb97ad508, {0x1ac2760, 0x799bb91927c8}, 0x636cb0?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb97ad508, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb97ad508, {0x799bb96502e4, 0x9, 0x0?})
+	crypto/tls/conn.go:1393 +0x14c
+io.ReadAtLeast({0xe384762ee868, 0x799bb97ad508}, {0x799bb96502e4, 0x9, 0x9}, 0x9)
+	io/io.go:335 +0x98
+io.ReadFull(...)
+	io/io.go:354
+golang.org/x/net/http2.readFrameHeader({0x799bb96502e4, 0x9, 0x983?}, {0xe384762ee868?, 0x799bb97ad508?})
+	golang.org/x/net@v0.55.0/http2/frame.go:250 +0x58
+golang.org/x/net/http2.(*Framer).ReadFrameHeader(0x799bb96502a0)
+	golang.org/x/net@v0.55.0/http2/frame.go:513 +0x60
+golang.org/x/net/http2.(*Framer).ReadFrame(0x799bb96502a0)
+	golang.org/x/net@v0.55.0/http2/frame.go:572 +0x20
+golang.org/x/net/http2.(*serverConn).readFrames(0x799bb96bdc20)
+	golang.org/x/net@v0.55.0/http2/server.go:699 +0x80
+created by golang.org/x/net/http2.(*serverConn).serve in goroutine 144
+	golang.org/x/net@v0.55.0/http2/server.go:824 +0x590
+
+goroutine 132 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476308e00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbb156100?, 0x799bbb188000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbb156100, {0x799bbb188000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbb156100, {0x799bbb188000?, 0x799bb98e9cf8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bbb13e0d8, {0x799bbb188000?, 0x799bb98e9d00?, 0x799bb98e9cf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bb9655188?, {0x799bbb188000?, 0x3d5?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bb9655188}, {0xe384762ee6f0, 0x799bb938cb10}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bb938cf90, {0xe384762ee6f0?, 0x799bb938cb10?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bb938cf90}, {0xe384762ee6f0, 0x799bb938cb10}, {0x799bbb180000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bb938cf90?}, {0xe384762ee6f0?, 0x799bb938cb10?}, {0x799bbb180000?, 0xe?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bb938cf90}, {0x1ad8770, 0x799bb938cb10}, 0x799bbace5d30, 0x0}, 0x799bbacf0070)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 110
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 131 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476309000, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbb127880?, 0x799bb9623000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbb127880, {0x799bb9623000, 0x800, 0x800})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbb127880, {0x799bb9623000?, 0x799bb98ed9c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bbb13e0c0, {0x799bb9623000?, 0x300623000?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9fab050, {0x799bb9623000?, 0x799bb98eda88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb9655428, {0x1ac5660, 0x799bb9fab050})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb9655188, {0x1ac2760, 0x799bbb13e0c0}, 0x800?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb9655188, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb9655188, {0x799bbb198000, 0x8000, 0x3424c?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bb938cb10}, {0xe384762ee868, 0x799bb9655188}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bb938cf90, {0xe384762ee4f8?, 0x799bb938cb10?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bb938cb10}, {0xe384762ee6a0, 0x799bb938cf90}, {0x799bbb190000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bb938cb10?}, {0xe384762ee6a0?, 0x799bb938cf90?}, {0x799bbb190000?, 0x0?, 0x0?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bb938cf90}, {0x1ad8770, 0x799bb938cb10}, 0x799bbace5d30, 0x0}, 0x799bbacf0070)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 110
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 161 [select]:
+golang.org/x/net/http2.(*serverConn).serve(0x799bb9bbe000, {0xfa, 0x0, 0x1000, 0x1000, 0x100000, 0x100000, 0x100000, 0x0, 0x37e11d600, ...})
+	golang.org/x/net@v0.55.0/http2/server.go:833 +0x774
+golang.org/x/net/http2.(*Server).serveConn(0x799bb93b1740, {0x1aec510, 0x799bb97ad888}, 0x799bb97efad8, 0x0)
+	golang.org/x/net@v0.55.0/http2/server.go:404 +0x940
+golang.org/x/net/http2.(*Server).ServeConn(...)
+	golang.org/x/net@v0.55.0/http2/server_common.go:185
+golang.org/x/net/http2.configureServer.func2(0x799bb9179600, {0x1aec510, 0x799bb97ad888}, {0x1ac2f40, 0x799bb95ad680}, 0x0)
+	golang.org/x/net@v0.55.0/http2/server.go:231 +0x108
+golang.org/x/net/http2.configureServer.func3(0x1648940?, 0x799bb97efe98?, {0x1ac2f40?, 0x799bb95ad680?})
+	golang.org/x/net@v0.55.0/http2/server.go:239 +0x44
+net/http.(*conn).serve(0x799bb96cf8c0, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:1960 +0x10b8
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 171 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476308400, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bb9863d00?, 0x799bb9623800?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bb9863d00, {0x799bb9623800, 0x800, 0x800})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bb9863d00, {0x799bb9623800?, 0x799bbb1a3a08?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb91927e8, {0x799bb9623800?, 0x3008b0db0?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9faadf8, {0x799bb9623800?, 0x799bbb1a3ac8?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb97adb28, {0x1ac5660, 0x799bb9faadf8})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb97ad888, {0x1ac2760, 0x799bb91927e8}, 0x636cb0?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb97ad888, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb97ad888, {0x799bbb14a124, 0x9, 0x0?})
+	crypto/tls/conn.go:1393 +0x14c
+io.ReadAtLeast({0xe384762ee868, 0x799bb97ad888}, {0x799bbb14a124, 0x9, 0x9}, 0x9)
+	io/io.go:335 +0x98
+io.ReadFull(...)
+	io/io.go:354
+golang.org/x/net/http2.readFrameHeader({0x799bbb14a124, 0x9, 0x983?}, {0xe384762ee868?, 0x799bb97ad888?})
+	golang.org/x/net@v0.55.0/http2/frame.go:250 +0x58
+golang.org/x/net/http2.(*Framer).ReadFrameHeader(0x799bbb14a0e0)
+	golang.org/x/net@v0.55.0/http2/frame.go:513 +0x60
+golang.org/x/net/http2.(*Framer).ReadFrame(0x799bbb14a0e0)
+	golang.org/x/net@v0.55.0/http2/frame.go:572 +0x20
+golang.org/x/net/http2.(*serverConn).readFrames(0x799bb9bbe000)
+	golang.org/x/net@v0.55.0/http2/server.go:699 +0x80
+created by golang.org/x/net/http2.(*serverConn).serve in goroutine 161
+	golang.org/x/net@v0.55.0/http2/server.go:824 +0x590
+
+goroutine 16440 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476238600, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbaf7bb80?, 0x799bb9e26000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbaf7bb80, {0x799bb9e26000, 0x1000, 0x1000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbaf7bb80, {0x799bb9e26000?, 0x80?, 0x8?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bbb13e560, {0x799bb9e26000?, 0x0?, 0x799bba209d28?})
+	net/net.go:196 +0x34
+net/http.(*persistConn).Read(0x799bb9ba6a00, {0x799bb9e26000?, 0x1ac1e88?, 0x2d2b060?})
+	net/http/transport.go:2174 +0x48
+bufio.(*Reader).fill(0x799bba0b1b00)
+	bufio/bufio.go:113 +0xe0
+bufio.(*Reader).Peek(0x799bba0b1b00, 0x1)
+	bufio/bufio.go:152 +0x58
+net/http.(*persistConn).readLoop(0x799bb9ba6a00)
+	net/http/transport.go:2330 +0x110
+created by net/http.(*Transport).dialConn in goroutine 16439
+	net/http/transport.go:1994 +0x109c
+
+goroutine 16308 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476238c00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbaf96980?, 0x799bb9f6b000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbaf96980, {0x799bb9f6b000, 0x1000, 0x1000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbaf96980, {0x799bb9f6b000?, 0x1?, 0x8?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bbb13e4b8, {0x799bb9f6b000?, 0x799bb988a4b0?, 0x0?})
+	net/net.go:196 +0x34
+net/http.(*persistConn).Read(0x799bba02b7c0, {0x799bb9f6b000?, 0x1ac1e88?, 0x2d2b060?})
+	net/http/transport.go:2174 +0x48
+bufio.(*Reader).fill(0x799bb9ad1320)
+	bufio/bufio.go:113 +0xe0
+bufio.(*Reader).Peek(0x799bb9ad1320, 0x1)
+	bufio/bufio.go:152 +0x58
+net/http.(*persistConn).readLoop(0x799bba02b7c0)
+	net/http/transport.go:2330 +0x110
+created by net/http.(*Transport).dialConn in goroutine 16307
+	net/http/transport.go:1994 +0x109c
+
+goroutine 13034 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476308a00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbb0a4180?, 0x799bba0a4a80?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbb0a4180, {0x799bba0a4a80, 0xa80, 0xa80})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbb0a4180, {0x799bba0a4a80?, 0x799bba24d9c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9192e78, {0x799bba0a4a80?, 0x3000a4a80?, 0xe384764e92a0?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb93e6ba0, {0x799bba0a4a80?, 0x799bba24da88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bba1022a8, {0x1ac5660, 0x799bb93e6ba0})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bba102008, {0x1ac2760, 0x799bb9192e78}, 0xa80?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bba102008, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bba102008, {0x799bba074000, 0x8000, 0x3424c?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bba04a330}, {0xe384762ee868, 0x799bba102008}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bba04a4c8, {0xe384762ee4f8?, 0x799bba04a330?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bba04a330}, {0xe384762ee6a0, 0x799bba04a4c8}, {0x799bba06c000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bba04a330?}, {0xe384762ee6a0?, 0x799bba04a4c8?}, {0x799bba06c000?, 0x0?, 0x799bba24df88?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bba04a4c8}, {0x1ad8770, 0x799bba04a330}, 0x799bb9ce9d50, 0x0}, 0x799bbb617730)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 13046
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 16398 [select]:
+net/http.(*persistConn).writeLoop(0x799bb9cdc8c0)
+	net/http/transport.go:2652 +0x98
+created by net/http.(*Transport).dialConn in goroutine 16383
+	net/http/transport.go:1995 +0x10e4
+
+goroutine 577 [select, 199 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse.func1()
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:151 +0x84
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 572
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:148 +0xca0
+
+goroutine 578 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847631b000, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbaee7500?, 0x799bba20d800?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbaee7500, {0x799bba20d800, 0xc00, 0xc00})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbaee7500, {0x799bba20d800?, 0x799bba3389c8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9192998, {0x799bba20d800?, 0x30020d800?, 0xe38476296428?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bb9fab0b0, {0x799bba20d800?, 0x799bba338a88?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bb980a9a8, {0x1ac5660, 0x799bb9fab0b0})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bb980a708, {0x1ac2760, 0x799bb9192998}, 0xc00?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bb980a708, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bb980a708, {0x799bba25e000, 0x8000, 0x3424c?})
+	crypto/tls/conn.go:1393 +0x14c
+io.copyBuffer({0xe384762ee4f8, 0x799bba7abea8}, {0xe384762ee868, 0x799bb980a708}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).WriteTo(0x799bb938cac8, {0xe384762ee4f8?, 0x799bba7abea8?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:297 +0x64
+io.copyBuffer({0xe384762ee4f8, 0x799bba7abea8}, {0xe384762ee6a0, 0x799bb938cac8}, {0x799bba236000, 0x8000, 0x8000})
+	io/io.go:411 +0x98
+io.CopyBuffer({0xe384762ee4f8?, 0x799bba7abea8?}, {0xe384762ee6a0?, 0x799bb938cac8?}, {0x799bba236000?, 0xd?, 0x799bba7a8a01?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyToBackend({{0xe384762ee6c0, 0x799bb938cac8}, {0x1ad8770, 0x799bba7abea8}, 0x799bbae9dbc0, 0x0}, 0x799bba2fcb60)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:654 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 572
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:227 +0xff0
+
+goroutine 16361 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476238a00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbaf0ac80?, 0x799bb9746000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbaf0ac80, {0x799bb9746000, 0x1500, 0x1500})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbaf0ac80, {0x799bb9746000?, 0x799bba3688d8?, 0x30e28?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bbb13e130, {0x799bb9746000?, 0x3007b6a62?, 0xe38476224ca0?})
+	net/net.go:196 +0x34
+crypto/tls.(*atLeastReader).Read(0x799bba04aa80, {0x799bb9746000?, 0x799bba368998?, 0x2994d4?})
+	crypto/tls/conn.go:815 +0x38
+bytes.(*Buffer).ReadFrom(0x799bba102628, {0x1ac5660, 0x799bba04aa80})
+	bytes/buffer.go:229 +0x90
+crypto/tls.(*Conn).readFromUntil(0x799bba102388, {0x1ac2760, 0x799bbb13e130}, 0x0?)
+	crypto/tls/conn.go:837 +0xcc
+crypto/tls.(*Conn).readRecordOrCCS(0x799bba102388, 0x0)
+	crypto/tls/conn.go:626 +0x338
+crypto/tls.(*Conn).readRecord(...)
+	crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x799bba102388, {0x799bb9f04000, 0x1000, 0x799bb94837c0?})
+	crypto/tls/conn.go:1393 +0x14c
+bufio.(*Reader).Read(0x799bba0b0180, {0x799bb9651464, 0x9, 0xe3847627aed8?})
+	bufio/bufio.go:245 +0x188
+io.ReadAtLeast({0x1ac2b20, 0x799bba0b0180}, {0x799bb9651464, 0x9, 0x9}, 0x9)
+	io/io.go:335 +0x98
+io.ReadFull(...)
+	io/io.go:354
+golang.org/x/net/http2.readFrameHeader({0x799bb9651464, 0x9, 0x799bb9902ee0?}, {0x1ac2b20?, 0x799bba0b0180?})
+	golang.org/x/net@v0.55.0/http2/frame.go:250 +0x58
+golang.org/x/net/http2.(*Framer).ReadFrameHeader(0x799bb9651420)
+	golang.org/x/net@v0.55.0/http2/frame.go:513 +0x60
+golang.org/x/net/http2.(*Framer).ReadFrame(0x799bb9651420)
+	golang.org/x/net@v0.55.0/http2/frame.go:572 +0x20
+golang.org/x/net/http2.(*clientConnReadLoop).run(0x799bba368f98)
+	golang.org/x/net@v0.55.0/http2/transport.go:1878 +0xb8
+golang.org/x/net/http2.(*ClientConn).readLoop(0x799bb961e8c0)
+	golang.org/x/net@v0.55.0/http2/transport.go:1760 +0x4c
+created by golang.org/x/net/http2.(*Transport).newClientConn in goroutine 16360
+	golang.org/x/net@v0.55.0/http2/transport.go:554 +0xa70
+
+goroutine 572 [select, 199 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb933f800, 0x799bbaee7880, 0x799bbae9dbc0, {0xe384762ee430, 0x799bb944fe80}, 0x799bb9878140, 0x799bba7e5a70)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb933f800, {0xe384762ee430, 0x799bb944fe80}, 0x799bb9878140, 0x799bba7e5a70, 0x799bbae9da70?, {0xd?, 0x799bb95bf250?, 0x2d91d40?}, 0x799bbaee7880)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb933f800, {0xe384762ee430, 0x799bb944fe80}, 0x799bb9878000, 0x799bb9825cc0, 0x799bb9171230, {0x799bb944cf00, {0x179dc1f, 0x3}, {0x799bbae9da70, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb933f800, 0x799bb9878000, 0x799bb9825cc0, {0xe384762ee430, 0x799bb944fe80}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb933f800, {0xe384762ee430, 0x799bb944fe80}, 0x799bb9825cc0, {0x1ac6f20, 0x799bb933c980})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb944fe80}, 0x799bb9825cc0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x1addf08?, {0xe384762ee430?, 0x799bb944fe80?}, 0x799bb9599c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/hslatman/caddy-crowdsec-bouncer/http.(*Handler).ServeHTTP(0x799bb9411040, {0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40, {0x1ac6f20, 0x799bb91719e0})
+	github.com/hslatman/caddy-crowdsec-bouncer@v0.13.1/http/http.go:125 +0x1b0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c378?, {0xe384762ee430?, 0x799bb944fe80?}, 0x2?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96b8a20?, {0xe384762ee430?, 0x799bb944fe80?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958a000, {0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40, {0x1ac6f20, 0x799bb933c980})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c360?, {0xe384762ee430?, 0x799bb944fe80?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb944fe80?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb938c348?, {0xe384762ee430?, 0x799bb944fe80?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb944fe80?}, 0x799bb9825a40?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb97b5808?, {0xe384762ee430?, 0x799bb944fe80?}, 0xe3f9ec?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb98cb488?, {0xe384762ee430?, 0x799bb944fe80?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb944fe80?}, 0x799bb98cb5c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bbaed2c90?, {0xe384762ee430?, 0x799bb944fe80?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb944fe80}, 0x799bb9825a40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb93d0870}, 0x799bb9825400)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb944fd80?}, {0x1ad8860?, 0x799bb93d0870?}, 0x6?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bbb5df170, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 579 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847631ae00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbaee7800?, 0x799bba22e000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbaee7800, {0x799bba22e000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbaee7800, {0x799bba22e000?, 0x799bba24ccf8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb91929f8, {0x799bba22e000?, 0x799bba24cd00?, 0x799bba24ccf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bb980a708?, {0x799bba22e000?, 0x5?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bb980a708}, {0xe384762ee6f0, 0x799bba7abea8}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bb938cac8, {0xe384762ee6f0?, 0x799bba7abea8?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bb938cac8}, {0xe384762ee6f0, 0x799bba7abea8}, {0x799bba226000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bb938cac8?}, {0xe384762ee6f0?, 0x799bba7abea8?}, {0x799bba226000?, 0x799bbb17b6c0?, 0x799bba24cf88?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bb938cac8}, {0x1ad8770, 0x799bba7abea8}, 0x799bbae9dbc0, 0x0}, 0x799bba2fcb60)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 572
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 16456 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847629a400, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbaef0a00?, 0x799bb93a6d61?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbaef0a00, {0x799bb93a6d61, 0x1, 0x1})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbaef0a00, {0x799bb93a6d61?, 0x799bb96bdc20?, 0x104191c?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9192c30, {0x799bb93a6d61?, 0x799bba207f3e?, 0x799bb9bbe000?})
+	net/net.go:196 +0x34
+net/http.(*connReader).backgroundRead(0x799bb93a6d40)
+	net/http/server.go:702 +0x38
+created by net/http.(*connReader).startBackgroundRead in goroutine 16455
+	net/http/server.go:698 +0xb8
+
+goroutine 13046 [select, 34 minutes]:
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse(0x799bb933f800, 0x799bbaf7a580, 0x799bb9ce9d50, {0xe384762ee430, 0x799bb93a64c0}, 0x799bba032dc0, 0x799bba31c630)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:229 +0x10f0
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).finalizeResponse(0x799bb933f800, {0xe384762ee430, 0x799bb93a64c0}, 0x799bba032dc0, 0x799bba31c630, 0x799bb9eb1d60?, {0xd?, 0x799bb95bf250?, 0x2d91d40?}, 0x799bbaf7a580)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1221 +0xa8
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).reverseProxy(0x799bb933f800, {0xe384762ee430, 0x799bb93a64c0}, 0x799bba032c80, 0x799bba032b40, 0x799bb90bd080, {0x799bb944cf00, {0x179dc1f, 0x3}, {0x799bb9eb1d60, ...}, ...}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:1206 +0xfe4
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).proxyLoopIteration(0x799bb933f800, 0x799bba032c80, 0x799bba032b40, {0xe384762ee430, 0x799bb93a64c0}, {0x0, 0x0}, {0x1?, 0x1?, 0x2d91d40?}, ...)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:701 +0x814
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).ServeHTTP(0x799bb933f800, {0xe384762ee430, 0x799bb93a64c0}, 0x799bba032b40, {0x1ac6f20, 0x799bb93bb100})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/reverseproxy.go:573 +0x920
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb93a64c0}, 0x799bba032b40)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x1addf08?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x799bb9599c80?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/hslatman/caddy-crowdsec-bouncer/http.(*Handler).ServeHTTP(0x799bb9411040, {0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0, {0x1ac6f20, 0x799bb90bda40})
+	github.com/hslatman/caddy-crowdsec-bouncer@v0.13.1/http/http.go:125 +0x1b0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb93e7ec0?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x2?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb96b8a20?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb958a000, {0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0, {0x1ac6f20, 0x799bb93bb100})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb93e7ea8?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb916ec08?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x1ac6f20?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP(0x799bb959fdc0, {0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0, {0x1ac6f20, 0x1aae528})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/subroute.go:74 +0x60
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1({0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:338 +0xb4
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb93e7e48?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x1?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:323 +0x30c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb90a33c8?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x799bba0328c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1({0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/routes.go:281 +0x1bc
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bb9111008?, {0xe384762ee430?, 0x799bb93a64c0?}, 0xe3f9ec?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler(0x799bb9fa9488?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x31fe4?, {0x1ac6f20?, 0x799bb958bb20?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:542 +0x1c0
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2({0xe384762ee430?, 0x799bb93a64c0?}, 0x799bb9fa95c0?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:518 +0x3c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP(0x799bbb896318?, {0xe384762ee430?, 0x799bb93a64c0?}, 0x162f020?)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/caddyhttp.go:74 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP(0x799bb9856a88, {0xe384762ee430, 0x799bb93a64c0}, 0x799bba0328c0)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:511 +0x38c
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP(0x799bb9856a88, {0x1ad8860, 0x799bb9fe0a50}, 0x799bba032640)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/server.go:390 +0x754
+net/http.serverHandler.ServeHTTP({0x799bb93a6400?}, {0x1ad8860?, 0x799bb9fe0a50?}, 0x6?)
+	net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x799bbb5deb40, {0x1addf08, 0x799bb9170720})
+	net/http/server.go:2073 +0x51c
+created by net/http.(*Server).Serve in goroutine 70
+	net/http/server.go:3464 +0x37c
+
+goroutine 16441 [select]:
+net/http.(*persistConn).writeLoop(0x799bb9ba6a00)
+	net/http/transport.go:2652 +0x98
+created by net/http.(*Transport).dialConn in goroutine 16439
+	net/http/transport.go:1995 +0x10e4
+
+goroutine 16397 [IO wait]:
+internal/poll.runtime_pollWait(0xe3847631ac00, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbaf0bb80?, 0x799bb9c87000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbaf0bb80, {0x799bb9c87000, 0x1000, 0x1000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbaf0bb80, {0x799bb9c87000?, 0x80?, 0x8?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bbb13e450, {0x799bb9c87000?, 0x0?, 0x799bba366d28?})
+	net/net.go:196 +0x34
+net/http.(*persistConn).Read(0x799bb9cdc8c0, {0x799bb9c87000?, 0x1ac1e88?, 0x2d2b060?})
+	net/http/transport.go:2174 +0x48
+bufio.(*Reader).fill(0x799bba0b0420)
+	bufio/bufio.go:113 +0xe0
+bufio.(*Reader).Peek(0x799bba0b0420, 0x1)
+	bufio/bufio.go:152 +0x58
+net/http.(*persistConn).readLoop(0x799bb9cdc8c0)
+	net/http/transport.go:2330 +0x110
+created by net/http.(*Transport).dialConn in goroutine 16383
+	net/http/transport.go:1994 +0x109c
+
+goroutine 13035 [IO wait]:
+internal/poll.runtime_pollWait(0xe38476239200, 0x72)
+	runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x799bbb0a4a00?, 0x799bba064000?, 0x0)
+	internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x799bbb0a4a00, {0x799bba064000, 0x8000, 0x8000})
+	internal/poll/fd_unix.go:165 +0x234
+net.(*netFD).Read(0x799bbb0a4a00, {0x799bba064000?, 0x799bbab98cf8?, 0x0?})
+	net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x799bb9192ea8, {0x799bba064000?, 0x799bbab98d00?, 0x799bbab98cf0?})
+	net/net.go:196 +0x34
+net/http.(*readWriteCloserBody).Read(0x799bba102008?, {0x799bba064000?, 0x5?, 0x8000?})
+	net/http/transport.go:2630 +0x9c
+io.copyBuffer({0xe384762ee660, 0x799bba102008}, {0xe384762ee6f0, 0x799bba04a330}, {0x0, 0x0, 0x0})
+	io/io.go:429 +0x18c
+io.Copy(...)
+	io/io.go:388
+github.com/caddyserver/caddy/v2/modules/caddyhttp.(*hijackedConn).ReadFrom(0x799bba04a4c8, {0xe384762ee6f0?, 0x799bba04a330?})
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/responsewriter.go:309 +0x68
+io.copyBuffer({0xe384762ee680, 0x799bba04a4c8}, {0xe384762ee6f0, 0x799bba04a330}, {0x799bba05c000, 0x8000, 0x8000})
+	io/io.go:415 +0x14c
+io.CopyBuffer({0xe384762ee680?, 0x799bba04a4c8?}, {0xe384762ee6f0?, 0x799bba04a330?}, {0x799bba05c000?, 0x799bba2fd490?, 0x799bbab98f88?})
+	io/io.go:402 +0x38
+github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.switchProtocolCopier.copyFromBackend({{0xe384762ee6c0, 0x799bba04a4c8}, {0x1ad8770, 0x799bba04a330}, 0x799bb9ce9d50, 0x0}, 0x799bbb617730)
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:648 +0xd8
+created by github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*Handler).handleUpgradeResponse in goroutine 13046
+	github.com/caddyserver/caddy/v2@v2.11.4/modules/caddyhttp/reverseproxy/streaming.go:228 +0x10a0
+
+goroutine 16309 [select]:
+net/http.(*persistConn).writeLoop(0x799bba02b7c0)
+	net/http/transport.go:2652 +0x98
+created by net/http.(*Transport).dialConn in goroutine 16307
+	net/http/transport.go:1995 +0x10e4

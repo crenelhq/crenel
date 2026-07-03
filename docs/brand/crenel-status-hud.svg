@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="960" height="560" role="img" aria-label="crenel status HUD">
+  <rect width="960" height="560" fill="#0C0D12"/>
+  <rect x="56" y="30" width="27" height="9" fill="#00FF66"/>
+  <rect x="101" y="30" width="27" height="9" fill="#00FF66"/>
+  <rect x="146" y="30" width="27" height="9" fill="#00FF66"/>
+  <rect x="191" y="30" width="27" height="9" fill="#00FF66"/>
+  <rect x="236" y="30" width="27" height="9" fill="#00FF66"/>
+  <rect x="281" y="30" width="27" height="9" fill="#00FF66"/>
+  <rect x="326" y="30" width="27" height="9" fill="#00FF66"/>
+  <rect x="56" y="39" width="27" height="9" fill="#00FF66"/>
+  <rect x="101" y="39" width="27" height="9" fill="#00FF66"/>
+  <rect x="146" y="39" width="27" height="9" fill="#00FF66"/>
+  <rect x="191" y="39" width="27" height="9" fill="#00FF66"/>
+  <rect x="236" y="39" width="27" height="9" fill="#00FF66"/>
+  <rect x="281" y="39" width="27" height="9" fill="#00FF66"/>
+  <rect x="326" y="39" width="27" height="9" fill="#00FF66"/>
+  <rect x="56" y="48" width="315" height="9" fill="#00FF66"/>
+  <rect x="56" y="57" width="45" height="9" fill="#00FF66"/>
+  <rect x="110" y="57" width="36" height="9" fill="#00FF66"/>
+  <rect x="164" y="57" width="45" height="9" fill="#00FF66"/>
+  <rect x="218" y="57" width="9" height="9" fill="#00FF66"/>
+  <rect x="254" y="57" width="9" height="9" fill="#00FF66"/>
+  <rect x="272" y="57" width="45" height="9" fill="#00FF66"/>
+  <rect x="326" y="57" width="9" height="9" fill="#00FF66"/>
+  <rect x="56" y="66" width="9" height="9" fill="#00FF66"/>
+  <rect x="110" y="66" width="9" height="9" fill="#00FF66"/>
+  <rect x="146" y="66" width="9" height="9" fill="#00FF66"/>
+  <rect x="164" y="66" width="9" height="9" fill="#00FF66"/>
+  <rect x="218" y="66" width="18" height="9" fill="#00FF66"/>
+  <rect x="254" y="66" width="9" height="9" fill="#00FF66"/>
+  <rect x="272" y="66" width="9" height="9" fill="#00FF66"/>
+  <rect x="326" y="66" width="9" height="9" fill="#00FF66"/>
+  <rect x="56" y="75" width="9" height="9" fill="#00FF66"/>
+  <rect x="110" y="75" width="36" height="9" fill="#00FF66"/>
+  <rect x="164" y="75" width="27" height="9" fill="#00FF66"/>
+  <rect x="218" y="75" width="9" height="9" fill="#00FF66"/>
+  <rect x="236" y="75" width="9" height="9" fill="#00FF66"/>
+  <rect x="254" y="75" width="9" height="9" fill="#00FF66"/>
+  <rect x="272" y="75" width="27" height="9" fill="#00FF66"/>
+  <rect x="326" y="75" width="9" height="9" fill="#00FF66"/>
+  <rect x="56" y="84" width="9" height="9" fill="#00FF66"/>
+  <rect x="110" y="84" width="9" height="9" fill="#00FF66"/>
+  <rect x="137" y="84" width="9" height="9" fill="#00FF66"/>
+  <rect x="164" y="84" width="9" height="9" fill="#00FF66"/>
+  <rect x="218" y="84" width="9" height="9" fill="#00FF66"/>
+  <rect x="245" y="84" width="18" height="9" fill="#00FF66"/>
+  <rect x="272" y="84" width="9" height="9" fill="#00FF66"/>
+  <rect x="326" y="84" width="9" height="9" fill="#00FF66"/>
+  <rect x="56" y="93" width="45" height="9" fill="#00FF66"/>
+  <rect x="110" y="93" width="9" height="9" fill="#00FF66"/>
+  <rect x="146" y="93" width="9" height="9" fill="#00FF66"/>
+  <rect x="164" y="93" width="45" height="9" fill="#00FF66"/>
+  <rect x="218" y="93" width="9" height="9" fill="#00FF66"/>
+  <rect x="254" y="93" width="9" height="9" fill="#00FF66"/>
+  <rect x="272" y="93" width="45" height="9" fill="#00FF66"/>
+  <rect x="326" y="93" width="45" height="9" fill="#00FF66"/>
+  <rect x="56" y="33" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="38" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="43" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="48" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="53" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="58" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="63" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="68" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="73" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="78" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="83" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="88" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="93" width="315" height="2" fill="#0C0D12"/>
+  <rect x="56" y="98" width="315" height="2" fill="#0C0D12"/>
+  <text x="58" y="124" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="12" letter-spacing="2" fill="#6A6F7A">what's exposed right now</text>
+  <text x="904" y="52" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="12" letter-spacing="3" text-anchor="end" fill="#00FF66">// LIVE · READ-ONLY</text>
+  <rect x="56" y="176" width="848" height="320" fill="#111320" stroke="#6A6F7A" stroke-width="0.5"/>
+  <rect x="56" y="176" width="26" height="2" fill="#00FF66"/>
+  <rect x="56" y="176" width="2" height="26" fill="#00FF66"/>
+  <rect x="878" y="176" width="26" height="2" fill="#00FF66"/>
+  <rect x="902" y="176" width="2" height="26" fill="#00FF66"/>
+  <rect x="56" y="494" width="26" height="2" fill="#00FF66"/>
+  <rect x="56" y="470" width="2" height="26" fill="#00FF66"/>
+  <rect x="878" y="494" width="26" height="2" fill="#00FF66"/>
+  <rect x="902" y="470" width="2" height="26" fill="#00FF66"/>
+  <rect x="80" y="200" width="4" height="16" fill="#00FF66"/>
+  <text x="94" y="213" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="14" letter-spacing="3" fill="#00FF66">CORE MATRIX // EXPOSURE STATE</text>
+  <line x1="80" y1="228" x2="880" y2="228" stroke="#6A6F7A" stroke-width="0.5"/>
+  <line x1="90" y1="263" x2="90" y2="443" stroke="#6A6F7A" stroke-width="0.5"/>
+  <circle cx="90" cy="263" r="4" fill="#FFB000"/>
+  <text x="112" y="268" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" letter-spacing="2" fill="#6A6F7A">EXPOSED</text>
+  <text x="316" y="268" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" font-weight="600" fill="#FFB000">3 hosts   (2 public)</text>
+  <circle cx="90" cy="299" r="4" fill="#00FF66"/>
+  <text x="112" y="304" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" letter-spacing="2" fill="#6A6F7A">DEFAULT-DENY</text>
+  <text x="316" y="304" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" font-weight="600" fill="#00FF66">ENFORCED</text>
+  <circle cx="90" cy="335" r="4" fill="#00FF66"/>
+  <text x="112" y="340" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" letter-spacing="2" fill="#6A6F7A">DRIFT</text>
+  <text x="316" y="340" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" font-weight="600" fill="#00FF66">none</text>
+  <circle cx="90" cy="371" r="4" fill="#00FF66"/>
+  <text x="112" y="376" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" letter-spacing="2" fill="#6A6F7A">EDGES</text>
+  <text x="316" y="376" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" font-weight="600" fill="#00FF66">home·caddy   vps·traefik</text>
+  <circle cx="90" cy="407" r="4" fill="#00FF66"/>
+  <text x="112" y="412" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" letter-spacing="2" fill="#6A6F7A">DNS</text>
+  <text x="316" y="412" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" font-weight="600" fill="#00FF66">split-horizon  internal + public</text>
+  <circle cx="90" cy="443" r="4" fill="#6A6F7A"/>
+  <text x="112" y="448" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" letter-spacing="2" fill="#6A6F7A">LAST APPLY</text>
+  <text x="316" y="448" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="15" font-weight="600" fill="#6A6F7A">unknown</text>
+  <rect x="56" y="518" width="14" height="14" fill="#00FF66"/>
+  <text x="78" y="530" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="13" fill="#C8CDD6">safe / private / verified</text>
+  <rect x="326" y="518" width="14" height="14" fill="#FFB000"/>
+  <text x="348" y="530" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="13" fill="#C8CDD6">about to go public / drift</text>
+  <rect x="596" y="518" width="14" height="14" fill="#FF3B30"/>
+  <text x="618" y="530" font-family="'SF Mono','Geist Mono','JetBrains Mono',ui-monospace,monospace" font-size="13" fill="#C8CDD6">fail-open / exposed</text>
+</svg>

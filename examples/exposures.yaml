@@ -1,0 +1,6 @@
+# crenel apply file — desired exposures (a point-in-time assertion, not a mirror)
+zone: example.com
+exposures:
+  - host: grafana.example.com
+    service: grafana
+  - service: photos          # host derived as photos.<zone>

@@ -1,0 +1,62 @@
+# crenel bundle v0 — "batteries included" turnkey edge.
+#
+#   docker compose up  ->  a working default-deny Caddy edge, driven by crenel,
+#                          with a read-only status dashboard. Zero assembly.
+#
+# Three services:
+#   caddy  — the bundled edge (the PROVEN crenel driver). Admin API loopback-only;
+#            structural default-deny baked in (see caddy/Caddyfile). Publishes the
+#            dashboard (8080) and the edge HTTP port (8088 -> :80) for serving.
+#   crenel — the brain. Shares caddy's network namespace so it reaches the
+#            loopback-only admin at 127.0.0.1:2019 (never a published admin port).
+#            Runs the READ-ONLY dashboard; you drive writes via `compose exec`.
+#   demo   — a tiny upstream so `crenel expose demo` has something real to serve.
+#
+# Edge-only by design: no DNS, no overlay in v0 (roadmap — see bundle/README.md).
+name: crenel-bundle
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: crenel-bundle-caddy
+    restart: unless-stopped
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      # Host ports are overridable (defaults 8080/8088) so the bundle slots around
+      # whatever else you run; the in-container ports are fixed.
+      - "${CRENEL_DASHBOARD_PORT:-8080}:8080"   # crenel read-only dashboard
+      - "${CRENEL_EDGE_PORT:-8088}:80"          # the edge: exposed hosts served here
+    healthcheck:
+      # The loopback admin API answering /config/ means the edge is up and drivable.
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:2019/config/"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  crenel:
+    build:
+      context: ..
+      dockerfile: bundle/Dockerfile
+    image: crenel:bundle-v0
+    container_name: crenel-bundle-crenel
+    restart: unless-stopped
+    # Share caddy's network namespace: crenel reaches the loopback-only admin at
+    # 127.0.0.1:2019, and the dashboard it binds on :8080 is published by caddy.
+    network_mode: "service:caddy"
+    environment:
+      CRENEL_CONFIG: /etc/crenel/settings.json
+    volumes:
+      - ./crenel/settings.json:/etc/crenel/settings.json:ro
+    depends_on:
+      caddy:
+        condition: service_healthy
+    command: ["serve", "--addr", ":8080", "--refresh", "5"]
+
+  demo:
+    image: traefik/whoami:latest
+    container_name: crenel-bundle-demo
+    restart: unless-stopped
+    # Reachable as `demo:80` from caddy's netns (settings.json origins.demo).
+    expose:
+      - "80"

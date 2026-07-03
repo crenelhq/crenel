@@ -1,0 +1,8 @@
+{
+  "admin_url": "http://127.0.0.1:2019",
+  "zone": "homelab.example",
+  "granular_apply": true,
+  "admin_read_timeout_seconds": 10,
+  "admin_write_timeout_seconds": 90,
+  "origins": { "crenel-selftest": "127.0.0.1:9999" }
+}

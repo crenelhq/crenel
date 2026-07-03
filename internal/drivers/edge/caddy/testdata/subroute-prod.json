@@ -1,0 +1,27 @@
+{
+  "apps": {
+    "crowdsec": { "api_url": "http://127.0.0.1:8080" },
+    "tls": { "automation": { "policies": [ { "subjects": ["*.homelab.example", "*.smallbiz.example"] } ] } },
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "match": [{"host": ["*.smallbiz.example"]}],
+              "handle": [{"handler": "subroute", "routes": [
+                {"handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "host.docker.internal:8000"}]}]}
+              ]}]
+            },
+            {
+              "match": [{"host": ["*.homelab.example"]}],
+              "handle": [{"handler": "subroute", "routes": [
+                {"handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "host.docker.internal:9010"}]}]}
+              ]}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

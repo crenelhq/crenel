@@ -1,0 +1,23 @@
+# crenel bundle v0 — baked Caddy edge.
+#
+# Two things make this a crenel-drivable, default-deny edge out of the box:
+#   1. The admin API binds LOOPBACK ONLY (127.0.0.1:2019) and is never published.
+#      crenel reaches it because its container shares this container's network
+#      namespace (compose `network_mode: "service:caddy"`) — so the admin API is
+#      reachable at 127.0.0.1:2019 from crenel, but from NO network interface.
+#      This is the loopback-first transport model from SECURITY.md, in miniature.
+#   2. The :80 server is a STRUCTURAL DEFAULT-DENY: the catch-all responds 403, so
+#      nothing is reachable until crenel inserts an explicit host route ahead of it.
+#
+# `crenel expose <svc>` adds a per-host route (matched by Host header) in front of
+# this deny via the admin API; `crenel status` reads it back live.
+{
+	admin 127.0.0.1:2019
+	# No public IP / no certs in the v0 demo: HTTP only, host-header routing. (TLS
+	# + real DNS are the roadmap tiers, deliberately out of v0 — see bundle/README.)
+	auto_https off
+}
+
+:80 {
+	respond "crenel: default-deny — nothing is exposed. Use `crenel expose <svc>`." 403
+}

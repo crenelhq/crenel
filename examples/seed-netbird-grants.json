@@ -1,0 +1,6 @@
+{
+  "grants": [
+    {"host": "vault.example.com", "group": "admins"},
+    {"host": "git.example.com", "group": "engineering"}
+  ]
+}

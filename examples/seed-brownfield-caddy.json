@@ -1,0 +1,24 @@
+{
+  "_comment": "A brownfield Caddy edge as an operator actually has it: hand-built, UNMANAGED routes. Two wildcard subroutes (out of crenel's domain), an unmanaged Authelia vhost (out of domain), and an unmanaged grafana route that DOES match crenel's configured origin (adoptable). None carry a crenel @id.",
+  "apps": {
+    "tls": { "automation": { "policies": [ { "subjects": ["*.example.com"] } ] } },
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            { "match": [{"host": ["*.example.com"]}],
+              "handle": [{"handler": "subroute", "routes": [
+                {"handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "host.docker.internal:8000"}]}]}
+              ]}] },
+            { "match": [{"host": ["auth.example.com"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.9:9091"}]}] },
+            { "match": [{"host": ["grafana.example.com"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.5:3000"}]}] },
+            { "handle": [{"handler": "static_response", "status_code": 403}] }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "_comment": "P4 chain DOWNSTREAM edge (the home edge, 10.0.0.13). It does the real per-host routing AND enforces forward-auth: vault is Authelia-protected, books + git are open. The front (seed-chain-front.json) forwards everything here; crenel reads THIS edge to resolve each forwarded host's true backend + observed auth.",
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "match": [{"host": ["vault.homelab.example"]}],
+              "handle": [
+                {"handler": "authentication", "providers": {"http_basic": {}}},
+                {"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.7:8200"}]}
+              ]
+            },
+            {
+              "match": [{"host": ["books.homelab.example"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.9:80"}]}]
+            },
+            {
+              "match": [{"host": ["git.homelab.example"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.11:3000"}]}]
+            },
+            {
+              "handle": [{"handler": "static_response", "abort": true}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

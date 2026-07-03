@@ -1,0 +1,9 @@
+{
+  "_comment": "crenel bundle v0 — baked config pointing at the bundled Caddy. Edge-only: no DNS, no overlay (those are roadmap tiers; see bundle/README.md). The admin URL is loopback because crenel shares the caddy container's network namespace.",
+  "admin_url": "http://127.0.0.1:2019",
+  "zone": "crenel.test",
+  "granular_apply": true,
+  "origins": {
+    "demo": "demo:80"
+  }
+}

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crenel · Every edge in atomic agreement. Verified.</title>
+<meta name="description" content="One file or command declares what's public → edge allowlist + split-horizon internal/public DNS, default-deny, with plan/apply preview.">
+<style>
+  :root{
+    --bg:#0C0D12; --panel:#111320; --green:#00FF66; --amber:#FFB000;
+    --red:#FF3B30; --dim:#6A6F7A; --text:#C8CDD6; --edge:#ffffff14;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{color-scheme:dark}
+  body{
+    background:var(--bg); color:var(--text);
+    font:15px/1.6 "SF Mono","Geist Mono","JetBrains Mono",ui-monospace,Menlo,monospace;
+    display:flex; justify-content:center; padding:3rem 1rem 4rem;
+    min-height:100vh;
+  }
+  /* faint CRT field: scanlines + a green glow rising behind the battlement */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(60% 34% at 50% 8%, #00ff6609, transparent 70%),
+      repeating-linear-gradient(0deg, #ffffff03 0 1px, transparent 1px 3px);
+  }
+  main{max-width:48rem; width:100%; position:relative; z-index:1}
+
+  /* ---------- the battlement banner ---------- */
+  .banner{position:relative; margin-bottom:2.4rem; overflow:hidden}
+  .banner pre{
+    width:max-content; margin:0 auto; white-space:pre;
+    color:var(--green); line-height:1.15;
+  }
+  .wall{font-size:clamp(7px,2.2vw,13px)}
+  .word{font-size:clamp(4px,1.05vw,9px); margin-top:1.1em !important}
+  .wall > span{display:block}
+  /* the wall builds in from the footing up */
+  .wall .l1{animation:rise .5s ease-out .62s both}
+  .wall .l2{animation:rise .5s ease-out .54s both}
+  .wall .l3{animation:rise .5s ease-out .46s both}
+  .wall .l4{animation:rise .5s ease-out .38s both}
+  .wall .l5{animation:rise .5s ease-out .26s both}
+  .wall .l6{animation:rise .5s ease-out .14s both}
+  .wall .l7{animation:rise .5s ease-out .02s both}
+  .word{animation:rise .7s ease-out .85s both}
+  .legend{
+    text-align:center; margin-top:1.2rem; font-size:.82em; color:var(--dim);
+    animation:fade .8s ease-out 1.25s both;
+  }
+  .pron{
+    text-align:center; margin-top:.45rem; font-size:.74em; color:var(--dim);
+    animation:fade .8s ease-out 1.45s both;
+  }
+  .ok{color:var(--green)} .warn{color:var(--amber)} .fail{color:var(--red)}
+  /* the state markers breathe, offset so they never blink in unison */
+  .pulse .ok,  .legend .ok  {animation:breathe 3.2s ease-in-out 1.6s infinite}
+  .pulse .warn,.legend .warn{animation:breathe 3.2s ease-in-out 2.4s infinite}
+  .pulse .fail,.legend .fail{animation:breathe 3.2s ease-in-out 3.2s infinite}
+  /* a slow, faint scan sweep over the art */
+  .banner::after{
+    content:""; position:absolute; left:0; right:0; top:-30%; height:26%;
+    background:linear-gradient(180deg, transparent, #00ff660d 45%, #ffffff08 50%, transparent);
+    animation:scan 9s linear 2s infinite; pointer-events:none;
+  }
+
+  /* ---------- tagline: typewriter + cursor ---------- */
+  .tagline{margin:0 0 .4rem}
+  h1{
+    font-size:1.12rem; font-weight:600; color:#fff;
+    display:inline-block; white-space:nowrap; overflow:hidden; vertical-align:bottom;
+    max-width:100%;
+    animation:typing 2s steps(41,end) 1.5s both;
+  }
+  .cursor{
+    display:inline-block; width:.62ch; height:1em; margin-left:.15ch;
+    background:var(--green); vertical-align:baseline;
+    animation:blink 1.06s step-end infinite;
+  }
+  .sub{color:var(--dim); margin:.5rem 0 2.4rem; animation:fade .8s ease-out 2.6s both}
+
+  /* content sections drift up as they arrive */
+  section{animation:rise .6s ease-out both}
+  section:nth-of-type(1){animation-delay:2.8s}
+  section:nth-of-type(2){animation-delay:2.95s}
+  section:nth-of-type(3){animation-delay:3.1s}
+  section:nth-of-type(4){animation-delay:3.25s}
+  section:nth-of-type(5){animation-delay:3.4s}
+  section:nth-of-type(6){animation-delay:3.55s}
+  footer{animation:fade .8s ease-out 3.6s both}
+
+  h2{
+    font-size:.8rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--green); margin:2.4rem 0 .8rem;
+  }
+  h2::before{content:"// "; color:var(--dim)}
+  p{margin:.6rem 0}
+  ul{list-style:none}
+  li{margin:.6rem 0; padding-left:1.4rem; position:relative}
+  li::before{content:"▸"; position:absolute; left:0; color:var(--amber)}
+  li.no::before{content:"✕"; color:var(--red)}
+  li.yes::before{content:"✓"; color:var(--green)}
+  strong{color:#fff; font-weight:600}
+  p code, li code{
+    background:var(--panel); border:1px solid var(--edge); border-radius:3px;
+    padding:.05em .4ch; font-size:.9em; color:var(--green);
+  }
+  a{color:var(--green); text-decoration:none; border-bottom:1px solid #00ff6644; transition:border-color .15s, text-shadow .15s}
+  a:hover{border-bottom-color:var(--green); text-shadow:0 0 10px #00ff6655}
+  .name{color:var(--green)}
+
+  /* code panels get HUD corner-crops */
+  pre.code{
+    position:relative; background:var(--panel); border:1px solid var(--edge);
+    padding:1rem 1.2rem; overflow-x:auto; margin:.8rem 0; font-size:.86em; line-height:1.7;
+  }
+  pre.code::before, pre.code::after{
+    content:""; position:absolute; width:10px; height:10px; pointer-events:none;
+  }
+  pre.code::before{top:-1px; left:-1px; border-top:2px solid var(--green); border-left:2px solid var(--green)}
+  pre.code::after{bottom:-1px; right:-1px; border-bottom:2px solid var(--green); border-right:2px solid var(--green)}
+  pre.code .c{color:var(--dim)}
+  pre.code .p{color:var(--green)}
+
+  /* footer as a quiet status bar */
+  footer{
+    margin-top:3.2rem; padding-top:1.1rem; border-top:1px solid var(--edge);
+    color:var(--dim); font-size:.82em;
+    display:flex; flex-wrap:wrap; gap:.4rem 1.4rem;
+  }
+  footer .cell{white-space:nowrap}
+
+  @keyframes rise{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+  @keyframes fade{from{opacity:0} to{opacity:1}}
+  @keyframes blink{50%{opacity:0}}
+  @keyframes typing{from{width:0} to{width:41.5ch}}
+  @keyframes breathe{50%{opacity:.5; text-shadow:0 0 9px currentColor}}
+  @keyframes scan{to{top:130%}}
+
+  @media (max-width:44rem){
+    /* typewriter needs one line; on narrow screens let the tagline wrap instead */
+    h1{white-space:normal; overflow:visible; animation:fade .8s ease-out 1.5s both}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{animation:none !important}
+    h1{white-space:normal; overflow:visible}
+  }
+</style>
+</head>
+<body>
+<main>
+
+<div class="banner" aria-label="CRENEL: a battlement wall whose gaps are your exposed hosts">
+<pre class="wall pulse" aria-hidden="true"><span class="l7">███████   ███████   ███████   ███████</span><span class="l6">█▓▓▓▓▓█ <span class="ok">✓</span> █▓▓▓▓▓█ <span class="warn">▸</span> █▓▓▓▓▓█ <span class="fail">✕</span> █▓▓▓▓▓█</span><span class="l5">█▓▓▓▓▓█   █▓▓▓▓▓█   █▓▓▓▓▓█   █▓▓▓▓▓█</span><span class="l4">█████████████████████████████████████</span><span class="l3">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</span><span class="l2">▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒</span><span class="l1">░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░</span></pre>
+<pre class="word" aria-hidden="true">████▀▀▀▀▀███    ████▀███        ████▀▀▀▀▀███    ████▀▀▀▀████    ████▀▀▀▀▀███    ████
+██▀▀▀▀▀▀▀▀▀█    ███▀▀▀▀█        ███▀▀▀▀▀▀▀▀█    ███▀▀▀▀▀▀███    ███▀▀▀▀▀▀▀▀█    ████
+████            ████    █▀▀█    ████            ████    ████    ████            ████
+████            ████    █▀▀█    ████            ████    ████    ████            ████
+████            ███▀▀▀▀█        ███▀▀▀▀▀▀▀▀█    ████    ████    ███▀▀▀▀▀▀▀▀█    ████
+████            ███▀▀▀▀█        ███▀▀▀▀▀▀▀▀█    ████    ████    ███▀▀▀▀▀▀▀▀█    ████
+████            ████    █▀▀█    ████            ████    ████    ████            ████
+████            ████    ████    ████            ████    ████    ████            ████
+▀▀█▀▀▀▀▀▀▀▀█    ████    ████    ███▀▀▀▀▀▀▀▀█    ████    ████    ███▀▀▀▀▀▀▀▀█    ███▀▀▀▀▀▀▀▀▀
+▀▀▀▀▀▀▀▀▀▀▀█    █▀▀█    █▀▀█    █▀▀▀▀▀▀▀▀▀▀█    █▀▀█    █▀▀█    █▀▀▀▀▀▀▀▀▀▀█    █▀▀▀▀▀▀▀▀▀▀▀</pre>
+<div class="legend"><span class="ok">✓ verified</span>   <span class="warn">▸ about-to-go-public</span>   <span class="fail">✕ fail-open</span></div>
+<div class="pron">/ˈkrɛn.əl/, rhymes with kennel or fennel</div>
+</div>
+
+<div class="tagline"><h1>Every edge in atomic agreement. Verified.</h1><span class="cursor" aria-hidden="true"></span></div>
+<p class="sub">One file or command declares what's public → edge allowlist +
+split-horizon internal/public DNS, default-deny, with plan/apply preview.</p>
+
+<section>
+<h2>What it is</h2>
+<p><span class="name">Crenel</span> is a command-line tool that controls what your
+self-hosted reverse proxy lets the outside world reach. Instead of editing config
+files by hand and hoping, you say "expose my photos app" or "stop exposing it".
+<span class="name">Crenel</span> reads what's <strong>actually live right now</strong>,
+shows you exactly what will change (loudly flagging anything about to become public),
+applies it across every edge and DNS provider as <strong>one all-or-nothing step</strong>,
+then re-reads the live system to <strong>prove the change landed</strong>. Nothing is
+reachable unless you explicitly opened it.</p>
+<p>A <em>crenel</em> is the gap in a castle's battlement: the deliberate opening you
+choose to expose. The wall is solid by default; you cut the gaps.</p>
+</section>
+
+<section>
+<h2>What sets it apart</h2>
+<p><span class="name">Crenel</span> doesn't replace your stack. It makes the tools
+you already run (Caddy / Traefik / nginx, AdGuard, Cloudflare, Tailscale) work
+<strong>better together</strong>. A control plane, not another proxy or tunnel.</p>
+<ul>
+  <li class="yes"><strong>One change, not four edits.</strong> Exposing a service
+  today means hand-editing your reverse proxy, internal DNS, public DNS, and overlay
+  separately, then hoping they agree. With <span class="name">Crenel</span> it's one
+  declared change, <code>expose</code> / <code>unexpose</code>, with a plan/apply
+  preview of every edit before it happens. Default-deny: nothing is public unless
+  you said so.</li>
+  <li class="yes"><strong>Built for multi-edge.</strong> A home proxy + a lean VPS
+  edge + an overlay + split-horizon DNS is exactly where hand-kept configs drift and
+  leak. <span class="name">Crenel</span> keeps every edge in <strong>atomic
+  agreement</strong>: a service is exposed correctly across all of them, or not at
+  all. And it reads live state, so there's nothing stored to drift.</li>
+  <li class="yes"><strong>Never guessing.</strong> <code>audit</code> and
+  <code>drift</code> show exactly what's exposed <em>right now</em>, and exit
+  non-zero when reality disagrees. Provable from cron, not vibes.</li>
+</ul>
+</section>
+
+<section>
+<h2>Why not the alternatives</h2>
+<ul>
+  <li class="no"><strong>By hand:</strong> several independent edits that fail
+  silently: a wildcard left open, a forgotten auth gate, two resolvers quietly
+  disagreeing. Nothing errors; you find out later.</li>
+  <li class="no"><strong>Declarative IaC:</strong> a stored desired state that drifts
+  the moment anything else touches the live system, and "apply succeeded" is not proof
+  the edge serves what the plan said.</li>
+  <li class="no"><strong>Tunnel appliances:</strong> coherence by replacing your
+  stack. No help for the Caddy / Traefik / nginx + DNS setup you already run.</li>
+  <li class="yes"><strong><span class="name">Crenel</span>:</strong> drives the stack
+  you already have, treats the live edge as the only source of truth, applies
+  atomically, verifies by re-reading. Remove it tomorrow and everything keeps
+  running.</li>
+</ul>
+</section>
+
+<section>
+<h2>Install</h2>
+<pre class="code"><span class="c"># Go 1.22+ · standard library only, zero dependencies</span>
+<span class="p">$</span> go install github.com/crenelhq/crenel/cmd/crenel@latest
+
+<span class="c"># or batteries-included: default-deny Caddy edge + Crenel + demo, one command</span>
+<span class="p">$</span> git clone https://github.com/crenelhq/crenel && cd crenel/bundle && docker compose up -d</pre>
+</section>
+
+<section>
+<h2>Proof, not promises</h2>
+<p>Default-deny is structural, every mutation is read-back-verified, and anything
+<span class="name">Crenel</span> can't fully parse is declared unknown, never guessed.
+The claims are exercised against real production edges, recorded byte-for-byte, and
+the tests are hermetic (~500 test functions, race-clean, zero real infra). Read
+<a href="https://github.com/crenelhq/crenel/blob/main/docs/WHAT-CRENEL-DOES.md">the
+plain-English explainer</a> or
+<a href="https://github.com/crenelhq/crenel/blob/main/docs/AUDIT.md">the audit
+package</a>.</p>
+</section>
+
+<section>
+<h2>Source</h2>
+<p><a href="https://github.com/crenelhq/crenel">github.com/crenelhq/crenel</a> ·
+Apache-2.0, open-core, no VC.</p>
+</section>
+
+<footer>
+<span class="cell"><span class="name">crenel</span> · © 2026 The Crenel Authors</span>
+<span class="cell">LICENSE <span class="ok">Apache-2.0</span></span>
+<span class="cell">DEFAULT-DENY <span class="ok">✓</span></span>
+<span class="cell">DRIFT <span class="ok">none</span></span>
+</footer>
+
+</main>
+</body>
+</html>

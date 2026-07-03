@@ -1,0 +1,26 @@
+{
+  "http": {
+    "routers": {
+      "authelia": {
+        "rule": "Host(`auth.example.com`)",
+        "service": "authelia-svc",
+        "entryPoints": ["websecure"],
+        "middlewares": ["authelia-forward"],
+        "tls": {"certResolver": "cloudflare"}
+      },
+      "dashboard": {
+        "rule": "Host(`grafana.example.com`)",
+        "service": "grafana-svc",
+        "priority": 10
+      }
+    },
+    "services": {
+      "authelia-svc": {
+        "loadBalancer": {"servers": [{"url": "http://10.0.0.9:9091"}]}
+      },
+      "grafana-svc": {
+        "loadBalancer": {"servers": [{"url": "http://10.0.0.5:3000"}]}
+      }
+    }
+  }
+}

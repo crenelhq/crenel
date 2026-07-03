@@ -1,0 +1,34 @@
+{
+  "_comment": "P4-WRITE demo: a single `crenel expose <svc> --auth authelia` lands the coordinated entries across the FRONT (vps) + DOWNSTREAM (home) edges + DNS as ONE all-or-nothing, read-back-verified transaction — applied downstream -> front -> public-DNS (announce the name to the world LAST). The front FORWARDS to downstream_address (no auth); auth attaches at the HOME edge that SERVES the host. Both edges are deny-only in-process fakes (reset per CLI run), so the demo is a single expose invocation showing the changeset + the per-edge/per-DNS read-back. Try: crenel expose books --auth authelia -config examples/settings-chain-write.json -yes  (and: drop --auth to see the chain-wide public-without-auth guardrail refuse).",
+  "zone": "homelab.example",
+  "auth_policies": { "authelia": {} },
+  "dns": {
+    "enabled": true,
+    "providers": [
+      { "scope": "internal", "zone": "homelab.example", "edge_addr": "10.0.0.13", "mock": true },
+      { "scope": "public",   "zone": "homelab.example", "edge_addr": "203.0.113.9", "mock": true }
+    ]
+  },
+  "edges": [
+    {
+      "name": "vps",
+      "driver": "caddy",
+      "fake_seed": "examples/seed-chain-write-edge.json",
+      "granular_apply": true,
+      "downstream_edge": "home",
+      "downstream_address": "10.0.0.13:443",
+      "origins": {}
+    },
+    {
+      "name": "home",
+      "driver": "caddy",
+      "fake_seed": "examples/seed-chain-write-edge.json",
+      "granular_apply": true,
+      "origins": {
+        "vault": "10.0.0.7:8200",
+        "books": "10.0.0.9:80",
+        "git":   "10.0.0.11:3000"
+      }
+    }
+  ]
+}

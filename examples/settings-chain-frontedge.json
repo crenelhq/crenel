@@ -1,0 +1,14 @@
+{
+  "_comment": "Chain topology demo: a VPS FRONT edge whose forward-auth is enforced one hop DOWNSTREAM (the home edge). auth_downstream suppresses the spurious public_without_auth warning and labels hosts 'auth: downstream'. The seed mirrors the real nested-subroute VPS edge. Try: crenel status -config examples/settings-chain-frontedge.json ; crenel audit -config examples/settings-chain-frontedge.json",
+  "zone": "homelab.example",
+  "fake_seed": "examples/seed-nested-subroute-prod.json",
+  "granular_apply": true,
+  "auth_downstream": true,
+  "origins": {
+    "vault": "100.100.0.10:8200",
+    "git": "100.100.0.11:3000",
+    "photos": "100.100.0.12:2342",
+    "jelly": "100.100.0.13:8096",
+    "cloud": "100.100.0.14:80"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "apps": {
+    "tls": { "automation": { "policies": [ { "subjects": ["*.homelab.example"] } ] } },
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "@id": "crenel-route-grafana.homelab.example",
+              "match": [{"host": ["grafana.homelab.example"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "100.100.0.5:3000"}]}]
+            },
+            {
+              "match": [{"host": ["files.homelab.example"]}],
+              "handle": [{"handler": "file_server", "root": "/var/www"}]
+            },
+            {
+              "match": [{"host": ["app.homelab.example"]}],
+              "handle": [{"handler": "subroute", "routes": [
+                {"handle": [{"handler": "vars", "key": "value"}]}
+              ]}]
+            },
+            {
+              "handle": [{"handler": "subroute", "routes": [
+                {"match": [{"host": ["hidden.homelab.example"]}],
+                 "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "100.100.0.9:8080"}]}]}
+              ]}]
+            },
+            {
+              "handle": [{"handler": "static_response", "status_code": 403}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

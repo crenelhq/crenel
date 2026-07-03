@@ -1,0 +1,8 @@
+{
+  "apps": { "http": { "servers": { "srv0": {
+    "listen": [":443"],
+    "routes": [
+      { "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.9.9.9:80"}]}] }
+    ]
+  }}}}
+}

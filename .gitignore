@@ -1,0 +1,13 @@
+/bin/
+/dist/
+*.snap.json
+/live-snapshot.json
+/live-backup/
+/bin/crenel-linux-*
+.serena/
+
+# macOS Finder metadata
+.DS_Store
+
+# local agent/editor tooling
+.claude/

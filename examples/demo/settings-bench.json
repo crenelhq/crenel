@@ -1,0 +1,28 @@
+{
+  "_comment": "DEMO multi-edge bench — FAKE hostnames only (example.com). Heterogeneous cross-vendor pair: edge A = Caddy (in-process fake, granular admin-API apply), edge B = Traefik (file provider). Both edges' origins carry the demo services, so a coordinated expose projects onto BOTH and is read-back-verified on EACH. Nothing personal; no real edge.",
+  "zone": "example.com",
+  "granular_apply": true,
+  "edges": [
+    {
+      "name": "caddy-edge",
+      "driver": "caddy",
+      "fake_seed": "examples/demo/seed-bench-caddy.json",
+      "caddy_persist_path": "/tmp/crenel-demo-bench/Caddyfile",
+      "origins": {
+        "app": "10.0.0.10:8080",
+        "grafana": "10.0.0.11:3000",
+        "vault": "10.0.0.12:8200"
+      }
+    },
+    {
+      "name": "traefik-edge",
+      "driver": "traefik",
+      "traefik_config_path": "/tmp/crenel-demo-bench/traefik-dynamic.json",
+      "origins": {
+        "app": "10.20.0.10:8080",
+        "grafana": "10.20.0.11:3000",
+        "vault": "10.20.0.12:8200"
+      }
+    }
+  ]
+}

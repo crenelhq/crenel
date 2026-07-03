@@ -1,0 +1,26 @@
+{
+  "_comment": "P4 chain FRONT edge (the public VPS). A wildcard zone groups several vhosts into one route that reverse-proxies them DOWNSTREAM to the home edge (10.0.0.13:443) — it does NOT terminate per-host here and carries no auth. Paired with seed-chain-home.json + settings-chain-p4.json. crenel FOLLOWS THROUGH to resolve each host's real backend + auth at the home edge.",
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "match": [{"host": ["*.homelab.example"]}],
+              "handle": [{"handler": "subroute", "routes": [
+                {
+                  "match": [{"host": ["vault.homelab.example", "books.homelab.example", "git.homelab.example"]}],
+                  "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.13:443"}]}]
+                }
+              ]}]
+            },
+            {
+              "handle": [{"handler": "static_response", "abort": true}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

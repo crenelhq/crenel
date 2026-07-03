@@ -1,0 +1,38 @@
+/*
+ * Crenel — brand design tokens (semantic palette + typography).
+ *
+ * These mirror the single source of truth in internal/ui (svg.go / style.go) and
+ * the table in BRANDING.md. Color is SEMANTIC, never decorative — every token
+ * answers "how exposed is this?":
+ *
+ *   --crenel-safe  (green) = safe / private / verified
+ *   --crenel-warn  (amber) = about to go public / drift detected
+ *   --crenel-fail  (red)   = fail-open / unexpectedly exposed
+ *
+ * For a future read-only dashboard, style state off these roles (a new field
+ * picks a ROLE, not a raw color). The wordmark/HUD SVGs already use these values.
+ */
+
+:root {
+  /* Semantic trio (load-bearing). */
+  --crenel-safe: #00FF66; /* radium green — safe / private / verified */
+  --crenel-warn: #FFB000; /* amber       — about to go public / drift  */
+  --crenel-fail: #FF3B30; /* red         — fail-open / exposed         */
+
+  /* Neutral chrome. */
+  --crenel-dim:   #6A6F7A; /* labels, rules, neutral chrome */
+  --crenel-value: #C8CDD6; /* neutral value text */
+
+  /* Dark surface (canonical tech-noir). */
+  --crenel-bg:    #0C0D12; /* near-black canvas */
+  --crenel-panel: #111320; /* HUD panel fill */
+
+  /* Light surface (wordmark light variant; radium green reads poorly on white). */
+  --crenel-light-bg:    #F5F6F8; /* soft off-white canvas */
+  --crenel-ink:         #0C0D12; /* letter body on light (= dark canvas, reused) */
+  --crenel-safe-deep:   #00A34D; /* deep verified-green, legible on light */
+  --crenel-dim-light:   #5B616B; /* chrome / tagline on light */
+
+  /* Typography. */
+  --crenel-font-mono: 'SF Mono', 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+}

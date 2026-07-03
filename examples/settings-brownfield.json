@@ -1,0 +1,8 @@
+{
+  "_comment": "Brownfield demo: crenel is configured to front grafana (which already exists hand-built on the edge) via the safe in-process fake seeded from seed-brownfield-caddy.json. `crenel -config examples/settings-brownfield.json import` adopts the existing grafana route in place; the Authelia vhost and the wildcard subroutes are out of crenel's domain and never touched.",
+  "edge_driver": "caddy",
+  "granular_apply": true,
+  "zone": "example.com",
+  "fake_seed": "examples/seed-brownfield-caddy.json",
+  "origins": { "grafana": "10.0.0.5:3000" }
+}

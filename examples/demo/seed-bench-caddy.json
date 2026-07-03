@@ -1,0 +1,23 @@
+{
+  "_comment": "DEMO bench Caddy edge seed — FAKE hostnames only. Minimal start: one pre-existing route (auth) + the default-deny catch-all, so the reel starts clean and default-deny is the hero.",
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "@id": "auth",
+              "match": [{"host": ["auth.example.com"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.9:9091"}]}]
+            },
+            {
+              "@id": "deny-catchall",
+              "handle": [{"handler": "static_response", "status_code": 403}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

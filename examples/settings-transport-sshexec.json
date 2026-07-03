@@ -1,0 +1,14 @@
+{
+  "_comment": "Reach a loopback-only, UNPUBLISHED Caddy admin via the ssh-exec transport — no port published, no tunnel. The admin call runs as a nested-exec curl on the far end (ssh -> pct exec -> docker exec -> sh), hitting the admin on its own container-localhost. This is the read shape proven against the maintainer's home edge; for writes the same edge participates in a chain (see settings-chain-write.json). An edge with just admin_url and no `transport` block behaves exactly as before (direct HTTP).",
+  "edge_driver": "caddy",
+  "zone": "homelab.example",
+  "admin_url": "http://127.0.0.1:2019",
+  "granular_apply": true,
+  "origins": {},
+  "transport": {
+    "type": "ssh-exec",
+    "command": ["ssh", "root@pve1", "pct", "exec", "150", "--", "docker", "exec", "-i", "caddy", "sh"],
+    "admin_url": "http://127.0.0.1:2019",
+    "curl": "curl"
+  }
+}

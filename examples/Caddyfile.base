@@ -1,0 +1,10 @@
+# Operator's hand-written base Caddyfile. crenel preserves everything OUTSIDE its
+# sentinel region byte-for-byte; on a verified apply it injects its managed routes
+# between `# crenel-managed-begin` / `# crenel-managed-end`, validates, and reloads.
+{
+	admin localhost:2019
+}
+
+auth.example.com {
+	reverse_proxy 10.0.0.9:9091
+}

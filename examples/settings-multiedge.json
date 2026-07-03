@@ -1,0 +1,24 @@
+{
+  "_comment": "Multi-edge (M4) home+VPS double-write demo. Both edges use the Traefik file provider so live state PERSISTS across separate crenel invocations (the in-process fake Caddy admin API resets every run, so a fake-Caddy edge can't show cross-command persistence — heterogeneous Caddy+Traefik double-write is proven in internal/core/multiedge_test.go). grafana is fronted by BOTH edges; photos only home; vault only vps.",
+  "zone": "example.com",
+  "edges": [
+    {
+      "name": "home",
+      "driver": "traefik",
+      "traefik_config_path": "/tmp/crenel-multiedge-demo/home-dynamic.json",
+      "origins": {
+        "grafana": "10.0.0.5:3000",
+        "photos": "10.0.0.6:2342"
+      }
+    },
+    {
+      "name": "vps",
+      "driver": "traefik",
+      "traefik_config_path": "/tmp/crenel-multiedge-demo/vps-dynamic.json",
+      "origins": {
+        "grafana": "100.100.0.5:3000",
+        "vault": "100.100.0.7:8200"
+      }
+    }
+  ]
+}

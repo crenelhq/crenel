@@ -1,0 +1,17 @@
+{
+  "_comment": "DEMO Traefik edge seed — FAKE hostnames only. One existing route + crenel manages the rest between its sentinels.",
+  "http": {
+    "routers": {
+      "auth": {
+        "rule": "Host(`auth.example.com`)",
+        "service": "auth-svc",
+        "entryPoints": ["websecure"]
+      }
+    },
+    "services": {
+      "auth-svc": {
+        "loadBalancer": {"servers": [{"url": "http://10.0.0.9:9091"}]}
+      }
+    }
+  }
+}

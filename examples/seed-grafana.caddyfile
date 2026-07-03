@@ -1,0 +1,7 @@
+# crenel-managed v1 — sample seed: grafana exposed, default-deny present
+grafana.example.com {
+	reverse_proxy 10.0.0.5:3000
+}
+:443 {
+	respond 403
+}

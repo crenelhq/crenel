@@ -1,0 +1,9 @@
+{
+  "_comment": "Caddy on-disk persistence demo. After a verified apply, crenel mirrors its managed routes into caddy_persist_path (additively, between sentinels), validates, and reloads with `caddy reload --config <path>`. Closes the admin-API durability gap: routes survive a `docker restart`. With a fake_seed (no-infra demo) crenel uses a no-exec CLI that logs the reload it would run; a real edge uses the caddy binary. Copy examples/Caddyfile.base to a writable path and point caddy_persist_path at it.",
+  "edge_driver": "caddy",
+  "granular_apply": true,
+  "zone": "example.com",
+  "fake_seed": "examples/seed-empty.caddyfile",
+  "caddy_persist_path": "/tmp/crenel-persist-demo/Caddyfile",
+  "origins": { "grafana": "10.0.0.5:3000", "photos": "10.0.0.6:2342" }
+}

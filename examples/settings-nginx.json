@@ -1,0 +1,10 @@
+{
+  "_comment": "nginx edge (M12) — a FOURTH EdgeProvider, another dumb data-plane edge but with a third config SHAPE (the nginx brace DSL). crenel does an additive read-modify-write of nginx_config_path: it regenerates only its own '# crenel-managed:' server blocks + the '# crenel-deny:' default_server (returns 444), preserving every unmanaged server block (Authelia, other vhosts) verbatim. Like Traefik it has no admin endpoint to wedge. Seed the file first, e.g.: cp examples/seed-nginx.conf /tmp/crenel-nginx-demo/edge.conf; then: crenel --config examples/settings-nginx.json status",
+  "zone": "example.com",
+  "edge_driver": "nginx",
+  "nginx_config_path": "/tmp/crenel-nginx-demo/edge.conf",
+  "origins": {
+    "grafana": "10.0.0.5:3000",
+    "photos": "10.0.0.6:2342"
+  }
+}

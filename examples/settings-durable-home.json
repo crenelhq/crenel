@@ -1,0 +1,30 @@
+{
+  "_comment": "DURABLE home-edge persist. The home Caddy boots from /etc/caddy/Caddyfile (--adapter caddyfile, NO --resume), so admin-API writes are EPHEMERAL — wiped on a container restart. This config makes a write survive a restart by reconciling it into the on-disk boot Caddyfile, read-back-verified. The home edge is a TWO-CHANNEL reality: the Caddyfile lives on the LXC host (/etc/homeedge/caddy/Caddyfile, bind-mounted READ-ONLY into the container), while `caddy validate/reload/adapt` must run INSIDE the container. So `transport` (admin API) and `caddy_persist.caddy_command` both target the container; `caddy_persist.file_command`/`file_path` target the host that holds the file. Without `caddy_persist` the edge declares ephemeral-admin and a write warns it will not survive a restart.",
+  "edge_driver": "caddy",
+  "zone": "homelab.example",
+  "admin_url": "http://127.0.0.1:2019",
+  "granular_apply": true,
+  "origins": {},
+  "transport": {
+    "type": "ssh-exec",
+    "command": ["ssh", "root@pve1", "pct", "exec", "150", "--", "docker", "exec", "-i", "caddy", "sh"],
+    "admin_url": "http://127.0.0.1:2019",
+    "curl": "curl"
+  },
+  "caddy_persist": {
+    "boot_path": "/etc/caddy/Caddyfile",
+    "file_command": ["ssh", "root@pve1", "pct", "exec", "150", "--", "sh"],
+    "file_path": "/etc/homeedge/caddy/Caddyfile",
+    "caddy_command": ["ssh", "root@pve1", "pct", "exec", "150", "--", "docker", "exec", "-i", "caddy", "sh"],
+    "adapter": "caddyfile",
+    "verify_adapt": true
+  },
+  "auth_policies": {
+    "authelia": {
+      "caddy_import": "authelia",
+      "caddy_forward_auth": "authelia:9080",
+      "caddy_forward_auth_verify_uri": "/api/verify?rd=https://auth.homelab.example",
+      "caddy_forward_auth_copy_headers": ["Remote-User", "Remote-Groups", "Remote-Name", "Remote-Email"]
+    }
+  }
+}

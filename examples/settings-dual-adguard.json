@@ -1,0 +1,37 @@
+{
+  "admin_url": "http://127.0.0.1:2019",
+  "zone": "example.com",
+  "origins": {
+    "grafana": "10.0.0.5:3000",
+    "photos": "10.0.0.6:2342"
+  },
+  "dns": {
+    "enabled": true,
+    "providers": [
+      {
+        "type": "adguard",
+        "instance": "home",
+        "scope": "internal",
+        "zone": "example.com",
+        "edge_addr": "10.0.0.13",
+        "mock": true
+      },
+      {
+        "type": "adguard",
+        "instance": "vps",
+        "scope": "internal",
+        "zone": "example.com",
+        "edge_addr": "10.0.0.13",
+        "mock": true
+      },
+      {
+        "type": "cloudflare",
+        "scope": "public",
+        "zone": "example.com",
+        "apply_mode": "surgical",
+        "edge_addr": "203.0.113.9",
+        "mock": true
+      }
+    ]
+  }
+}

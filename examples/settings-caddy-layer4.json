@@ -1,0 +1,11 @@
+{
+  "_comment": "Caddy SNI-passthrough (M11) demo. ModeTCPPassthrough renders via the caddy-l4 (layer4) app: the edge matches by TLS SNI and proxies the RAW TLS connection to the backend WITHOUT terminating it. caddy_layer4 is a CAPABILITY gate — the edge must be built with github.com/mholt/caddy-l4; without it crenel refuses passthrough loudly. It requires granular_apply so the additive layer4 write never disturbs the http routes / deny / TLS. fake_seed runs against an in-process fake (no real infra). Run: crenel --config examples/settings-caddy-layer4.json --mode passthrough --yes expose vault",
+  "zone": "example.com",
+  "fake_seed": "examples/seed-empty.caddyfile",
+  "granular_apply": true,
+  "caddy_layer4": true,
+  "origins": {
+    "vault": "10.0.0.7:8200",
+    "db": "10.0.0.9:5432"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "admin_url": "http://127.0.0.1:2019",
+  "zone": "example.com",
+  "origins": {
+    "grafana": "10.0.0.5:3000",
+    "photos": "10.0.0.6:2342",
+    "vault": "10.0.0.7:8200"
+  },
+  "dns": {
+    "enabled": true,
+    "providers": [
+      {
+        "scope": "internal",
+        "zone": "example.com",
+        "edge_addr": "10.0.0.1",
+        "mock": true
+      },
+      {
+        "scope": "public",
+        "zone": "example.com",
+        "edge_addr": "203.0.113.9",
+        "mock": true
+      }
+    ]
+  }
+}

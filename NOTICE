@@ -1,0 +1,24 @@
+Crenel
+Copyright 2026 The Crenel Authors
+
+This product includes software developed by The Crenel Authors.
+
+Licensed under the Apache License, Version 2.0 (see the LICENSE file).
+
+--------------------------------------------------------------------------------
+
+Trademarks
+----------
+The Apache-2.0 license grants no trademark rights (see LICENSE section 6). The
+project name and any associated logo/wordmark (see assets/ and BRANDING.md) are
+reserved by the maintainers; downstream redistributions and forks must not imply
+endorsement by, or affiliation with, the upstream project. Nominative/descriptive
+use ("compatible with Crenel", "a fork of Crenel") is fine.
+
+Third-party software
+--------------------
+This project's runtime has no third-party Go module dependencies (go.mod declares
+only the standard library). External tools it shells out to or talks to over an
+admin API at runtime — e.g. Caddy, Traefik, nginx, dnscontrol, NetBird — are NOT
+distributed with this product; each remains under, and is governed by, its own
+license. If a third-party dependency is added later, record its attribution here.

@@ -1,0 +1,22 @@
+{
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":80"],
+          "routes": [
+            {
+              "match": [{"host": ["blog3.bench.local"]}],
+              "handle": [{"handler": "subroute", "routes": [{"handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "whoami:80"}]}]}]}],
+              "terminal": true
+            },
+            {
+              "handle": [{"handler": "subroute", "routes": [{"handle": [{"handler": "static_response", "status_code": 403}]}]}],
+              "terminal": true
+            }
+          ]
+        }
+      }
+    }
+  }
+}

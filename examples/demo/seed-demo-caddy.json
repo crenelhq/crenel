@@ -1,0 +1,41 @@
+{
+  "_comment": "DEMO seed — FAKE hostnames only (example.com). Used for shareable demo clips; contains nothing personal.",
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "@id": "app",
+              "match": [{"host": ["app.example.com"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.10:8080"}]}]
+            },
+            {
+              "@id": "grafana",
+              "match": [{"host": ["grafana.example.com"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.11:3000"}]}]
+            },
+            {
+              "@id": "vault",
+              "match": [{"host": ["vault.example.com"]}],
+              "handle": [
+                {"handler": "authentication", "providers": {"http_basic": {}}},
+                {"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.12:8200"}]}
+              ]
+            },
+            {
+              "@id": "auth",
+              "match": [{"host": ["auth.example.com"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.9:9091"}]}]
+            },
+            {
+              "@id": "deny-catchall",
+              "handle": [{"handler": "static_response", "status_code": 403}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

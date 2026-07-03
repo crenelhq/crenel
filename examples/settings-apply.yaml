@@ -1,0 +1,8 @@
+# A YAML settings file (decodes via the same json: tags as the JSON form).
+edge_driver: caddy
+granular_apply: true
+zone: example.com
+fake_seed: examples/seed-empty.caddyfile
+origins:
+  grafana: 10.0.0.5:3000
+  photos: 10.0.0.6:2342

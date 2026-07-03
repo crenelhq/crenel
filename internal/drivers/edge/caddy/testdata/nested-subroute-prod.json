@@ -1,0 +1,62 @@
+{
+  "apps": {
+    "crowdsec": { "api_url": "http://127.0.0.1:8080" },
+    "tls": { "automation": { "policies": [ { "subjects": ["*.homelab.example", "*.smallbiz.example"] } ] } },
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "@id": "crenel-route-jelly.homelab.example",
+              "match": [{"host": ["jelly.homelab.example"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "100.100.0.13:8096"}]}]
+            },
+            {
+              "match": [{"host": ["*.homelab.example"]}],
+              "handle": [{"handler": "subroute", "routes": [
+                {
+                  "match": [{"host": ["vault.homelab.example"]}],
+                  "handle": [{"handler": "subroute", "routes": [
+                    {"handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "100.100.0.10:8200"}]}]}
+                  ]}]
+                },
+                {
+                  "@id": "crenel-route-git.homelab.example",
+                  "match": [{"host": ["git.homelab.example"]}],
+                  "handle": [{"handler": "subroute", "routes": [
+                    {"handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "100.100.0.11:3000"}]}]}
+                  ]}]
+                },
+                {
+                  "match": [{"host": ["photos.homelab.example"]}],
+                  "handle": [
+                    {"handler": "authentication", "providers": {"http_basic": {}}},
+                    {"handler": "subroute", "routes": [
+                      {"handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "100.100.0.12:2342"}]}]}
+                    ]}
+                  ]
+                },
+                {
+                  "match": [{"host": ["cloud.homelab.example"]}],
+                  "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "100.100.0.99:9999"}]}]
+                }
+              ]}]
+            },
+            {
+              "match": [{"host": ["*.smallbiz.example"]}],
+              "handle": [{"handler": "subroute", "routes": [
+                {
+                  "match": [{"host": ["status.smallbiz.example"]}],
+                  "handle": [{"handler": "subroute", "routes": [
+                    {"handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "100.100.0.20:3001"}]}]}
+                  ]}]
+                }
+              ]}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

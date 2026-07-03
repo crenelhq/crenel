@@ -1,0 +1,30 @@
+{
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "@id": "prod-vault",
+              "match": [{"host": ["vault.homelab.example"]}],
+              "handle": [
+                {"handler": "authentication", "providers": {"http_basic": {}}},
+                {"handler": "reverse_proxy", "upstreams": [{"dial": "127.0.0.1:8000"}]}
+              ]
+            },
+            {
+              "@id": "prod-auth",
+              "match": [{"host": ["auth.homelab.example"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "127.0.0.1:9010"}]}]
+            },
+            {
+              "@id": "deny-catchall",
+              "handle": [{"handler": "static_response", "status_code": 403}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

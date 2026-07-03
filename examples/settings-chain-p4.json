@@ -1,0 +1,22 @@
+{
+  "_comment": "P4 CHAIN-AWARE demo: a public VPS FRONT edge that forwards ~3 vhosts DOWNSTREAM to the home edge, which does the real per-host routing + auth. The front names downstream_edge=home (+ downstream_address) so crenel FOLLOWS THROUGH: status shows each forwarded host's real downstream backend + the auth OBSERVED there (vault -> Authelia; books/git -> open), and audit flags the open ones by OBSERVATION while NOT crying wolf on vault. Both edges are in-process fakes (reset per run). Try: crenel status -config examples/settings-chain-p4.json ; crenel audit -config examples/settings-chain-p4.json",
+  "zone": "homelab.example",
+  "edges": [
+    {
+      "name": "vps",
+      "driver": "caddy",
+      "fake_seed": "examples/seed-chain-front.json",
+      "granular_apply": true,
+      "downstream_edge": "home",
+      "downstream_address": "10.0.0.13",
+      "origins": {}
+    },
+    {
+      "name": "home",
+      "driver": "caddy",
+      "fake_seed": "examples/seed-chain-home.json",
+      "granular_apply": true,
+      "origins": {}
+    }
+  ]
+}

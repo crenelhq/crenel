@@ -1,0 +1,17 @@
+{
+  "_comment": "P4-WRITE demo seed: a DENY-ONLY Caddy edge (just the abort catch-all) used to seed BOTH the front (vps) and downstream (home) in-process fakes for settings-chain-write.json. Each edge starts empty so a single `crenel expose <svc> --auth authelia` can be shown LANDING the coordinated front-forward + downstream-route + DNS as one read-back-verified transaction. Reads as default-deny ENFORCED.",
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "handle": [{"handler": "static_response", "abort": true}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

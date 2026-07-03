@@ -1,0 +1,5 @@
+{
+  "edge_driver": "netbird",
+  "netbird_grants_path": "/tmp/crenel-netbird-demo/grants.json",
+  "zone": "example.com"
+}

@@ -393,10 +393,24 @@ default) but not actively resolved:
 
 ## Safety
 
-Crenel never touches real infrastructure in this repo's tests. Everything runs
-against in-repo fakes: a fake Caddy admin API HTTP server, Caddyfile/JSON
-fixtures, file-provider configs for Traefik/nginx, and a mocked `dnscontrol`
-shell runner.
+Two different things are both true here, and they don't contradict each other:
+
+- **The automated test suite (`go test` / `make check`) never touches real
+  infrastructure.** Every test runs against in-repo fakes: a fake Caddy admin
+  API (an `httptest` server, loopback-only), Caddyfile/JSON fixtures,
+  file-provider configs for Traefik/nginx, and a mocked `dnscontrol` shell
+  runner (an in-memory fake DNS provider). No test in the suite opens a socket
+  to a real edge, a real DNS provider, or the public internet — this is
+  enforced as a hard rule (see *The faithful-fake testing bar* in
+  [`CONTRIBUTING.md`](CONTRIBUTING.md)), not just a convention.
+- **The "What's proven" claims above are separate, and manual.** Those write
+  paths were exercised by the maintainer running `crenel` directly against
+  real production edges — never through `go test`, never automatically — with
+  a backup + read-back-verify + revert (or intentionally left, byte-for-byte
+  confirmed) around every one. See
+  [`TRIAL-RECORD-live-proofs-2026-06-30.md`](TRIAL-RECORD-live-proofs-2026-06-30.md)
+  for the record; hostnames there are anonymized, the commands and results are
+  verbatim.
 
 ## Acknowledgments
 

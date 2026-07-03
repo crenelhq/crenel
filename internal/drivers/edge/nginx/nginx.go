@@ -175,6 +175,23 @@ func (d *Driver) normalize(text string) model.LiveEdgeState {
 	permissiveCatchAll := false       // an explicit default_server / server_name _ that FORWARDS
 	for _, c := range parseChunks(text) {
 		if !c.isServer {
+			// A top-level chunk that is NOT a server{} crenel can enumerate — an http{}
+			// or stream{} wrapper (whose vhosts nest one level DOWN, invisible at this
+			// parse level), an upstream/map helper block, or a bare `include` that pulls
+			// in config crenel never sees. Certifying default-deny ENFORCED over such a
+			// file is a FALSE GREEN: a full nginx.conf wraps every server in http{}, a
+			// stream-only config proxies L4 with no http server at all, and an
+			// include-only main file delegates everything. DECLARE it unknown
+			// (detect-and-declare-unknown, register §4) so DenyState() downgrades to
+			// UNKNOWN instead of ENFORCED. Pure comment/blank chunks carry no config and
+			// are skipped, so a legit bare-`server{}` fragment stays fully-parsed/ENFORCED.
+			if !blankOrComment(c.raw) {
+				state.Unparsed = append(state.Unparsed, model.Unparsed{
+					Locator: nonServerLocator(c.raw), Kind: model.UnknownServerBlock,
+					Reason:     "top-level block is not a server{} crenel can model (e.g. an http{}/stream{} wrapper, an upstream/map block, or an include) — any vhosts and their catch-all are not visible at this parse level, so default-deny cannot be certified",
+					RawExcerpt: boundedExcerpt(c.raw),
+				})
+			}
 			continue
 		}
 		if c.catchAll {

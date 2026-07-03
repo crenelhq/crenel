@@ -1,0 +1,31 @@
+# gitleaks configuration for crenel.
+#
+# Extends the default ruleset and allowlists a small, fixed set of SYNTHETIC
+# test fixtures plus one URL fragment that the generic-api-key / jwt rules flag
+# as false positives. Keyed by PATH so it stays stable across line moves.
+#
+# Verified 2026-07-03 (and independently re-confirmed): none are real
+# credentials, and all pre-exist in the public v0.4.0 tree.
+#
+#   - internal/redact/redact_test.go, cmd/crenel/redact_test.go
+#       The redact package's entire job is scrubbing secrets from output, so its
+#       tests deliberately feed FAKE secrets (cf-SECRET-…, cf-LEAK-…,
+#       abc-DEF-1234-secret) and the standard jwt.io dummy JWT (sub=1234567890)
+#       and assert they get redacted.
+#   - archive/trials/results/TRIAL-RESULT-chain-write-2026-06-28.md
+#       A URL fragment (an internal host:port plus an /api path) in a results
+#       table, matched by generic-api-key — not a credential.
+
+title = "crenel"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic redaction-test fixtures and one URL fragment — verified false positives, pre-existing in public v0.4.0."
+# Keyed by BASENAME (unanchored regex) so the entries survive file moves — e.g.
+# the trial-result doc was later relocated into archive/trials/results/.
+paths = [
+  '''redact_test\.go''',
+  '''TRIAL-RESULT-chain-write-2026-06-28\.md''',
+]

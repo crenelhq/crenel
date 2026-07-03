@@ -233,6 +233,39 @@ func detectGenerator(text string) string {
 	return ""
 }
 
+// blankOrComment reports whether a top-level chunk carries no config at all — every
+// line is blank or an nginx `#` comment. Such a chunk (e.g. a trailing license
+// comment) is safe to skip during normalize: it neither serves traffic nor hides a
+// server block, so skipping it keeps a legit bare-`server{}` fragment (servers +
+// comments only) reading as fully-parsed / deny ENFORCED.
+func blankOrComment(raw string) bool {
+	for _, line := range strings.Split(raw, "\n") {
+		t := strings.TrimSpace(line)
+		if t == "" || strings.HasPrefix(t, "#") {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// nonServerLocator names an unrecognized non-server top-level chunk for its Unparsed
+// entry, using its opening line: `http {…}`, `stream {…}`, `upstream authelia {…}`,
+// `map $http_host $backend {…}`, or a bare directive like `include /etc/nginx/…;`.
+func nonServerLocator(raw string) string {
+	for _, line := range strings.Split(raw, "\n") {
+		t := strings.TrimSpace(line)
+		if t == "" || strings.HasPrefix(t, "#") {
+			continue
+		}
+		if i := strings.Index(t, "{"); i >= 0 {
+			return strings.TrimSpace(t[:i]) + " {…}"
+		}
+		return t
+	}
+	return "non-server block"
+}
+
 // boundedExcerpt returns a length-bounded snippet of a config chunk for an
 // Unparsed entry's RawExcerpt, so a large block never floods status output.
 func boundedExcerpt(s string) string {

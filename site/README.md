@@ -1,42 +1,40 @@
 # crenel.sh: the landing page
 
-One self-contained static file: [`index.html`](index.html). No JS, no external
-assets, no build step. The brand tokens are inlined from
-`docs/brand/crenel-tokens.css` and the banner is the canonical battlement block
-(byte-identical to the README art). Total weight ≈ 10 KB.
+A small static site: [`index.html`](index.html) (self-contained — no JS, no build
+step; brand tokens inlined from `docs/brand/crenel-tokens.css`, banner byte-identical
+to the README art) plus the favicon assets it references: `favicon.ico`,
+`favicon-32.png`, and `apple-touch-icon.png`.
 
-## Deploy: mirrored across both edges
+## Deploy: Cloudflare Pages (direct upload)
 
-The page is served **identically from the home edge and the VPS edge**, so it
-stays up if either is down and is always served from the nearest edge. Because
-it is one file with no state, "mirroring" is just copying it to both:
+`crenel.sh` (and `www.crenel.sh`) is served by the Cloudflare **Pages** project
+`crenel` (`crenel.pages.dev`). It is a **direct-upload** project — it is **not**
+connected to a git repo, so **pushing to git does NOT deploy the site**. A deploy
+only happens when someone uploads the `site/` directory with Wrangler:
 
 ```sh
-# from the repo root: push the same bytes to both edges
-rsync -az site/index.html home-edge:/srv/crenel.sh/index.html
-rsync -az site/index.html vps-edge:/srv/crenel.sh/index.html
+# from the repo root — publishes site/ to production (crenel.sh):
+npx wrangler pages deploy site --project-name=crenel --branch=main
 ```
 
-Each edge serves it with a plain static site block (example, Caddyfile):
+`--branch=main` matches the project's production branch, so it publishes to
+production. Any other `--branch` value creates a preview deployment instead.
 
-```caddyfile
-crenel.sh {
-    root * /srv/crenel.sh
-    file_server
-    header Cache-Control "public, max-age=3600"
-    encode zstd gzip
-}
-```
+**Auth** (either):
+
+- `export CLOUDFLARE_API_TOKEN=…` — a token scoped `Account · Cloudflare Pages ·
+  Edit`; also `export CLOUDFLARE_ACCOUNT_ID=<account-id>` if Wrangler asks for it, or
+- `npx wrangler login` (interactive browser auth).
 
 Notes:
 
-- **Expose it with Crenel**, naturally: `crenel expose crenel-site --auth none`
-  (a public page with no auth is exactly the loud, deliberate `--auth none`
-  case). Public DNS for `crenel.sh` points at the public edge; the page needs
-  no split-horizon handling.
-- Keep the two copies in lockstep by always deploying from the repo (the rsync
-  pair above, or a 3-line deploy script). Never hand-edit on an edge.
-- `www.crenel.sh` → redirect to apex; any secondary domains 301 here too
-  (crenel.sh is the single canonical domain: site, email, install).
-- Update cadence: the page changes when the tagline/install/links change,
-  i.e. rarely. It ships from this repo so page and product stay in one history.
+- **The repo is the source of truth, not the deployment.** Because Pages is
+  direct-upload, git and the live site can drift — always deploy from a clean
+  checkout so what ships matches what's committed. Never edit a deployment by hand.
+- **Get changes into `site/` first**, then deploy. Editing `index.html` or the
+  favicon assets and committing does nothing on its own until the Wrangler command
+  above runs.
+- `www.crenel.sh` and any secondary domains resolve to this same project; `crenel.sh`
+  is the single canonical domain (site, email, install).
+- Update cadence: the page changes when the tagline / install / links change, i.e.
+  rarely. It ships from this repo so page and product stay in one history.

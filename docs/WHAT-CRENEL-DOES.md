@@ -84,7 +84,7 @@ flowchart TB
     internet -->|"allowed ✓"| gap
     internet -->|blocked| b3
     gap --> photos
-    others -.->|"no opening → unreachable"| wall
+    others -.->|"no opening → unreachable"| b4
     classDef solid fill:#2f3b2f,color:#9fd99f,stroke:#5a6;
     classDef open fill:#5a4a1a,color:#ffd966,stroke:#cc9;
 ```

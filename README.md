@@ -22,10 +22,10 @@
                                                                                             
                       ✓ verified   ▸ about-to-go-public   ✕ fail-open
 ```
-*(the real thing: run `crenel banner`; live hosts, not this placeholder set)*
 
 <p align="center">
-  <strong>Every edge in atomic agreement. Verified.</strong><br>
+  <strong>Every edge in atomic agreement. Verified.</strong><br><br>
+  <strong>Crenel</strong> <code>/ˈkrɛn.əl/</code> — rhymes with kennel <br><br>
   <em>One file or command declares what's public → edge allowlist + split-horizon
   internal/public DNS, default-deny, with plan/apply preview.</em>
 </p>

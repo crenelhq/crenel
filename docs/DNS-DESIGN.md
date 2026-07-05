@@ -54,7 +54,7 @@ correct answers depending on who is asking:
 | Asker | Resolver | Answer | Why |
 |---|---|---|---|
 | Off-LAN, no Tailscale | **Cloudflare** public NS (`carmelo`/`emely.ns.cloudflare.com`) | the **VPS edge** public IP (`203.0.113.7`) | the only reachable path is the public internet |
-| LAN / Tailscale | **AdGuard Home** (LXC 165 `10.0.0.53`, + synced VPS `100.100.0.2`) | the **home Caddy** `10.0.0.13` | stays local — no VPS hairpin, direct LAN/WireGuard |
+| LAN / Tailscale | **AdGuard Home** (LXC 130 `10.0.0.53`, + synced VPS `100.100.0.2`) | the **home Caddy** `10.0.0.13` | stays local — no VPS hairpin, direct LAN/WireGuard |
 
 - **Cloudflare** is **public-authoritative**: it owns the apex zones
   `homelab.example` and `smallbiz.example` and is what the rest of the world queries.

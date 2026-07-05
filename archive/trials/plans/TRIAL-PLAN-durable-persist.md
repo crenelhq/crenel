@@ -53,7 +53,7 @@ write warns it will not survive a restart — the read-time half is live-correct
 3. **Config**: `examples/settings-durable-home.json` (ssh-exec admin + the two
    `caddy_persist` channels). `verify_adapt: true`.
 4. **Dry-run the channels read-only**: `crenel status` (admin via ssh-exec) + a manual
-   `ExecConfigStore.Read` equivalent (`ssh … pct exec 150 -- sh -c "cat /opt/.../Caddyfile"`)
+   `ExecConfigStore.Read` equivalent (`ssh … pct exec 100 -- sh -c "cat /opt/.../Caddyfile"`)
    and a `caddy adapt` in-container — confirm all three channels work and the adapt
    baseline matches live for the existing hosts. Still zero mutation.
 

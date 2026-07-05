@@ -18,7 +18,7 @@ import (
 // handler is a subroute whose only leaf is `static_response 403`. crenel recognizes a
 // DIRECT host-less static_response deny (testdata/grafana.json) but historically did
 // NOT descend the host-less subroute — so a Caddyfile-configured default-deny edge
-// (e.g. the crenel bundle, and the CT 120 proving-ground Caddy) misread as
+// (e.g. the crenel bundle, and the CT 110 proving-ground Caddy) misread as
 // "subroute_not_descended" → Default-deny UNKNOWN. The in-repo fakes never caught this
 // because SeedJSON fixtures hand-wrote the deny as a TOP-LEVEL static_response, a shape
 // the real adapter never emits. This fixture is byte-faithful to the live bench srv0.

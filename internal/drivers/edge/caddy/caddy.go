@@ -602,7 +602,7 @@ func normalizeServer(srv Server, serverKey string) (routes []model.Route, unpars
 				//     detect-and-declare-unknown rule (register §4).
 				// The in-repo fakes never caught this because JSON fixtures hand-wrote the
 				// deny as a TOP-LEVEL static_response, a shape Caddy's adapter never emits;
-				// the CT 120 proving-ground bench (a Caddyfile edge) surfaced it.
+				// the CT 110 proving-ground bench (a Caddyfile edge) surfaced it.
 				switch denyOnly, permissive := classifyHostlessSubroute(subs); {
 				case permissive:
 					permissiveCatchAll = true

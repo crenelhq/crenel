@@ -85,9 +85,10 @@ happened. Nothing is reachable unless you explicitly opened it.
 a hexagonal ports-and-adapters core. It holds no persisted desired state / source
 of truth: the only intent is the transient `Op` of the command being run, and
 the only truth is what the edge reports live. It models reverse-proxy edges
-(Caddy / Traefik / nginx) and an identity mesh (NetBird), internal/public DNS
-(dnscontrol), and origin resolution behind `EdgeProvider` / `DNSProvider` /
-`OriginResolver` ports. Every mutating verb runs `read-live → plan → apply →
+(Caddy / Traefik / nginx), internal/public DNS (dnscontrol), and origin resolution
+behind `EdgeProvider` / `DNSProvider` / `OriginResolver` ports; identity-mesh state
+(NetBird) is read-only — surfaced, not driven. Every mutating verb runs
+`read-live → plan → apply →
 read-back-verify`, treating an admin-API `200` as *not* proof of application. A
 structural catch-all default-deny is a hard driver invariant: a host is reachable
 iff an explicit expose added it. A third invariant, **bounded honesty**,
@@ -128,6 +129,28 @@ battlement-wall mark (plus its SVG companion in [`docs/brand/`](docs/brand/)).
 - `crenel status --hud` (`--banner`): full HUD banner
 - `crenel status --plain` / `--json`: scriptable output, no chrome
 - Honors `NO_COLOR` and non-TTY (degrades to plain ASCII)
+
+## No dependencies, on purpose
+
+Crenel imports nothing outside the Go standard library. `go.mod` has no `require`
+block, and the dependency graph is empty.
+
+For a tool that reaches into your reverse proxy, your DNS, and your auth, that's a
+deliberate trust decision, not a minimalist flex:
+
+- The supply chain is auditable in an afternoon. There's no transitive dependency
+  tree to vet — the only third-party code in the trust boundary is the Go toolchain
+  itself. No node_modules-style tail of sub-dependencies you've never read.
+- Nothing to rot. Dependencies get abandoned, renamed, or compromised; a
+  stdlib-only tool keeps building years from now with no version churn.
+- A small static binary you can drop on a box and verify by hash.
+
+The drivers talk to Caddy's admin API, Cloudflare, AdGuard, and the rest over
+plain `net/http` — no vendored SDKs. If you want to know exactly what crenel can
+do to your edge, you can read all of it.
+
+Not Terraform — reads the live edge, no state file to drift. See
+[`docs/WHAT-CRENEL-DOES.md`](docs/WHAT-CRENEL-DOES.md#how-is-this-different-from-terraform-or-ansible).
 
 ## Install
 

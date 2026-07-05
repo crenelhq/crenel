@@ -207,6 +207,35 @@ Four deliberate design choices are what make Crenel safe to point at production:
   And Crenel **refuses to manage** any route it determines is owned by another tool, or whose
   ownership it can't establish. The worst case is "Crenel tells you it doesn't know."
 
+### How is this different from Terraform (or Ansible)?
+
+Fair question, and the first one most infra people ask.
+
+Terraform keeps a state file — its record of what it thinks the world looks
+like — and reconciles reality toward that file. That works until the file and
+reality disagree: someone hand-edits the edge, a record changes out of band, the
+state drifts, and now Terraform's model of your infrastructure is a confident lie
+it will happily act on. Managing, locking, and un-drifting that state file becomes
+its own chore.
+
+Crenel has no state file, no database, no stored desired state. Every command
+reads the live edge directly — the running Caddy admin API, the actual DNS
+records, the config that's actually loaded — and works from that. There's nothing
+to drift, because there's nothing stored to drift from. `status` tells you what's
+exposed right now, from reality. `audit` and `drift` exit non-zero the moment the
+live edge disagrees with what you declared, so you find out on your terms instead
+of at 2am.
+
+The trade-off, honestly: crenel isn't a full IaC system that provisions your whole
+world from a declaration. It's narrower — it governs edge exposure (proxy route +
+DNS + auth) and treats the live edge as the only source of truth. Where it
+overlaps Terraform, it's betting that for this problem, reading reality beats
+trusting a cached model of it.
+
+(Same logic applies to hand-editing — where the "state file" is your memory — and
+to Ansible, where the playbook is a hopeful description of a run that may or may
+not still hold.)
+
 ### This isn't just design; it's been proven on real production gear
 
 The claims above have been exercised against **real production infrastructure**, each run recorded

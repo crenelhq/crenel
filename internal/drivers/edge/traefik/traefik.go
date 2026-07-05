@@ -155,6 +155,23 @@ func (d *Driver) ReadLiveState(ctx context.Context) (model.LiveEdgeState, error)
 	return d.normalize(cfg, string(raw)), nil
 }
 
+// ackAware builds the Unparsed entry for a would-be-unknown router of the
+// given fallback kind, checking ack (the router's crenelAck field) for the
+// operator's crenel-ack:<slug> marker (see docs/design/ack-marker.md — the
+// per-router analogue of Caddy's @id / nginx's leading comment). If present,
+// the entry is declared UnknownAcknowledged instead of kind — DenyState no
+// longer blocks on it, but it stays fully visible.
+func ackAware(loc, reason, ack, excerpt string, kind model.UnknownKind) model.Unparsed {
+	if slug, ok := model.ParseAckMarker(ack); ok {
+		return model.Unparsed{
+			Locator: loc, Kind: model.UnknownAcknowledged,
+			Reason:     fmt.Sprintf("acknowledged by operator (%s) — %s", slug, reason),
+			RawExcerpt: excerpt,
+		}
+	}
+	return model.Unparsed{Locator: loc, Kind: kind, Reason: reason, RawExcerpt: excerpt}
+}
+
 // normalize walks the dynamic config into a LiveEdgeState.
 //
 // Default-deny model (mirrors Caddy's): Traefik denies any host matching no
@@ -208,12 +225,9 @@ func (d *Driver) normalize(cfg dynamicConfig, raw string) model.LiveEdgeState {
 		// instead (register §4 — the Caddy path-matcher analogue). Full path-granular
 		// MODELING is the P5 follow-on.
 		if keys := nonHostPredicates(r.Rule); len(keys) > 0 {
-			state.Unparsed = append(state.Unparsed, model.Unparsed{
-				Locator: "http.routers." + name, Kind: model.UnknownMatcher,
-				Reason: fmt.Sprintf("router %q matches %s but is also scoped by non-host predicate(s) crenel does not model (%s) — path/method/header-granular routing is not represented at host granularity",
-					name, strings.Join(hosts, ", "), strings.Join(keys, ", ")),
-				RawExcerpt: r.Rule,
-			})
+			reason := fmt.Sprintf("router %q matches %s but is also scoped by non-host predicate(s) crenel does not model (%s) — path/method/header-granular routing is not represented at host granularity",
+				name, strings.Join(hosts, ", "), strings.Join(keys, ", "))
+			state.Unparsed = append(state.Unparsed, ackAware("http.routers."+name, reason, r.CrenelAck, r.Rule, model.UnknownMatcher))
 			continue
 		}
 		if !svc.hasUpstream() {
@@ -221,11 +235,8 @@ func (d *Driver) normalize(cfg dynamicConfig, raw string) model.LiveEdgeState {
 			// resolve (the named service is absent or has no server URL — e.g. a
 			// weighted/mirroring/dynamic service crenel does not model). DECLARE the
 			// effective backend unknown rather than drop the route silently.
-			state.Unparsed = append(state.Unparsed, model.Unparsed{
-				Locator: "http.routers." + name, Kind: model.UnknownBackend,
-				Reason:     fmt.Sprintf("router %q matches %s but its service %q has no resolvable upstream", name, strings.Join(hosts, ", "), r.Service),
-				RawExcerpt: r.Rule,
-			})
+			reason := fmt.Sprintf("router %q matches %s but its service %q has no resolvable upstream", name, strings.Join(hosts, ", "), r.Service)
+			state.Unparsed = append(state.Unparsed, ackAware("http.routers."+name, reason, r.CrenelAck, r.Rule, model.UnknownBackend))
 			continue
 		}
 		addr := stripScheme(svc.firstUpstream())

@@ -68,7 +68,7 @@ func TestTransport_DecodesFromConfig(t *testing.T) {
         {"name":"home","driver":"caddy","admin_url":"http://127.0.0.1:2019",
          "origins":{"x":"10.0.0.1:80"},
          "transport":{"type":"ssh-exec",
-           "command":["ssh","root@pve1","pct","exec","150","--","docker","exec","-i","caddy","sh"],
+           "command":["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"],
            "admin_url":"http://127.0.0.1:2019"}}
       ]
     }`

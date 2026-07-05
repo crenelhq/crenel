@@ -6,7 +6,7 @@
 > Production left byte-for-byte as found, BY crenel.
 >
 > Sole executor. Binary from `feat/rename-verb` @ `8ecae98` (sha `7016f76c`), Mac → `ssh
-> root@pve1 → pct exec 150`. TS `20260628T221115Z`. Backups:
+> root@proxmox → pct exec 100`. TS `20260628T221115Z`. Backups:
 > `live-backup/rename-onecommand-20260628T221115Z/`. Throwaway self-test hosts
 > `crenel-rename-old`/`-new` → `homepage:3000` (56,334 B). No DNS / no auth / no chain.
 

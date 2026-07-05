@@ -4,13 +4,14 @@ Thanks for your interest. Crenel touches the seam between your machine and the
 public internet (what your edge exposes), so the contribution bar is
 deliberately about **honesty and proof**, not volume. This guide is the practical
 "how"; the legal "what" lives in [`DCO.txt`](DCO.txt), [`CLA.md`](CLA.md), and
-[`LICENSE`](LICENSE).
+[`LICENSE`](LICENSE). Participation is also governed by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
-> **Project status.** Crenel is pre-public-launch. The repository is currently
-> developed by a solo maintainer; this guide and the CLA/DCO machinery are in
-> place so that external contribution can open cleanly when the project is
-> published. Until then, the testing and trial bars below are exactly how the
-> maintainer already works.
+> **Project status.** Crenel has publicly launched (`v0.4.1`). The repository is
+> still developed day-to-day by a solo maintainer, and the testing and trial
+> bars below are exactly how the maintainer already works — the CLA/DCO
+> machinery in this guide is what makes external contribution possible now that
+> the project is public.
 
 ## TL;DR for a pull request
 

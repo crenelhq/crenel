@@ -5,8 +5,8 @@
 > `docker restart caddy` — on a throwaway self-test backend (no real service touched).
 > Production left byte-for-byte as found, BY crenel.
 >
-> Sole executor. Binary from `develop` @ `25dcec9` (sha `b62db2c8`), Mac → `ssh root@pve1 →
-> pct exec 150`. TS `20260628T213550Z`. Backups: `live-backup/rename-demo-20260628T213550Z/`.
+> Sole executor. Binary from `develop` @ `25dcec9` (sha `b62db2c8`), Mac → `ssh root@proxmox →
+> pct exec 100`. TS `20260628T213550Z`. Backups: `live-backup/rename-demo-20260628T213550Z/`.
 > Two services in `origins`, both → `homepage:3000` (a harmless 56,334-byte dashboard):
 > `crenel-rename-old` and `crenel-rename-new`.
 

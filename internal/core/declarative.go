@@ -71,6 +71,16 @@ func (r DeclarativeReport) Verified() bool {
 	return true
 }
 
+// FullyVerified reports whether the apply may HONESTLY claim "verified" — see
+// ApplyReport.FullyVerified.
+func (r DeclarativeReport) FullyVerified() bool { return fullyVerified(r.Verify) }
+
+// RuntimeUnconfirmed returns the OK results whose daemon could not be confirmed —
+// see ApplyReport.RuntimeUnconfirmed.
+func (r DeclarativeReport) RuntimeUnconfirmed() []VerifyResult {
+	return runtimeUnconfirmedResults(r.Verify)
+}
+
 // PlanDeclarative computes the diff of the desired exposures vs live WITHOUT
 // mutating anything (powers the preview and `apply --dry-run`).
 func (e *Engine) PlanDeclarative(ctx context.Context, exposures []Exposure, opts DeclarativeOptions) (DeclarativePlan, error) {
@@ -168,6 +178,9 @@ func (e *Engine) ApplyDeclarative(ctx context.Context, exposures []Exposure, opt
 			}
 		}
 		return rep, fmt.Errorf("apply read-back verification FAILED: %s", strings.Join(bad, "; "))
+	}
+	if err := e.gateRuntimeVerify(ctx, rep.Verify, applied, &rep.txnOutcome); err != nil {
+		return rep, err
 	}
 	e.persistEdges(ctx, plan.Change.Edges, &rep.txnOutcome)
 	return rep, nil

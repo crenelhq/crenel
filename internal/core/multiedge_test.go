@@ -45,14 +45,16 @@ func heteroEngine(t *testing.T) (*core.Engine, *caddyfake.Fake, string) {
 	if err := os.WriteFile(path, []byte(`{}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	vpsOrigins := map[string]string{"grafana": "100.100.0.5:3000", "vault": "100.100.0.7:8200"}
+	vpsOrigins := map[string]string{"grafana": "100.64.0.5:3000", "vault": "100.64.0.7:8200"}
 	vps := core.EdgeBinding{
 		Name:     "vps",
 		Provider: traefik.New(path, static.New(vpsOrigins)),
 		Fronts:   frontsFor(vpsOrigins),
 	}
 
-	return core.NewMulti([]core.EdgeBinding{home, vps}, "example.com"), cf, path
+	e := core.NewMulti([]core.EdgeBinding{home, vps}, "example.com")
+	e.AllowUnverified = true // vps traefik has no runtime probe configured; not what these tests are about
+	return e, cf, path
 }
 
 func edgePlanFor(cs model.ChangeSet, name string) (model.EdgePlan, bool) {
@@ -83,7 +85,7 @@ func TestMultiEdge_Projection(t *testing.T) {
 	if len(h.Change.AddRoutes) != 1 || h.Change.AddRoutes[0].Upstream.Address != "10.0.0.5:3000" {
 		t.Errorf("home should add grafana -> LAN addr, got %+v", h.Change)
 	}
-	if len(v.Change.AddRoutes) != 1 || v.Change.AddRoutes[0].Upstream.Address != "100.100.0.5:3000" {
+	if len(v.Change.AddRoutes) != 1 || v.Change.AddRoutes[0].Upstream.Address != "100.64.0.5:3000" {
 		t.Errorf("vps should add grafana -> Tailscale addr, got %+v", v.Change)
 	}
 
@@ -210,7 +212,7 @@ func TestMultiEdge_AuditCrossEdgeInconsistency(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{}`), 0o644); err != nil { // vps empty
 		t.Fatal(err)
 	}
-	vpsOrigins := map[string]string{"grafana": "100.100.0.5:3000"} // vps ALSO fronts grafana
+	vpsOrigins := map[string]string{"grafana": "100.64.0.5:3000"} // vps ALSO fronts grafana
 	vps := core.EdgeBinding{Name: "vps", Provider: traefik.New(path, static.New(vpsOrigins)), Fronts: frontsFor(vpsOrigins)}
 
 	e := core.NewMulti([]core.EdgeBinding{home, vps}, "example.com")

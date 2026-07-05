@@ -334,7 +334,7 @@ the refactor commit. `WithTransport` injects an alternate channel.
 
 **ssh-exec (no port, no tunnel).** Reach the admin by running the call as a COMMAND on
 the far end. The operator configures an exec PREFIX as argv crenel does NOT shell-parse
-(`["ssh","root@pve1","pct","exec","150","--","docker","exec","-i","caddy","sh"]`);
+(`["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]`);
 crenel generates a POSIX-sh curl/wget script and feeds it to the prefix over **STDIN**.
 That is the key insight for nesting: nothing crosses a shell-parse boundary as an
 argument, so quoting survives an arbitrarily deep `ssh → pct exec → docker exec` chain
@@ -371,7 +371,7 @@ front-forward + downstream-real-backend+auth + DNS in order, read-back-verified;
 unexpose reverses) — the exact trial shape, no live infra.
 
 **LIVE READ-ONLY verification.** Pointed ssh-exec at the real home edge
-(`ssh root@pve1 → pct exec 150 → docker exec -i caddy → sh → curl 127.0.0.1:2019`) and
+(`ssh root@proxmox → pct exec 100 → docker exec -i caddy → sh → curl 127.0.0.1:2019`) and
 ran `crenel status` + a read-only `preview`. crenel read the home edge's **live** config
 — **51 services, default-deny ENFORCED** — with the admin still container-loopback-only
 (nothing published, no tunnel) and the live config **sha256 byte-identical before/after**
@@ -1372,7 +1372,7 @@ correctly (Default-deny PRESENT, two wildcard subroutes, audit exit 0).
 
 **Definitive, from the code:** Crenel targets **ONE** edge — whichever single
 Caddy admin API you point `admin_url` at. It does **NOT** double-write to both the
-home Caddy (LXC 150, 10.0.0.13) and the VPS edge (100.100.0.2).
+home Caddy (LXC 100, 10.0.0.13) and the VPS edge (100.100.0.2).
 
 Evidence:
 - `core.Engine` holds a single `Edge ports.EdgeProvider` (not a slice) —

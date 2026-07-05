@@ -39,8 +39,30 @@ func (es EdgeStatus) Coverage() (understood, total int) {
 	return len(es.Routes), len(es.Routes) + len(es.Unparsed)
 }
 
-// FullyParsed reports whether crenel understood this edge's entire config.
-func (es EdgeStatus) FullyParsed() bool { return len(es.Unparsed) == 0 }
+// FullyParsed reports whether crenel understood this edge's entire config,
+// treating an operator-ACKNOWLEDGED unknown as resolved — see
+// model.LiveEdgeState.FullyParsed.
+func (es EdgeStatus) FullyParsed() bool {
+	for _, u := range es.Unparsed {
+		if u.Kind != model.UnknownAcknowledged {
+			return false
+		}
+	}
+	return true
+}
+
+// Acknowledged returns the Unparsed entries the operator has explicitly
+// acknowledged (crenel-ack marker) — surfaced by status/audit as their own
+// "ACK" state, never hidden. See docs/design/ack-marker.md.
+func (es EdgeStatus) Acknowledged() []model.Unparsed {
+	var out []model.Unparsed
+	for _, u := range es.Unparsed {
+		if u.Kind == model.UnknownAcknowledged {
+			out = append(out, u)
+		}
+	}
+	return out
+}
 
 // DenyState returns the ternary default-deny verdict for this edge (mirrors
 // model.LiveEdgeState.DenyState): ENFORCED only when present AND fully parsed.
@@ -123,6 +145,30 @@ func (v VerifyResult) RuntimeUnconfirmed() bool {
 	return v.RuntimeChecked && v.Runtime == model.RuntimeVerifyUnavailable
 }
 
+// fullyVerified reports whether every result in verify passed AND none is a
+// file-driver write whose daemon could not be confirmed. Shared by ApplyReport
+// and DeclarativeReport.
+func fullyVerified(verify []VerifyResult) bool {
+	for _, v := range verify {
+		if !v.OK || v.RuntimeUnconfirmed() {
+			return false
+		}
+	}
+	return true
+}
+
+// runtimeUnconfirmedResults returns the OK results in verify whose daemon could
+// not be confirmed. Shared by ApplyReport and DeclarativeReport.
+func runtimeUnconfirmedResults(verify []VerifyResult) []VerifyResult {
+	var out []VerifyResult
+	for _, v := range verify {
+		if v.RuntimeUnconfirmed() {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 // txnOutcome holds the rollback / wedge-safety status shared by every
 // transactional mutating operation (Apply, Reconcile). It is embedded so its
 // fields promote unchanged onto the containing report (and serialize flat).
@@ -178,27 +224,9 @@ func (r ApplyReport) Verified() bool {
 // passed AND none was a file-driver write whose daemon could not be confirmed. When this
 // is false but Verified() is true, the write stands but at least one edge is only
 // "written; runtime verify unavailable" — surfaced by RuntimeUnconfirmed().
-func (r ApplyReport) FullyVerified() bool {
-	if !r.Verified() {
-		return false
-	}
-	for _, v := range r.Verify {
-		if v.RuntimeUnconfirmed() {
-			return false
-		}
-	}
-	return true
-}
+func (r ApplyReport) FullyVerified() bool { return fullyVerified(r.Verify) }
 
 // RuntimeUnconfirmed returns the OK results whose daemon could not be confirmed (file
 // written, no runtime surface configured) — what the CLI lists when it must say
 // "written; runtime verify unavailable" instead of "verified".
-func (r ApplyReport) RuntimeUnconfirmed() []VerifyResult {
-	var out []VerifyResult
-	for _, v := range r.Verify {
-		if v.RuntimeUnconfirmed() {
-			out = append(out, v)
-		}
-	}
-	return out
-}
+func (r ApplyReport) RuntimeUnconfirmed() []VerifyResult { return runtimeUnconfirmedResults(r.Verify) }

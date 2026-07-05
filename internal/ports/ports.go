@@ -126,6 +126,28 @@ type Adopter interface {
 	Adopt(ctx context.Context, hosts []string) error
 }
 
+// Acker is an OPTIONAL capability an EdgeProvider may implement: stamping (or
+// removing) the operator's crenel-ack:<reason> marker onto an EXISTING
+// declared-unknown route in-place — the `crenel ack`/`unack` verbs (see
+// docs/design/ack-marker.md). It generalizes Adopter's pattern (a marker
+// written into the live config itself, no sidecar store) to a different
+// question: not "is this crenel's to manage" but "has the operator
+// acknowledged this unknown." Drivers with no per-route marker/comment/field
+// slot (e.g. AdGuard's rewrite API) simply do not implement it.
+type Acker interface {
+	// Ack stamps the marker onto the FIRST route matching host that crenel would
+	// otherwise declare unknown — same backend, same behavior, only the marker
+	// changes. It MUST be idempotent (already-acked with the same reason is a
+	// tolerated no-op) and never touch a route it fully understands or one
+	// belonging to a different host. Returns an error if no matching
+	// declared-unknown route is found.
+	Ack(ctx context.Context, host, reason string) error
+	// Unack removes the marker from host's route, reverting it to whatever
+	// Unparsed kind it would otherwise classify as. A no-op if the route is not
+	// currently ack'd.
+	Unack(ctx context.Context, host string) error
+}
+
 // Persister is an OPTIONAL capability an EdgeProvider may implement: writing the
 // current crenel-managed routes to DURABLE storage (e.g. an on-disk Caddyfile)
 // so they survive a control-plane restart. core calls it AFTER a successful,

@@ -8,6 +8,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -347,7 +348,43 @@ const (
 	UnknownGenerator UnknownKind = "foreign_managed"
 	// UnknownIngress: reachability is determined off-edge (tunnel/overlay/CDN).
 	UnknownIngress UnknownKind = "ingress_external"
+	// UnknownAcknowledged: a route crenel could not fully understand, but which
+	// the OPERATOR has explicitly acknowledged in the live config itself (a
+	// `crenel-ack:<slug>` marker — see docs/design/ack-marker.md). Unlike every
+	// other UnknownKind, this one does NOT block default-deny certification
+	// (see LiveEdgeState.FullyParsed) — but it is never hidden: status/audit
+	// still list it as its own "ACK" state, distinct from both a verified-green
+	// route and an unaddressed unknown.
+	UnknownAcknowledged UnknownKind = "acknowledged_unknown"
 )
+
+// AckMarkerPrefix is the literal prefix of a crenel-ack marker (see
+// docs/design/ack-marker.md), for callers that need to recognize the prefix
+// itself rather than extract the reason slug (e.g. distinguishing "ack'd with
+// a different reason" from "not ack'd at all").
+const AckMarkerPrefix = "crenel-ack:"
+
+// ackMarkerRE extracts the reason slug from a crenel-ack:<slug> marker wherever
+// it appears — a Caddy @id (exact match), a driver-specific field, or a
+// substring inside a raw comment/config blob (nginx). [a-z0-9-]+ mirrors the
+// slug shape docs/design/ack-marker.md specifies.
+var ackMarkerRE = regexp.MustCompile(AckMarkerPrefix + `([a-z0-9-]+)`)
+
+// ParseAckMarker scans s (an @id, a driver-specific marker field, or a raw
+// comment/config excerpt) for the crenel-ack:<slug> marker an operator writes
+// to acknowledge an intentionally-unmodeled route, and returns the reason slug.
+// See docs/design/ack-marker.md.
+func ParseAckMarker(s string) (reason string, ok bool) {
+	m := ackMarkerRE.FindStringSubmatch(s)
+	if m == nil {
+		return "", false
+	}
+	return m[1], true
+}
+
+// AckMarker formats the crenel-ack marker for a given reason slug — the
+// inverse of ParseAckMarker, used when stamping the marker on write.
+func AckMarker(reason string) string { return AckMarkerPrefix + reason }
 
 // Unparsed is one thing crenel SAW in the live config but did not fully understand.
 // It is first-class output: counted into Coverage, listed by status, surfaced by
@@ -540,9 +577,18 @@ func (s LiveEdgeState) Coverage() (understood, total int) {
 	return len(s.Routes), len(s.Routes) + len(s.Unparsed)
 }
 
-// FullyParsed reports whether crenel understood the ENTIRE config (no Unparsed
-// entries). It is the precondition for certifying default-deny ENFORCED.
-func (s LiveEdgeState) FullyParsed() bool { return len(s.Unparsed) == 0 }
+// FullyParsed reports whether crenel understood the ENTIRE config, treating an
+// operator-ACKNOWLEDGED unknown (UnknownAcknowledged) as resolved rather than
+// blocking — every OTHER Unparsed entry still downgrades this to false. It is
+// the precondition for certifying default-deny ENFORCED.
+func (s LiveEdgeState) FullyParsed() bool {
+	for _, u := range s.Unparsed {
+		if u.Kind != UnknownAcknowledged {
+			return false
+		}
+	}
+	return true
+}
 
 // DenyState returns the ternary default-deny verdict (see DenyState). ENFORCED ⟹
 // FullyParsed: crenel never certifies default-deny over config it did not read.

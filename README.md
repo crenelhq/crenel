@@ -1,5 +1,7 @@
 # Crenel
 
+[![CI](https://github.com/crenelhq/crenel/actions/workflows/ci.yml/badge.svg)](https://github.com/crenelhq/crenel/actions/workflows/ci.yml)
+
 ```
                              ███████   ███████   ███████   ███████
                              █▓▓▓▓▓█ ✓ █▓▓▓▓▓█ ▸ █▓▓▓▓▓█ ✕ █▓▓▓▓▓█
@@ -225,6 +227,17 @@ crenel $CFG expose status --auth none        # explicitly publish with no auth
 # 5b. Declarative: converge to a file (kubectl-style; brownfield-safe).
 crenel $CFG apply crenel.exposures.yaml --dry-run    # diff vs live, highlights public
 crenel $CFG apply crenel.exposures.yaml --adopt      # adopt matching unmanaged inline
+
+# 6. A route Crenel can't fully model (e.g. scoped by a path/method matcher)
+#    stays a declared unknown — and default-deny stays UNKNOWN — forever,
+#    unless you tell Crenel it's an intentional carve-out. `ack` stamps that
+#    acknowledgment INTO the live config itself (no sidecar store, the same
+#    trick the ownership marker already uses), so `audit`/`status` show it
+#    as ACK, not a recurring UNKNOWN — and default-deny can certify once
+#    everything else IS understood. Never makes the route reachable; that's
+#    still only `expose`. `unack` reverts it.
+crenel $CFG ack app.example.com --reason vendor-webhook-bypass
+crenel $CFG unack app.example.com
 ```
 
 Caddy edges: add `caddy_persist_path: /etc/caddy/Caddyfile` to survive a
@@ -357,7 +370,13 @@ default) but not actively resolved:
   matcher (Caddy `path`/`method`/`header`, Traefik `&& PathPrefix()`, nginx multiple
   `location` blocks) is declared `matcher_conditional` and forces deny to UNKNOWN, so
   it is never silently misread. But Crenel cannot yet REPRESENT or WRITE a per-path
-  backend or per-path auth. The write side is a P5 model + per-driver render task.
+  backend or per-path auth. The write side is a P5 model + per-driver render task. If
+  the carve-out is intentional, `crenel ack <host> --reason <slug>` (see
+  [`docs/design/ack-marker.md`](docs/design/ack-marker.md)) lets the operator say so —
+  a marker written into the live config, read back on every future run, that reclassifies
+  the route as acknowledged (not blocking, still fully visible in `audit`/`status`) without
+  changing what's reachable. Read-side recognition works across Caddy/Traefik/nginx; the
+  `ack`/`unack` write verbs are Caddy-only for now.
 - **Tailscale serve.json `Web` entries without `AllowFunnel` are not modeled as a
   separate scope.** PR #17 stops the cry-wolf (a tailnet-only `Web` host is no longer
   falsely flagged `public_without_auth`) but does not introduce a mesh-scope axis for
@@ -386,10 +405,11 @@ default) but not actively resolved:
   driver); see [`docs/OPEN-CORE.md`](docs/OPEN-CORE.md).
 - **Name & trademark:** the name and wordmark are reserved by the maintainers
   (nominative use is fine).
-- **Contributing:** external PRs welcome at launch under **DCO** (per-commit
+- **Contributing:** external PRs welcome under **DCO** (per-commit
   sign-off, [`DCO.txt`](DCO.txt)) **+ a one-time CLA** ([`CLA.md`](CLA.md)) before a
   first merge. Build/test/PR flow, the faithful-fake bar, and the trial cadence are
-  in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+  in [`CONTRIBUTING.md`](CONTRIBUTING.md); participation is governed by the
+  [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 ## Safety
 
@@ -411,6 +431,12 @@ Two different things are both true here, and they don't contradict each other:
   [`TRIAL-RECORD-live-proofs-2026-06-30.md`](TRIAL-RECORD-live-proofs-2026-06-30.md)
   for the record; hostnames there are anonymized, the commands and results are
   verbatim.
+- **A file-driver write with no runtime probe configured is REFUSED, not silently
+  accepted.** Traefik/nginx without a configured runtime URL can only re-read the file
+  Crenel just wrote — never proof the running daemon picked it up. Rather than stand as
+  an unconfirmed "written, not verified" green, the write is now rolled back unless you
+  pass `--allow-unverified` (or accept interactively when not running `--yes`). Caddy is
+  unaffected — its own admin-API re-read already is the live check.
 
 ## Acknowledgments
 

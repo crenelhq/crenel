@@ -32,12 +32,20 @@ type globalFlags struct {
 	fakeSeed     string
 	yes          bool
 	force        bool
+	// allowUnverified accepts an apply/rename whose read-back matched but whose
+	// file-driver runtime probe was unavailable (audit F2) — without it, such a
+	// write is rolled back rather than left as a silent green. See
+	// core.UnverifiedWriteError.
+	allowUnverified bool
 	jsonOut      bool
 	granular     bool
 	layer4       bool
 	caddyPersist string
 	mode         string
 	auth         string
+	// reason is the operator's crenel-ack:<reason> slug for `ack` (see
+	// docs/design/ack-marker.md) — required, never inferred.
+	reason string
 	// to is the explicit backend override for `expose` (host:port). When set, it
 	// bypasses the per-edge OriginResolver for THIS op and is persisted into the
 	// settings-file origins map on a verified apply so `status`/`audit`/`drift`/
@@ -141,6 +149,10 @@ func run(args []string) int {
 	// The --force escape hatch lets the ownership gate proceed on an UNKNOWN-owned
 	// route (never a FOREIGN one). It is load-bearing-on-the-human, hence opt-in.
 	w.engine.Force = gf.force
+	// The --allow-unverified escape hatch lets a file-driver write with no runtime
+	// probe stand instead of being rolled back (audit F2). Load-bearing-on-the-human,
+	// same spirit as Force.
+	w.engine.AllowUnverified = gf.allowUnverified
 
 	ctx := context.Background()
 	c := &cli{
@@ -220,12 +232,14 @@ func bindGlobals(fs *flag.FlagSet, gf *globalFlags) {
 	fs.StringVar(&gf.fakeSeed, "fake-seed", os.Getenv("CRENEL_FAKE_SEED"), "seed an in-process fake Caddy admin API from this fixture file (safe demo mode)")
 	fs.BoolVar(&gf.yes, "yes", false, "skip confirmation prompt for mutating commands")
 	fs.BoolVar(&gf.force, "force", false, "ownership escape hatch: permit mutating a route whose ownership is UNKNOWN (never a FOREIGN/generator-owned one); use only after verifying ownership out-of-band")
+	fs.BoolVar(&gf.allowUnverified, "allow-unverified", false, "accept a file-driver write whose runtime probe is unavailable (no runtime URL configured) instead of rolling it back; the report still won't claim \"verified\"")
 	fs.BoolVar(&gf.jsonOut, "json", false, "machine-readable JSON output where supported")
 	fs.BoolVar(&gf.granular, "granular", false, "additive structured-admin-API apply (required for rich/production edges)")
 	fs.BoolVar(&gf.layer4, "layer4", false, "Caddy edge has the caddy-l4 plugin: render --mode passthrough via the layer4 app (requires -granular)")
 	fs.StringVar(&gf.caddyPersist, "caddy-persist", os.Getenv("CRENEL_CADDY_PERSIST"), "Caddy on-disk persistence: mirror managed routes into this mounted Caddyfile after a verified apply")
 	fs.StringVar(&gf.mode, "mode", "", "route mode: http (default) | passthrough | mesh")
 	fs.StringVar(&gf.auth, "auth", "", "forward-auth policy to attach (e.g. authelia); 'none' to publish unprotected on purpose")
+	fs.StringVar(&gf.reason, "reason", "", "ack: the crenel-ack:<reason> slug to stamp (required)")
 	fs.StringVar(&gf.to, "to", "", "expose: explicit backend address for this service (host:port); persists into the settings-file origins map on apply")
 	fs.StringVar(&gf.to, "upstream", "", "alias for --to")
 	fs.BoolVar(&gf.noValidate, "no-validate", false, "expose: skip the pre-flight TCP probe of --to (use when the backend is not up yet but the address is known-correct)")
@@ -267,6 +281,8 @@ func absorbPostVerbFlags(gf *globalFlags, args []string) ([]string, error) {
 			gf.yes = true
 		case "force":
 			gf.force = true
+		case "allow-unverified":
+			gf.allowUnverified = true
 		case "json":
 			gf.jsonOut = true
 		case "show-secrets":
@@ -288,13 +304,15 @@ func absorbPostVerbFlags(gf *globalFlags, args []string) ([]string, error) {
 			gf.to = val
 		case "param":
 			gf.params = append(gf.params, val)
+		case "reason":
+			gf.reason = val
 		default:
 			return false
 		}
 		return true
 	}
 	isValueFlag := func(name string) bool {
-		return name == "mode" || name == "auth" || name == "param" || name == "to" || name == "upstream"
+		return name == "mode" || name == "auth" || name == "param" || name == "to" || name == "upstream" || name == "reason"
 	}
 
 	var out []string
@@ -419,6 +437,14 @@ Mutating commands (preview -> confirm -> apply -> read-back-verify):
                          Flags: --adopt (adopt matching unmanaged hosts inline),
                          --prune (unexpose owned hosts absent from the file),
                          --dry-run (preview only)
+  ack <host> --reason <slug>
+                         Acknowledge an intentionally-unmodeled route (the
+                         crenel-ack marker, docs/design/ack-marker.md): stamps
+                         it in the live config so audit/status show ACK instead
+                         of a recurring UNKNOWN, without weakening default-deny
+                         or making the route reachable. Caddy only for now.
+  unack <host>           Remove the crenel-ack marker, reverting the route to
+                         whatever it would otherwise be declared as
 
 Global flags:
   -config <path>     settings JSON (env CRENEL_CONFIG)
@@ -431,6 +457,7 @@ Global flags:
   -auth <policy>     forward-auth policy to attach (e.g. authelia); 'none' to
                      publish unprotected on purpose (required to expose public
                      with no auth)
+  -reason <slug>     ack: the crenel-ack:<reason> slug to stamp (required)
   -to host:port      expose: explicit backend for this service (alias: -upstream).
                      Persists into the settings-file origins map on apply, so
                      status/audit/drift/reconcile stay coherent. Skips the "edit

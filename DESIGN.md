@@ -867,7 +867,7 @@ an argv list Crenel does *not* shell-parse — that lands a shell wherever the a
 loopback lives, supporting arbitrary nesting:
 
 ```
-["ssh","root@pve1","pct","exec","150","--","docker","exec","-i","caddy","sh"]
+["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]
 ```
 
 Crenel builds a small POSIX-`sh` script that runs `curl` (or `wget`) against the
@@ -923,7 +923,7 @@ edge, and per-edge on `EdgeSettings`):
 "transport": {
   "type": "ssh-exec",                 // "direct" (default) | "ssh-exec" | "ssh-tunnel"
   // ssh-exec:
-  "command": ["ssh","root@pve1","pct","exec","150","--",
+  "command": ["ssh","root@proxmox","pct","exec","100","--",
               "docker","exec","-i","caddy","sh"],
   "admin_url": "http://127.0.0.1:2019", // admin URL AS SEEN FROM the far end
   "curl": "curl",                       // far-end http client (curl | wget)
@@ -1061,7 +1061,7 @@ TWO exec channels, each an operator-supplied argv prefix Crenel does not shell-p
 script travels over stdin, exactly like the ssh-exec admin transport):
 
 - the **file channel** (`ExecConfigStore`) — a shell on the host that holds the file
-  (`ssh root@pve1 pct exec 150 -- sh`) for `cat` / atomic `base64 | mv`;
+  (`ssh root@proxmox pct exec 100 -- sh`) for `cat` / atomic `base64 | mv`;
 - the **caddy channel** (`ExecCaddyCLI`/`ExecAdapter`) — a shell in the container
   (`… docker exec -i caddy sh`) for validate/reload/adapt.
 

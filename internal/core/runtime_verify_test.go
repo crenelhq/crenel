@@ -2,6 +2,7 @@ package core_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/crenelhq/crenel/internal/core"
@@ -80,13 +81,32 @@ func TestEngine_RuntimeConfirmedIsFullyVerified(t *testing.T) {
 	}
 }
 
-// TestEngine_RuntimeUnavailableIsWrittenNotVerified: a file edge with NO runtime surface
-// is Verified (written + re-read OK) but NOT FullyVerified — the report must say
-// "written; runtime verify unavailable", never "verified". This is the core of the
-// headline fix: the hollow re-read no longer licenses a green.
-func TestEngine_RuntimeUnavailableIsWrittenNotVerified(t *testing.T) {
+// TestEngine_RuntimeUnavailableRefusedWithoutAllowUnverified: a file edge with NO
+// runtime surface can only re-read its OWN written file — never proof the running
+// daemon picked it up. Without the explicit AllowUnverified escape hatch (audit
+// F2), Apply must REFUSE (rolling back the write) rather than let an unconfirmed
+// write stand as a silent green.
+func TestEngine_RuntimeUnavailableRefusedWithoutAllowUnverified(t *testing.T) {
 	edge := &rvEdge{live: model.LiveEdgeState{DenyCatchAllPresent: true}, origin: "10.0.0.1:80", runtime: model.RuntimeVerifyUnavailable}
 	eng := core.New(edge, "example.com")
+	_, err := eng.Apply(context.Background(), eng.BuildOp(model.Expose, "svc"), core.AlwaysYes)
+	var uerr *core.UnverifiedWriteError
+	if !errors.As(err, &uerr) {
+		t.Fatalf("expected *core.UnverifiedWriteError, got %v", err)
+	}
+	if edge.live.HasHost("svc.example.com") {
+		t.Error("the unconfirmed write should have been rolled back")
+	}
+}
+
+// TestEngine_RuntimeUnavailableAllowedWithFlag: with AllowUnverified set (the
+// --allow-unverified escape hatch, or an interactive accept), the write stands —
+// Verified (written + re-read OK) but NOT FullyVerified — the report must say
+// "written; runtime verify unavailable", never "verified".
+func TestEngine_RuntimeUnavailableAllowedWithFlag(t *testing.T) {
+	edge := &rvEdge{live: model.LiveEdgeState{DenyCatchAllPresent: true}, origin: "10.0.0.1:80", runtime: model.RuntimeVerifyUnavailable}
+	eng := core.New(edge, "example.com")
+	eng.AllowUnverified = true
 	rep, err := eng.Apply(context.Background(), eng.BuildOp(model.Expose, "svc"), core.AlwaysYes)
 	if err != nil {
 		t.Fatalf("apply: %v", err)

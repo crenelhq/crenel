@@ -198,6 +198,12 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		// unparsed route could itself be a permissive catch-all). The hard invariant
 		// becomes "deny is never FALSELY ENFORCED" — ENFORCED ⟹ FullyParsed. See
 		// TOPOLOGY-RISK-REGISTER §4.4.
+		// realUnknown/acked split (docs/design/ack-marker.md): computed up front so
+		// every finding below — including deny_catchall_unknown — counts unparsed
+		// routes consistently, excluding operator-acknowledged ones. An acked entry
+		// never blocks the deny verdict (DenyState already reflects that); this keeps
+		// the FINDING TEXT honest about it too, instead of quoting the raw count.
+		realUnknown, acked := splitAcknowledged(live.Unparsed)
 		switch live.DenyState() {
 		case model.DenyEnforced:
 			rep.Findings = append(rep.Findings, AuditFinding{
@@ -210,7 +216,7 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 				Severity: "warning",
 				Code:     "deny_catchall_unknown",
 				Message: fmt.Sprintf("%sdefault-deny is present but CANNOT be certified: %d route(s) not understood — an unparsed route could be a permissive catch-all, so deny is UNKNOWN, not ENFORCED",
-					label, len(live.Unparsed)),
+					label, len(realUnknown)),
 			})
 		default: // model.DenyMissing
 			rep.Findings = append(rep.Findings, AuditFinding{
@@ -223,13 +229,24 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		// Coverage (detect-and-declare-unknown, register §4.3): when crenel could not
 		// fully parse the config, EVERY other exposure/auth finding below is computed
 		// over the UNDERSTOOD subset only — re-framed here so the report is honest.
-		if len(live.Unparsed) > 0 {
+		if len(realUnknown) > 0 {
 			understood, total := live.Coverage()
 			rep.Findings = append(rep.Findings, AuditFinding{
 				Severity: "warning",
 				Code:     "coverage_incomplete",
 				Message: fmt.Sprintf("%sread %d/%d routes — %d NOT UNDERSTOOD (%s) — exposure status INCOMPLETE; findings below cover the understood subset only",
-					label, understood, total, len(live.Unparsed), unparsedLocators(live.Unparsed)),
+					label, understood, total-len(acked), len(realUnknown), unparsedLocators(realUnknown)),
+			})
+		}
+		// Acknowledged-unknown (docs/design/ack-marker.md): never hidden, and never
+		// blocking — the operator has explicitly vouched for each of these in the live
+		// config itself.
+		if len(acked) > 0 {
+			rep.Findings = append(rep.Findings, AuditFinding{
+				Severity: "ok",
+				Code:     "acknowledged_unknown",
+				Message: fmt.Sprintf("%s%d route(s) acknowledged by operator (not blocking default-deny): %s",
+					label, len(acked), unparsedLocators(acked)),
 			})
 		}
 
@@ -746,6 +763,20 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		Message:  fmt.Sprintf("%d host(s) exposed across %d edge(s)", len(exposed), len(e.Edges)),
 	})
 	return rep, nil
+}
+
+// splitAcknowledged partitions an edge's Unparsed entries into real unknowns
+// (still block coverage/deny) and operator-ACKNOWLEDGED ones (crenel-ack
+// marker) — see docs/design/ack-marker.md.
+func splitAcknowledged(us []model.Unparsed) (realUnknown, acked []model.Unparsed) {
+	for _, u := range us {
+		if u.Kind == model.UnknownAcknowledged {
+			acked = append(acked, u)
+		} else {
+			realUnknown = append(realUnknown, u)
+		}
+	}
+	return realUnknown, acked
 }
 
 // unparsedLocators renders a bounded, comma-joined list of unparsed locators for a

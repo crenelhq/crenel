@@ -118,7 +118,7 @@ type Driver struct {
 //     copy-headers are operator-declared, not invented by crenel.
 type AuthRef struct {
 	Import      string          // Caddyfile snippet name (default: the policy name) — persistence path
-	ForwardAuth string          // authorizer endpoint, e.g. "authelia:9080" — canonical-expansion granular path
+	ForwardAuth string          // authorizer endpoint, e.g. "authelia:9091" — canonical-expansion granular path
 	VerifyURI   string          // verify path incl. ?rd=…, e.g. "/api/verify?rd=https://auth.example.com"
 	CopyHeaders []string        // auth headers copied on a 2xx (Remote-User, Remote-Groups, Remote-Name, Remote-Email)
 	Handler     json.RawMessage // operator-provided VERBATIM handler JSON — purest by-reference escape hatch
@@ -743,6 +743,24 @@ func serverExcerpt(srv Server) string {
 	return string(b)
 }
 
+// ackAware builds the Unparsed entry for a would-be-unknown route of the given
+// fallback kind, checking id (the route's @id) for the operator's
+// crenel-ack:<slug> marker (see docs/design/ack-marker.md, generalizing the
+// crenel-route-<host> ownership marker to a route the operator has explicitly
+// vouched for). If present, the entry is declared UnknownAcknowledged instead
+// of kind — DenyState no longer blocks on it, but it stays fully visible
+// (Reason keeps the original diagnosis alongside the ack).
+func ackAware(loc, reason, id, excerpt string, kind model.UnknownKind) model.Unparsed {
+	if slug, ok := model.ParseAckMarker(id); ok {
+		return model.Unparsed{
+			Locator: loc, Kind: model.UnknownAcknowledged,
+			Reason:     fmt.Sprintf("acknowledged by operator (%s) — %s", slug, reason),
+			RawExcerpt: excerpt,
+		}
+	}
+	return model.Unparsed{Locator: loc, Kind: kind, Reason: reason, RawExcerpt: excerpt}
+}
+
 // collectLeaves appends one model.Route per leaf reverse_proxy reachable from a
 // host-scoped route, recursing through nested subroute handlers. It carries down:
 //   - host: the most specific host matcher seen so far (a nested per-host route's
@@ -776,12 +794,9 @@ func collectLeaves(r JSONRoute, host string, managed bool, auth, loc string, out
 	// The host-granular WRITE model cannot target a sub-path, so this is detect-and-declare,
 	// not silent flattening; full path-granular MODELING is the P5 follow-on.
 	if keys := r.extraMatcherKeys(); len(keys) > 0 {
-		*unparsed = append(*unparsed, model.Unparsed{
-			Locator: loc, Kind: model.UnknownMatcher,
-			Reason: fmt.Sprintf("route for %s is scoped by non-host matcher(s) crenel does not model (%s) — path/method/header-granular routing is not represented at host granularity",
-				host, strings.Join(keys, ", ")),
-			RawExcerpt: r.excerpt(),
-		})
+		reason := fmt.Sprintf("route for %s is scoped by non-host matcher(s) crenel does not model (%s) — path/method/header-granular routing is not represented at host granularity",
+			host, strings.Join(keys, ", "))
+		*unparsed = append(*unparsed, ackAware(loc, reason, r.ID, r.excerpt(), model.UnknownMatcher))
 		return false
 	}
 	if dial, ok := r.firstReverseProxyDial(); ok {
@@ -807,11 +822,8 @@ func collectLeaves(r JSONRoute, host string, managed bool, auth, loc string, out
 		// A host-scoped route that neither forwards via reverse_proxy nor nests a
 		// subroute — an unmodeled terminal (file_server, php_fastcgi, a map/vars-indirect
 		// backend, …). Its effective exposure is unknown to crenel.
-		*unparsed = append(*unparsed, model.Unparsed{
-			Locator: loc, Kind: model.UnknownHandler,
-			Reason:     fmt.Sprintf("route for %s has no reverse_proxy/subroute crenel can resolve (handlers: %s)", host, r.handlerNames()),
-			RawExcerpt: r.excerpt(),
-		})
+		reason := fmt.Sprintf("route for %s has no reverse_proxy/subroute crenel can resolve (handlers: %s)", host, r.handlerNames())
+		*unparsed = append(*unparsed, ackAware(loc, reason, r.ID, r.excerpt(), model.UnknownHandler))
 		return false
 	}
 	anyResolved := false
@@ -834,11 +846,8 @@ func collectLeaves(r JSONRoute, host string, managed bool, auth, loc string, out
 	if !anyResolved && len(*unparsed) == beforeU {
 		// Opaque/empty subroute that yielded neither a resolved leaf/deny nor a nested
 		// unparsed entry — surface it rather than swallow it.
-		*unparsed = append(*unparsed, model.Unparsed{
-			Locator: loc, Kind: model.UnknownNestedRoute,
-			Reason:     fmt.Sprintf("subroute under %s yielded no resolvable leaf route", host),
-			RawExcerpt: r.excerpt(),
-		})
+		reason := fmt.Sprintf("subroute under %s yielded no resolvable leaf route", host)
+		*unparsed = append(*unparsed, ackAware(loc, reason, r.ID, r.excerpt(), model.UnknownNestedRoute))
 		return false
 	}
 	return true
@@ -1173,6 +1182,111 @@ func (d *Driver) adoptWalk(ctx context.Context, routes []any, routesPath string,
 		}
 	}
 	return nil
+}
+
+// Ack stamps the crenel-ack:<reason> marker (docs/design/ack-marker.md) onto the
+// FIRST route matching host, via PATCH — same match/handlers/backend, only the
+// @id changes. It navigates the RAW config (like Adopt/adoptWalk) so unmodeled
+// fields survive untouched. Idempotent: a route already carrying this exact
+// marker is skipped. Implements ports.Acker.
+func (d *Driver) Ack(ctx context.Context, host, reason string) error {
+	_, raw, err := d.fetchConfigRaw(ctx)
+	if err != nil {
+		return fmt.Errorf("caddy ack: read live: %w", err)
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		return fmt.Errorf("caddy ack: parse config: %w", err)
+	}
+	routes := rawRoutes(cfg, d.server)
+	base := fmt.Sprintf("/config/apps/http/servers/%s/routes", d.server)
+	found, err := d.ackWalk(ctx, routes, base, host, model.AckMarker(reason))
+	if err != nil {
+		return fmt.Errorf("caddy ack %s: %w", host, err)
+	}
+	if !found {
+		return fmt.Errorf("caddy ack %s: no route found for this host", host)
+	}
+	return nil
+}
+
+// Unack removes the crenel-ack marker from host's route (restoring @id to
+// empty), reverting it to whatever Unparsed kind it would otherwise classify
+// as. A no-op if the route is not currently ack'd. Implements ports.Acker.
+func (d *Driver) Unack(ctx context.Context, host string) error {
+	_, raw, err := d.fetchConfigRaw(ctx)
+	if err != nil {
+		return fmt.Errorf("caddy unack: read live: %w", err)
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		return fmt.Errorf("caddy unack: parse config: %w", err)
+	}
+	routes := rawRoutes(cfg, d.server)
+	base := fmt.Sprintf("/config/apps/http/servers/%s/routes", d.server)
+	_, err = d.ackWalk(ctx, routes, base, host, "")
+	if err != nil {
+		return fmt.Errorf("caddy unack %s: %w", host, err)
+	}
+	return nil // no matching (or already-unacked) route is a tolerated no-op
+}
+
+// ackWalk recursively locates the FIRST route matching host (descending into
+// nested subroute handlers the same way adoptWalk does) and PATCHes its @id to
+// marker (empty string removes it, for Unack). Skips a route whose @id is
+// already exactly marker (idempotent) or is crenel's OWNERSHIP marker (Ack/
+// Unack never touch a crenel-managed route — that @id means something else).
+// Returns found=true once a matching route was located, whether or not a PATCH
+// was needed.
+func (d *Driver) ackWalk(ctx context.Context, routes []any, routesPath, host, marker string) (found bool, err error) {
+	for idx, rt := range routes {
+		rm, ok := rt.(map[string]any)
+		if !ok {
+			continue
+		}
+		routePath := fmt.Sprintf("%s/%d", routesPath, idx)
+		if rh := rawRouteHost(rm); rh != "" && strings.EqualFold(rh, host) {
+			id, _ := rm["@id"].(string)
+			if id == routeID(host) {
+				return false, fmt.Errorf("route for %s is crenel-managed, not a declared-unknown carve-out — ack does not apply", host)
+			}
+			if id == marker {
+				return true, nil // idempotent: already in the desired state
+			}
+			if marker == "" {
+				if !strings.HasPrefix(id, model.AckMarkerPrefix) {
+					return true, nil // not currently ack'd — Unack is a tolerated no-op
+				}
+				delete(rm, "@id")
+			} else {
+				rm["@id"] = marker
+			}
+			body, err := json.Marshal(rm)
+			if err != nil {
+				return false, fmt.Errorf("marshal route %s: %w", host, err)
+			}
+			if err := d.adminWrite(ctx, http.MethodPatch, routePath, body); err != nil {
+				return false, fmt.Errorf("stamp %s: %w", host, err)
+			}
+			return true, d.settle(ctx)
+		}
+		handlers, _ := rm["handle"].([]any)
+		for hidx, h := range handlers {
+			hm, ok := h.(map[string]any)
+			if !ok || hm["handler"] != handlerSubroute {
+				continue
+			}
+			sub, _ := hm["routes"].([]any)
+			if len(sub) == 0 {
+				continue
+			}
+			subPath := fmt.Sprintf("%s/handle/%d/routes", routePath, hidx)
+			if f, err := d.ackWalk(ctx, sub, subPath, host, marker); f || err != nil {
+				return f, err
+			}
+		}
+	}
+	return false, nil
 }
 
 // rawRoutes returns the apps.http.servers.<srv>.routes array from a generic config

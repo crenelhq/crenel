@@ -74,6 +74,11 @@ type router struct {
 	EntryPoints []string `json:"entryPoints,omitempty"`
 	Middlewares []string `json:"middlewares,omitempty"`
 	TLS         *tlsConf `json:"tls,omitempty"`
+	// CrenelAck carries an operator's crenel-ack:<slug> marker (see
+	// docs/design/ack-marker.md) — Traefik's file-provider JSON has no generic
+	// per-router label/comment slot, so crenel adds this field itself; Traefik
+	// ignores unrecognized router fields at runtime.
+	CrenelAck string `json:"crenelAck,omitempty"`
 }
 
 // tlsConf is carried opaquely so unmanaged routers' TLS settings survive a

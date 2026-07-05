@@ -1,0 +1,25 @@
+{
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "match": [{"host": ["grafana.example.com"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.5:3000"}]}]
+            },
+            {
+              "@id": "crenel-ack:webhook-tailnet-agents",
+              "match": [{"host": ["app.example.com"], "path": ["/api/webhook/*"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.9:8080"}]}]
+            },
+            {
+              "handle": [{"handler": "static_response", "status_code": 403}]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

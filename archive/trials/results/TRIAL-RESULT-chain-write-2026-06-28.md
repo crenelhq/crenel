@@ -38,17 +38,17 @@ apply rejection on production** — not a fake.
 
 ## Access model used (resolved at execution time)
 
-The plan's literal "crenel on the VPS, home via `ssh root@pve1`" had a name-resolution
-snag: on the VPS, `pve1` resolves to a public IP (`203.0.113.7`) that is firewalled on
+The plan's literal "crenel on the VPS, home via `ssh root@proxmox`" had a name-resolution
+snag: on the VPS, `proxmox` resolves to a public IP (`203.0.113.7`) that is firewalled on
 :22, so the hostname timed out. The Proxmox host's reachable **Tailscale IP `100.100.0.7`**
-*is* open on :22 from the VPS, and the pre-authorized key **`vps-to-pve1-20260628`** was
-already present in pve1's root `authorized_keys`. Resolution (no home-side change needed):
+*is* open on :22 from the VPS, and the pre-authorized key **`vps-to-proxmox-20260628`** was
+already present in proxmox's root `authorized_keys`. Resolution (no home-side change needed):
 
 - **crenel ran ON THE VPS** (`~/crenel-test/crenel-develop`, develop `f3d144d`, linux/arm64).
 - **FRONT (vps):** transport `direct` → `http://127.0.0.1:2019` (VPS loopback).
 - **HOME:** transport `ssh-exec`, exec prefix
-  `ssh -i ~/.ssh/pve1_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes root@100.100.0.7 pct exec 150 -- docker exec -i caddy sh`
-  → curl `http://127.0.0.1:2019` on the container loopback. `100.100.0.7` **is** `pve1`
+  `ssh -i ~/.ssh/proxmox_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes root@100.100.0.7 pct exec 100 -- docker exec -i caddy sh`
+  → curl `http://127.0.0.1:2019` on the container loopback. `100.100.0.7` **is** `proxmox`
   (its Tailscale IP); host key pinned + verified (`SHA256:S4fx6Lpf…`), not TOFU.
 - **No home admin published, no tunnel, no home container config touched.** Both admin APIs
   stayed loopback-only and unpublished the entire run (stop-condition #6 never approached).
@@ -108,7 +108,7 @@ correct `reverse_proxy`-based `forward_auth`, or (b) require the operator's snip
 | 3 prod hosts (`auth`/`git`.homelab.example, `auth`.smallbiz.example) | **200** |
 | `caddy-edge` (VPS) / `caddy` (home) RestartCount | **0 / 0**, both running |
 | Admin-API wedge (crowdsec storm signature) | **none** — clean 500 + responsive admin |
-| Throwaway responder (LXC 150 :9999) | stood up, verified reachable from caddy container, then **torn down** (port free) |
+| Throwaway responder (LXC 100 :9999) | stood up, verified reachable from caddy container, then **torn down** (port free) |
 
 No hard stop-and-restore condition was tripped; no R1–R4 recovery was needed (crenel's own
 atomic abort left both edges clean). Backups + sha anchors at
@@ -498,7 +498,7 @@ same `X-Forwarded-Method/Uri`, same 4 `Remote-*` copy-headers, same `handle_resp
 The only diffs are cosmetic (a `subroute` wrapper, a no-op `vars crenel_policy` marker, copy-header
 order) and do not affect the auth decision. **So the gate is NOT pointed at a wrong/second Authelia;
 it dials the correct home Authelia.** (the maintainer's "maybe there's a vps-edge Authelia" was correctly
-disregarded — there is one Authelia, `authelia/authelia:4.39.20`, on LXC 150.)
+disregarded — there is one Authelia, `authelia/authelia:4.39.20`, on LXC 100.)
 
 ## Then: a mutation-free direct probe pinned the cause to Authelia's per-host policy
 
@@ -508,7 +508,7 @@ Asking the home Authelia's `/api/verify` directly (forward-auth headers, **no cr
 |---|---|---|---|
 | `crenel-selftest.homelab.example` | **403** (no rule) | **302** → portal | **403** (rule gone) |
 | `home.homelab.example` (configured) | 302 | 302 | 302 |
-| `dockhand.homelab.example` (configured) | 302 | — | 302 |
+| `app.homelab.example` (configured) | 302 | — | 302 |
 | `randomzzz999.homelab.example` (never configured) | **403** | **403** | **403** |
 
 Authelia uses **explicit per-host rules** (`default_policy: deny`, no `*.homelab.example` wildcard —
@@ -516,8 +516,8 @@ Authelia uses **explicit per-host rules** (`default_policy: deny`, no `*.homelab
 
 ## The temporary Authelia change (authorized, minimal, fully reverted)
 
-- **Backed up** `/etc/homeedge/authelia/config/configuration.yml` (LXC 150) → `…crenel-trial-bak`,
-  sha `7f622e23…` (the restore anchor), `0600`. Edit performed **on LXC 150** so the secret-bearing
+- **Backed up** `/etc/homeedge/authelia/config/configuration.yml` (LXC 100) → `…crenel-trial-bak`,
+  sha `7f622e23…` (the restore anchor), `0600`. Edit performed **on LXC 100** so the secret-bearing
   config never transited to the VPS or any log.
 - **Inserted** a marker-delimited rule after `home.homelab.example`:
   ```yaml
@@ -549,17 +549,17 @@ control still 302; 3 prod hosts 200 throughout.
 | crenel `unexpose` | read-back ✓ both, verified, exit 0 |
 | Both caddy edges byte-for-byte | **VPS `43901caf…` / HOME `e509c326…` == Step-1 anchors**, 0/0 crenel `@id` residue |
 | Authelia config restored | byte-for-byte from backup → sha **`7f622e23…` == original**, `CRENEL-TRIAL-TEMP` marker count 0 |
-| Authelia post-revert probe | `crenel-selftest` → **403** again; `home`/`dockhand` → 302; `randomzzz999` → 403 (no collateral) |
+| Authelia post-revert probe | `crenel-selftest` → **403** again; `home`/`app` → 302; `randomzzz999` → 403 (no collateral) |
 | Authelia container | **healthy**, running; `RestartCount=0` (manual `docker restart` doesn't increment it; bounced 3× total — apply-rule, one accidental no-op, real restore — all healthy) |
 | 3 prod hosts | 200 / 200 / 200 |
 | caddy RestartCount | VPS 0 / HOME 0, both running; no wedge |
 | Home admin on tailnet | refused throughout |
 | Responder (`:9999`) | stopped; refused from caddy |
-| LXC-150 trial backup | shredded/removed — Authelia config dir back to pristine (only `configuration.yml` + the maintainer's own `.bak`s) |
+| LXC-100 trial backup | shredded/removed — Authelia config dir back to pristine (only `configuration.yml` + the maintainer's own `.bak`s) |
 | Temp files | VPS trial config + helper scripts removed; Mac scratchpad wiped; no secrets printed |
 
-**One honest process note:** the first restore attempt ran `cp`/`sha256sum` on the **pve1 host**
-instead of **inside LXC 150** (missing `pct exec 150 --`), so it was a no-op and Authelia briefly
+**One honest process note:** the first restore attempt ran `cp`/`sha256sum` on the **proxmox host**
+instead of **inside LXC 100** (missing `pct exec 100 --`), so it was a no-op and Authelia briefly
 restarted still carrying the temp rule. Caught immediately from the output (`cp: cannot stat …`,
 marker count still 2, `crenel-selftest` still 302), re-ran the restore correctly inside the
 container, and confirmed the byte-for-byte revert. No crenel route was up during that window
@@ -593,14 +593,14 @@ editing Authelia each run**. So the Authelia config was NOT left pristine — th
 ```
 
 - **Record backup kept:** the pre-edit pristine config (sha `7f622e23…`, byte-identical to the
-  original pre-trial bytes) is preserved on LXC 150 as
+  original pre-trial bytes) is preserved on LXC 100 as
   `/etc/homeedge/authelia/config/configuration.yml.bak.20260628-pre-crenel-selftest` (`0600`), alongside
   the maintainer's own `configuration.yml.bak.*` files.
 - **Final active Authelia config:** sha `f1c6d250…` = pristine + the single permanent `crenel-selftest`
   rule. `authelia validate-config` → exit 0; `docker restart authelia` → healthy.
 - **Verified (direct probe to `authelia:9080/api/verify`):** `crenel-selftest.homelab.example` → **302**
   (`Location: https://auth.homelab.example/?rd=…crenel-selftest…` + `Set-Cookie authelia_session`);
-  `home.homelab.example` → 302; `dockhand.homelab.example` → 302; `randomzzz999.homelab.example` → **403**
+  `home.homelab.example` → 302; `app.homelab.example` → 302; `randomzzz999.homelab.example` → **403**
   (default-deny intact — no collateral, the rule is host-specific).
 - **Edges:** both Caddy edges remain **byte-for-byte** at the Step-1 anchors (`43901caf…` / `e509c326…`),
   **0** crenel `@id` residue — the edge teardown was correct and is unchanged by this amendment.

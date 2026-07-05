@@ -161,6 +161,23 @@ func (d *Driver) ReadLiveState(ctx context.Context) (model.LiveEdgeState, error)
 	return d.normalize(text), nil
 }
 
+// ackAware builds the Unparsed entry for a would-be-unknown server block of the
+// given fallback kind, checking raw (the block's verbatim text, comments
+// included) for the operator's `# crenel-ack:<slug>` marker — the comment-marker
+// analogue of Caddy's @id (see docs/design/ack-marker.md). If present, the
+// entry is declared UnknownAcknowledged instead of kind — DenyState no longer
+// blocks on it, but it stays fully visible.
+func ackAware(loc, reason, raw string, kind model.UnknownKind) model.Unparsed {
+	if slug, ok := model.ParseAckMarker(raw); ok {
+		return model.Unparsed{
+			Locator: loc, Kind: model.UnknownAcknowledged,
+			Reason:     fmt.Sprintf("acknowledged by operator (%s) — %s", slug, reason),
+			RawExcerpt: boundedExcerpt(raw),
+		}
+	}
+	return model.Unparsed{Locator: loc, Kind: kind, Reason: reason, RawExcerpt: boundedExcerpt(raw)}
+}
+
 // normalize walks the parsed config into a LiveEdgeState.
 func (d *Driver) normalize(text string) model.LiveEdgeState {
 	state := model.LiveEdgeState{Raw: text}
@@ -231,11 +248,8 @@ func (d *Driver) normalize(text string) model.LiveEdgeState {
 			// serves content some way crenel does not model (static root, fastcgi,
 			// return/redirect). DECLARE its effective exposure unknown rather than drop
 			// it silently (detect-and-declare-unknown, register §4).
-			state.Unparsed = append(state.Unparsed, model.Unparsed{
-				Locator: "server " + c.host, Kind: model.UnknownHandler,
-				Reason:     fmt.Sprintf("server block for %s has no proxy_pass crenel can model (non-reverse-proxy vhost)", c.host),
-				RawExcerpt: boundedExcerpt(c.raw),
-			})
+			reason := fmt.Sprintf("server block for %s has no proxy_pass crenel can model (non-reverse-proxy vhost)", c.host)
+			state.Unparsed = append(state.Unparsed, ackAware("server "+c.host, reason, c.raw, model.UnknownHandler))
 			continue
 		}
 		if c.pathScoped {
@@ -244,12 +258,9 @@ func (d *Driver) normalize(text string) model.LiveEdgeState {
 			// host->firstBackend would silently drop the other paths (and could merge two
 			// paths' distinct backends/auth). DECLARE it matcher_conditional (register §4 —
 			// the Caddy/Traefik path-matcher analogue). Full path-granular MODELING is P5.
-			state.Unparsed = append(state.Unparsed, model.Unparsed{
-				Locator: "server " + c.host, Kind: model.UnknownMatcher,
-				Reason: fmt.Sprintf("server block for %s routes by location path(s) crenel does not model (%s) — path-granular routing is not represented at host granularity",
-					c.host, strings.Join(c.extraPaths, ", ")),
-				RawExcerpt: boundedExcerpt(c.raw),
-			})
+			reason := fmt.Sprintf("server block for %s routes by location path(s) crenel does not model (%s) — path-granular routing is not represented at host granularity",
+				c.host, strings.Join(c.extraPaths, ", "))
+			state.Unparsed = append(state.Unparsed, ackAware("server "+c.host, reason, c.raw, model.UnknownMatcher))
 			continue
 		}
 		// auth_request recognition: a crenel-managed block round-trips its policy via

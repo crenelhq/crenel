@@ -128,6 +128,15 @@ type Engine struct {
 	// be FOREIGN (generator-owned): that would be reverted, so there is no safe force.
 	// Default false. See TOPOLOGY-RISK-REGISTER §4.5.
 	Force bool
+
+	// AllowUnverified is the operator escape hatch for the runtime-verify-honesty
+	// gate (audit F2): a file-based edge (Traefik/nginx) with no runtime probe
+	// configured can only confirm its OWN written file, never the running daemon.
+	// Without this set, Apply/Rename/ApplyDeclarative REFUSE (rolling back the write)
+	// when any participating edge comes back RuntimeVerifyUnavailable, rather than
+	// let an unconfirmed write stand as a silent green. Default false — load-bearing-
+	// on-the-human, same spirit as Force. See UnverifiedWriteError.
+	AllowUnverified bool
 }
 
 // New builds a single-edge Engine with compensating rollback enabled by default.

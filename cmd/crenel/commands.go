@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -54,6 +55,13 @@ type cli struct {
 }
 
 func (c *cli) dispatch(ctx context.Context, verb string, args []string) error {
+	if mutatingVerbs[verb] {
+		unlock, err := acquireLock(lockPath(c.settingsPath))
+		if err != nil {
+			return err
+		}
+		defer unlock()
+	}
 	switch verb {
 	case "status":
 		return c.cmdStatus(ctx, args)
@@ -83,6 +91,10 @@ func (c *cli) dispatch(ctx context.Context, verb string, args []string) error {
 		return c.cmdSet(ctx, args)
 	case "rename", "move":
 		return c.cmdRename(ctx, args)
+	case "ack":
+		return c.cmdAck(ctx, args)
+	case "unack":
+		return c.cmdUnack(ctx, args)
 	case "serve", "dashboard":
 		return c.cmdServe(ctx, args)
 	case "version", "-v", "--version":
@@ -172,10 +184,14 @@ func (c *cli) writeStatusDetail(rep core.StatusReport) {
 		fmt.Fprintln(c.out, header)
 
 		// Coverage line — never present a partial parse as a complete one (register §4.2).
+		// An operator-ACKNOWLEDGED unknown (docs/design/ack-marker.md) does not count
+		// against coverage — it's excluded from both the "not understood" count here and
+		// FullyParsed/DenyState.
 		understood, total := es.Coverage()
+		acked := es.Acknowledged()
 		if !es.FullyParsed() {
 			fmt.Fprintf(c.out, "  Coverage: read %d/%d routes — %d NOT UNDERSTOOD — exposure status INCOMPLETE\n",
-				understood, total, len(es.Unparsed))
+				understood, total-len(acked), len(es.Unparsed)-len(acked))
 		}
 
 		// Default-deny — TERNARY (register §4.4): ENFORCED only when fully parsed.
@@ -183,7 +199,7 @@ func (c *cli) writeStatusDetail(rep core.StatusReport) {
 		case model.DenyEnforced:
 			fmt.Fprintln(c.out, "  Default-deny catch-all: ENFORCED")
 		case model.DenyUnknown:
-			fmt.Fprintf(c.out, "  Default-deny catch-all: UNKNOWN (config not fully parsed — %d unparsed)\n", len(es.Unparsed))
+			fmt.Fprintf(c.out, "  Default-deny catch-all: UNKNOWN (config not fully parsed — %d unparsed)\n", len(es.Unparsed)-len(acked))
 		default:
 			fmt.Fprintln(c.out, "  Default-deny catch-all: MISSING  ⚠ FAIL-OPEN")
 		}
@@ -212,11 +228,25 @@ func (c *cli) writeStatusDetail(rep core.StatusReport) {
 			}
 		}
 
-		// ⚠ Not understood — the first-class unknowns section (register §4.2).
-		if len(es.Unparsed) > 0 {
-			fmt.Fprintf(c.out, "  ⚠ Not understood (%d):\n", len(es.Unparsed))
-			for _, u := range es.Unparsed {
+		// ⚠ Not understood — the first-class unknowns section (register §4.2). An
+		// acknowledged unknown (docs/design/ack-marker.md) gets its own ACK line
+		// instead — a third state: not verified-green, not an unaddressed unknown.
+		var notUnderstood []model.Unparsed
+		for _, u := range es.Unparsed {
+			if u.Kind != model.UnknownAcknowledged {
+				notUnderstood = append(notUnderstood, u)
+			}
+		}
+		if len(notUnderstood) > 0 {
+			fmt.Fprintf(c.out, "  ⚠ Not understood (%d):\n", len(notUnderstood))
+			for _, u := range notUnderstood {
 				fmt.Fprintf(c.out, "    %-44s %s — %s\n", u.Locator, u.Kind, u.Reason)
+			}
+		}
+		if len(acked) > 0 {
+			fmt.Fprintf(c.out, "  ACK — acknowledged by operator (%d, not blocking default-deny):\n", len(acked))
+			for _, u := range acked {
+				fmt.Fprintf(c.out, "    %-44s %s\n", u.Locator, u.Reason)
 			}
 		}
 		if es.Generator != "" {
@@ -539,6 +569,10 @@ func (c *cli) cmdDrift(ctx context.Context) error {
 // like the other mutating verbs (honors --yes).
 func (c *cli) cmdReconcile(ctx context.Context) error {
 	rep, err := c.engine.Reconcile(ctx, c.reconcileConfirm())
+	if err != nil && c.confirmUnverifiedOverride(err) {
+		c.engine.AllowUnverified = true
+		rep, err = c.engine.Reconcile(ctx, core.AlwaysYesReconcile)
+	}
 	if c.gf.jsonOut && err == nil {
 		return c.writeJSON(rep)
 	}
@@ -653,7 +687,7 @@ origins:
 # apply when omitted (Caddy import <name>, Traefik <name>@file, nginx /<name>).
 # auth_policies:
 #   authelia:
-#     caddy_forward_auth: authelia:9080    # or caddy_import: authelia
+#     caddy_forward_auth: authelia:9091    # or caddy_import: authelia
 #     traefik_middleware: authelia@file
 #     nginx_auth_request: /authelia
 
@@ -773,6 +807,10 @@ func (c *cli) cmdApply(ctx context.Context, args []string) error {
 		return err
 	}
 	rep, err := c.engine.ApplyDeclarative(ctx, doc.Exposures, opts, c.confirmFunc())
+	if err != nil && c.confirmUnverifiedOverride(err) {
+		c.engine.AllowUnverified = true
+		rep, err = c.engine.ApplyDeclarative(ctx, doc.Exposures, opts, core.AlwaysYes)
+	}
 	if c.gf.jsonOut && err == nil {
 		return c.writeJSON(rep)
 	}
@@ -998,11 +1036,49 @@ func (c *cli) cmdRename(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: rename <old-host> <new-host>")
 	}
 	rep, err := c.engine.Rename(ctx, args[0], args[1], c.confirmFunc())
+	if err != nil && c.confirmUnverifiedOverride(err) {
+		c.engine.AllowUnverified = true
+		rep, err = c.engine.Rename(ctx, args[0], args[1], core.AlwaysYes)
+	}
 	if err != nil {
 		c.printApplyReport(rep)
 		return err
 	}
 	c.printApplyReport(rep)
+	return nil
+}
+
+// cmdAck stamps the operator's crenel-ack:<reason> marker (docs/design/
+// ack-marker.md) onto a declared-unknown route for host, in the live config
+// itself — no sidecar store, generalizing the crenel-route ownership marker.
+// Requires --reason. Only the Caddy driver implements ports.Acker today;
+// Traefik/nginx recognize a hand-written marker on read but crenel cannot yet
+// stamp it for them — the error says so.
+func (c *cli) cmdAck(ctx context.Context, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: ack <host> --reason <slug>")
+	}
+	if c.gf.reason == "" {
+		return fmt.Errorf("ack %s: --reason is required (the crenel-ack:<reason> slug — see docs/design/ack-marker.md)", args[0])
+	}
+	if err := c.engine.Ack(ctx, args[0], c.gf.reason); err != nil {
+		return err
+	}
+	fmt.Fprintf(c.out, "acknowledged: %s (reason: %s) — no longer blocks default-deny; still listed as ACK in status/audit\n", args[0], c.gf.reason)
+	return nil
+}
+
+// cmdUnack removes the crenel-ack marker from host's route, reverting it to
+// whatever Unparsed kind it would otherwise classify as. A no-op if host was
+// not currently ack'd.
+func (c *cli) cmdUnack(ctx context.Context, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: unack <host>")
+	}
+	if err := c.engine.Unack(ctx, args[0]); err != nil {
+		return err
+	}
+	fmt.Fprintf(c.out, "unacknowledged: %s\n", args[0])
 	return nil
 }
 
@@ -1038,6 +1114,10 @@ func (c *cli) applyOp(ctx context.Context, op model.Op) error {
 	}
 	confirm := c.confirmFunc()
 	rep, err := c.engine.Apply(ctx, op, confirm)
+	if err != nil && c.confirmUnverifiedOverride(err) {
+		c.engine.AllowUnverified = true
+		rep, err = c.engine.Apply(ctx, op, core.AlwaysYes)
+	}
 	if err != nil {
 		// Even on verification failure, show what we attempted.
 		c.printApplyReport(rep)
@@ -1122,6 +1202,31 @@ func (c *cli) guardPublicAuth(ctx context.Context, op model.Op) error {
 	}
 	return fmt.Errorf("refusing to expose %s PUBLIC with no auth — pass --auth <policy> to protect it, "+
 		"or --auth none to publish it unprotected on purpose", strings.Join(cs.NewPublic, ", "))
+}
+
+// confirmUnverifiedOverride is the F2 gate's "(or interactive confirm)"
+// alternative to --allow-unverified: if err is a *core.UnverifiedWriteError,
+// asks the operator directly whether to accept the unconfirmed write. `--yes`
+// implies non-interactive, so it does NOT trigger this prompt — a scripted run
+// must pass --allow-unverified explicitly. Returns false (no prompt, no accept)
+// for any other error.
+func (c *cli) confirmUnverifiedOverride(err error) bool {
+	var uerr *core.UnverifiedWriteError
+	if !errors.As(err, &uerr) || c.gf.yes {
+		return false
+	}
+	in := c.in
+	if in == nil {
+		in = os.Stdin
+	}
+	fmt.Fprintf(c.out, "\n%v\nAccept this unconfirmed write anyway? [y/N]: ", uerr)
+	reader := bufio.NewReader(in)
+	line, rerr := reader.ReadString('\n')
+	if rerr != nil && rerr != io.EOF {
+		return false
+	}
+	ans := strings.ToLower(strings.TrimSpace(line))
+	return ans == "y" || ans == "yes"
 }
 
 // confirmFunc returns AlwaysYes when --yes, else an interactive prompt that

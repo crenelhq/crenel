@@ -33,10 +33,12 @@ func partialEngine(t *testing.T) (*core.Engine, string) {
 	if err := os.WriteFile(path, []byte(`{}`), 0o644); err != nil { // vps: not yet exposed
 		t.Fatal(err)
 	}
-	vpsOrigins := map[string]string{"grafana": "100.100.0.5:3000"}
+	vpsOrigins := map[string]string{"grafana": "100.64.0.5:3000"}
 	vps := core.EdgeBinding{Name: "vps", Provider: traefik.New(path, static.New(vpsOrigins)), Fronts: frontsFor(vpsOrigins)}
 
-	return core.NewMulti([]core.EdgeBinding{home, vps}, "example.com"), path
+	e := core.NewMulti([]core.EdgeBinding{home, vps}, "example.com")
+	e.AllowUnverified = true // vps traefik has no runtime probe configured; not what these tests are about
+	return e, path
 }
 
 // TestResume_CompletesInterruptedDoubleWrite: resume diagnoses home as done and
@@ -92,7 +94,7 @@ func TestResume_RollsBackCleanlyOnFailedCompletion(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{}`), 0o644); err != nil { // vps: pending
 		t.Fatal(err)
 	}
-	vpsOrigins := map[string]string{"grafana": "100.100.0.5:3000"}
+	vpsOrigins := map[string]string{"grafana": "100.64.0.5:3000"}
 	vps := core.EdgeBinding{Name: "vps", Provider: traefik.New(path, static.New(vpsOrigins)), Fronts: frontsFor(vpsOrigins)}
 
 	sh := dnscontrolfake.New("example.com")

@@ -27,6 +27,45 @@ type ConfirmFunc func(model.ChangeSet) (bool, error)
 // AlwaysYes is a ConfirmFunc that approves without prompting (for --yes).
 func AlwaysYes(model.ChangeSet) (bool, error) { return true, nil }
 
+// UnverifiedWriteError is returned by Apply/Rename/ApplyDeclarative when every
+// provider's artifact re-read matched (Verified() is true) but at least one
+// file-based edge (Traefik/nginx) had no runtime probe configured, so the write
+// could NOT be confirmed against the running daemon — RuntimeVerifyUnavailable
+// (audit F2). The write is rolled back rather than left standing as an unconfirmed
+// "green". Providers names the affected edges. Retry with Engine.AllowUnverified
+// = true (the CLI's --allow-unverified, or an interactive accept) to proceed
+// anyway, or configure a runtime probe on the affected driver(s).
+type UnverifiedWriteError struct {
+	Providers []string
+}
+
+func (e *UnverifiedWriteError) Error() string {
+	return fmt.Sprintf("runtime verify unavailable for %s — write rolled back; pass --allow-unverified "+
+		"to accept an unconfirmed write, or configure a runtime probe on the affected driver",
+		strings.Join(e.Providers, ", "))
+}
+
+// gateRuntimeVerify enforces bounded honesty (audit F2): when any result in verify
+// is a file-driver write whose daemon could not be confirmed, refuse — rolling back
+// applied — unless the operator has explicitly accepted that via Engine.
+// AllowUnverified. Never silently green. Returns nil when there is nothing to gate
+// (fully verified, or already accepted).
+func (e *Engine) gateRuntimeVerify(ctx context.Context, verify []VerifyResult, applied []compensator, rep *txnOutcome) error {
+	if e.AllowUnverified {
+		return nil
+	}
+	unconfirmed := runtimeUnconfirmedResults(verify)
+	if len(unconfirmed) == 0 {
+		return nil
+	}
+	e.rollback(ctx, applied, rep)
+	names := make([]string, len(unconfirmed))
+	for i, v := range unconfirmed {
+		names[i] = v.Provider
+	}
+	return &UnverifiedWriteError{Providers: names}
+}
+
 // Apply runs the full mutating flow for an op:
 //
 //	plan -> confirm -> apply -> READ-BACK-VERIFY each provider -> report
@@ -128,6 +167,9 @@ func (e *Engine) applyPlanned(ctx context.Context, op model.Op, cs model.ChangeS
 			}
 		}
 		return rep, fmt.Errorf("read-back verification FAILED (provider reported success but live state did not change): %s", strings.Join(bad, "; "))
+	}
+	if err := e.gateRuntimeVerify(ctx, rep.Verify, applied, &rep.txnOutcome); err != nil {
+		return rep, err
 	}
 	// Durability: persist the managed routes on any on-disk-persisting edge
 	// (best-effort; a failure is a warning, not a rollback).

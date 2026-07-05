@@ -84,6 +84,16 @@ func (r ReconcileReport) Verified() bool {
 	return true
 }
 
+// FullyVerified reports whether the reconcile may HONESTLY claim "verified" — see
+// ApplyReport.FullyVerified.
+func (r ReconcileReport) FullyVerified() bool { return fullyVerified(r.Verify) }
+
+// RuntimeUnconfirmed returns the OK results whose daemon could not be confirmed —
+// see ApplyReport.RuntimeUnconfirmed.
+func (r ReconcileReport) RuntimeUnconfirmed() []VerifyResult {
+	return runtimeUnconfirmedResults(r.Verify)
+}
+
 // canonicalState is the "should be true" snapshot derived from live: the set of
 // managed exposed hosts and, per host, its canonical mode AND forward-auth (each the
 // value it carries on the FIRST edge — in topology order — that exposes it; the
@@ -186,6 +196,9 @@ func (e *Engine) Reconcile(ctx context.Context, confirm ReconcileConfirmFunc) (R
 			}
 		}
 		return rep, fmt.Errorf("reconcile read-back verification FAILED: %s", strings.Join(bad, "; "))
+	}
+	if err := e.gateRuntimeVerify(ctx, rep.Verify, applied, &rep.txnOutcome); err != nil {
+		return rep, err
 	}
 	e.persistEdges(ctx, plan.Change.Edges, &rep.txnOutcome)
 	return rep, nil

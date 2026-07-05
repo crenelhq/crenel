@@ -35,6 +35,7 @@ func TestCore_DrivesTraefikEdge(t *testing.T) {
 		ZoneName: "example.com", Scope: model.ScopePublic, EdgeAddr: "203.0.113.9", Shell: pub,
 	})
 	e := core.New(edge, "example.com", dns)
+	e.AllowUnverified = true // no runtime probe configured; not what this test is about
 	ctx := context.Background()
 
 	// Expose.

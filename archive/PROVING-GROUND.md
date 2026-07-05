@@ -14,12 +14,12 @@ NetBird) needed the same treatment before any public multi-backend claim.
 
 | | |
 |---|---|
-| Proxmox node | `pve1` (10.0.0.10, Tailscale 100.100.0.7) — `ssh root@pve1` |
-| CT ID / host | **120** / `crenel-proving` |
+| Proxmox node | `proxmox` (10.0.0.10, Tailscale 100.100.0.7) — `ssh root@proxmox` |
+| CT ID / host | **110** / `crenel-proving` |
 | IP | **10.0.0.20/24** (octet convention: CTID−100) |
 | OS | Debian 13 unprivileged, `nesting=1,keyctl=1` (Docker-in-LXC) |
 | Resources | 4 cores / 6 GiB RAM / 2 GiB swap / 24 GiB on `local-nvme` |
-| Enter | `ssh root@pve1 'pct exec 120 -- bash'` |
+| Enter | `ssh root@proxmox 'pct exec 110 -- bash'` |
 
 ### Isolation
 - **Real guarantee:** every bench daemon binds to `127.0.0.1` inside the CT, and crenel
@@ -50,7 +50,7 @@ Ports (all `127.0.0.1`): Traefik web `8000` / api `8080`; nginx `8081`; Caddy ht
 ## Re-running the bench
 
 ```bash
-ssh root@pve1 'pct exec 120 -- bash -lc "
+ssh root@proxmox 'pct exec 110 -- bash -lc "
   cd /opt/crenel-bench/<driver> && docker compose up -d   # ensure the stack is up
   /opt/crenel-bench/bin/crenel -config settings*.json status --plain
 "'

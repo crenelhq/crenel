@@ -201,7 +201,7 @@ type TransportSettings struct {
 	// --- ssh-exec ---
 	// Command is the exec PREFIX argv (NOT shell-parsed) that lands a stdin-reading
 	// POSIX shell where the admin loopback lives, e.g.
-	//   ["ssh","root@pve1","pct","exec","150","--","docker","exec","-i","caddy","sh"]
+	//   ["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]
 	Command []string `json:"command,omitempty"`
 	// AdminURL is the admin API base URL AS SEEN FROM the far end of the exec chain
 	// (default "http://127.0.0.1:2019"). Distinct from the edge's local admin_url.
@@ -230,7 +230,7 @@ type PersistSettings struct {
 	BootPath string `json:"boot_path,omitempty"`
 	// FileCommand is the exec PREFIX (argv, NOT shell-parsed; innermost element a bare
 	// `sh`) landing a shell on the host that HOLDS the boot file — for the home edge the
-	// LXC host: ["ssh","root@pve1","pct","exec","150","--","sh"]. Empty => the boot file
+	// LXC host: ["ssh","root@proxmox","pct","exec","100","--","sh"]. Empty => the boot file
 	// is on crenel's local filesystem (read/written directly).
 	FileCommand []string `json:"file_command,omitempty"`
 	// FilePath is the boot Caddyfile path on the FileCommand host (e.g.
@@ -238,7 +238,7 @@ type PersistSettings struct {
 	FilePath string `json:"file_path,omitempty"`
 	// CaddyCommand is the exec PREFIX landing a shell where the caddy BINARY runs — for
 	// the home edge inside the container:
-	// ["ssh","root@pve1","pct","exec","150","--","docker","exec","-i","caddy","sh"].
+	// ["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"].
 	// Empty => a local `caddy` binary.
 	CaddyCommand []string `json:"caddy_command,omitempty"`
 	// Adapter is the caddy config adapter (default "caddyfile").

@@ -24,8 +24,8 @@ func (r *recRunner) Run(_ context.Context, argv []string, stdin []byte) ([]byte,
 	return []byte(r.stdout), []byte(r.stderr), r.code, nil
 }
 
-var homeFileCmd = []string{"ssh", "root@pve1", "pct", "exec", "150", "--", "sh"}
-var homeCaddyCmd = []string{"ssh", "root@pve1", "pct", "exec", "150", "--", "docker", "exec", "-i", "caddy", "sh"}
+var homeFileCmd = []string{"ssh", "root@proxmox", "pct", "exec", "100", "--", "sh"}
+var homeCaddyCmd = []string{"ssh", "root@proxmox", "pct", "exec", "100", "--", "docker", "exec", "-i", "caddy", "sh"}
 
 func TestExecConfigStore_ReadWrite(t *testing.T) {
 	// READ: cat the host-side path over the file channel.

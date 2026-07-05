@@ -16,10 +16,8 @@
 > throughout as consistent pseudonyms (`homelab.example`, `smallbiz.example`,
 > RFC 5737/1918 ranges, generic host labels).
 >
-> _Last updated 2026-06-30 (capstone of the offline-provable correctness phase: PRs
-> #11–#17 merged on `develop`). Verified against `develop` HEAD `e3597de` (the
-> Tailscale serve.json per-host recovery + per-edge authoritative public merge, PR
-> #17)._
+> _Last updated 2026-07-04 (public launch + independent audit follow-through: F5/F3/F2/
+> ack-marker batch). Verified against `develop` HEAD `fd577e7`._
 >
 > **Correctness milestone (this pass).** The offline-provable silently-wrong gaps the
 > roadmap had identified are closed: surgical record-level Cloudflare apply for shared
@@ -42,6 +40,25 @@
 > **full-chain production expose (`finances.homelab.example` from the home-edge host, all 7 gates green)**.
 > See §6.z **A0** and **TRIAL-RECORD-live-proofs-2026-06-30.md**. What's genuinely live-only
 > now: Tailscale `serve.json` WRITE support.
+>
+> **Public launch + independent audit (2026-07-03 → 07-04).** Crenel shipped its first
+> public release, `v0.4.0`, on `github.com/crenelhq/crenel`. An external audit
+> (DeepSeek, 9 parallel code-tracing subagents) plus an independent verification pass
+> found the default-deny and never-silently-wrong invariants SOUND, no CRITICAL/HIGH
+> findings, and one MEDIUM (**F1** — a stock `http { server {} } `-wrapped nginx.conf,
+> a stream-only config, an include-only config, or a map/upstream-only helper file all
+> read as a false `ENFORCED` with zero routes/zero warnings). Fixed on `develop`
+> (`548d8ad`; `server_not_read` now DECLARES the unrecognized block, downgrading deny to
+> UNKNOWN) and shipped public as `v0.4.1`. The audit + independent verification also left
+> four LOW items (F2/F3/F4/F5) at their original disposition. **This pass closes three of
+> those four** — a minimal
+> GitHub Actions CI (F5), a file-lock around the mutating apply path (F3), and a gate
+> that REFUSES (rolls back) rather than silently stands an unconfirmed file-driver write
+> when no runtime probe is configured (F2, `UnverifiedWriteError`/`--allow-unverified`) —
+> plus ships the `ack` marker (operator acknowledgment of an intentionally-unmodeled
+> route, `docs/design/ack-marker.md`), the real-use item that lets `audit`/`drift` stay
+> cron-clean on a brownfield edge with a vetted carve-out. F4 (reconcile TOCTOU) remains
+> open, documented, low-severity.
 >
 > _Earlier headlines:_ v0.3.2 (hardened Cloudflare DNS LIVE-PROVEN end-to-end on the
 > dedicated `crenel.sh` zone, PR #10 merge `30e72ea`); v0.3.0 KNOWN-RISK BURNDOWN
@@ -136,11 +153,12 @@ truth is what the edge reports live. Three load-bearing invariants:
    default-deny is reported ENFORCED only when fully parsed; Crenel **refuses to
    manage** a route/edge it doesn't own.
 
-**Verification status (current — after the correctness phase #11–#17 on develop
-`e3597de`):** `go build ./... && go vet ./... && go test -race -count=1 ./...` all green
-— **17 test packages OK, 5 with no tests, 498 test functions**, race-clean. ~20.9k LOC
-of non-test Go. (Each PR in the phase landed RED→GREEN with an adversarial-neuter RED
-proof; see §5i and §6.)
+**Verification status (current — develop `fd577e7`, post public-launch/audit-
+follow-through/ack-marker):** `go build ./... && go vet ./... && go test -race -count=1
+./...` all green — **17 test packages with tests, 545 test functions**, race-clean.
+~21.9k LOC of non-test Go. (Each PR in the correctness phase landed RED→GREEN with an
+adversarial-neuter RED proof; see §5i and §6. The 525-function count in the
+2026-07-03 independent audit predates this session's F2/F3/ack-marker tests.)
 
 **KNOWN-RISK BURNDOWN (latest):** four read/verify-side correctness items moved from
 known-risk → correct, each RED-before/GREEN-after with a live-faithful fake, no live infra.
@@ -185,8 +203,8 @@ config). See §5f.
 Caddy admin driver uses for ALL admin calls, with `direct` (default; zero behavior
 change), `ssh-exec` (run the call as a nested-exec curl against a loopback admin — no
 port, no tunnel) and `ssh-tunnel` (crenel-managed local forward) implementations.
-**READ-ONLY-verified LIVE** against the maintainer's home edge over ssh-exec (`ssh root@pve1 →
-pct exec 150 → docker exec -i caddy → sh` → curl `127.0.0.1:2019`): `crenel status`
+**READ-ONLY-verified LIVE** against the maintainer's home edge over ssh-exec (`ssh root@proxmox →
+pct exec 100 → docker exec -i caddy → sh` → curl `127.0.0.1:2019`): `crenel status`
 read 51 live services, default-deny ENFORCED, with the home admin still loopback-only
 and the live config **byte-identical** before/after. See §5e.
 
@@ -630,7 +648,7 @@ unexpose reverses) — the exact trial shape, against fakes. No live infra in an
 the guarded tier self-skips if `sh`/`curl`/`base64` are absent.
 
 **LIVE READ-ONLY verification (no mutation):** configured ssh-exec for the maintainer's HOME edge
-(`["ssh","root@pve1","pct","exec","150","--","docker","exec","-i","caddy","sh"]` →
+(`["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]` →
 curl `http://127.0.0.1:2019`) and ran `crenel status` + a read-only `preview` through
 it. Crenel read the home edge's **live** config — **51 services, default-deny
 ENFORCED** — with the admin still **container-loopback-only** (nothing published, no
@@ -798,8 +816,10 @@ Pulled from the register's roadmap (§5) + what this pass surfaced. Ordered by
    AND a single `expose`/`unexpose`/`reconcile` now lands/tears the coordinated
    front-forward + downstream-route + DNS as one ordered, read-back-verified,
    all-or-nothing transaction (auth attaches downstream; gate spans both edges).
-   **Remaining (follow-on):** a live cross-chain write trial (separate, backed-up step);
-   chain `Adopt` of a pre-existing forward; an `auth: app` annotation for in-app auth.
+   ~~A live cross-chain write trial~~ **DONE** — the coordinated auth-gated write is
+   proven at production scale (§5c/§5d; TRIAL-RECORD-live-proofs-2026-06-30.md §3).
+   **Remaining (follow-on):** chain `Adopt` of a pre-existing forward; an `auth: app`
+   annotation for in-app auth.
 5. ~~**Read-back-verify auth on the apply/declarative paths**~~ **DONE (§5h).** `verifyDeclarative`
    now runs `verifyEdgeAuth` + `verifyEdgeForwardTLS` over the routes it adds — the auth
    read-back is uniform across expose, reconcile, AND declarative apply.
@@ -934,8 +954,12 @@ open are closed. Each was run against real infrastructure and reverted (or left 
 - **P6 long tail.** Multi-zone edge (`zones []`), HA/VIP, TLS-terminated-downstream, Traefik KV provider, k8s ingress (likely a separate driver or explicit decline), nginx managed-block full-fidelity re-render (F6). Each is a coverage extension, each currently reads as a declared unknown.
 - **chain `Adopt` of a pre-existing forward** + **`auth: app`** annotation for in-app auth. Both are P4-write follow-ons (modeling, not safety).
 
-**C. Doc / launch-readiness (not correctness — but the next gating axis for a public FOSS launch).**
-- See the launch-readiness checklist (this consolidation pass) — `crenelhq` GitHub org status, package-name reservations (npm/PyPI/crates — see honest applicability), `LICENSE` (Apache-2.0) + `NOTICE` + `CONTRIBUTING.md`/DCO, `CODE_OF_CONDUCT.md`, the open-core boundary, release artifacts, and the live-trial gate docs.
+**C. Doc / launch-readiness — CLOSED (public launch has shipped).**
+- ~~`crenelhq` GitHub org status~~ **DONE** — `github.com/crenelhq/crenel` is public and live: `v0.4.0` shipped, an independent audit (2026-07-03) found one MEDIUM (nginx false-ENFORCED, F1 — see §0), fixed on `develop` and shipped as `v0.4.1`. CI now runs `go build/vet/test -race` + `gitleaks` on every push/PR.
+- ~~`LICENSE` (Apache-2.0) + `NOTICE` + `CONTRIBUTING.md`/DCO~~ **DONE** — all present at repo root.
+- ~~`CODE_OF_CONDUCT.md`~~ **DONE** — Contributor Covenant, added alongside this pass.
+- ~~the open-core boundary~~ **DONE** — `docs/OPEN-CORE.md`.
+- **Still open:** package-name reservations (npm/PyPI/crates — honest applicability: this is a Go binary, so these are placeholder/squat-prevention reservations, not real package manifests) and confirming GitHub Release binary artifacts are actually attached to the `v0.4.0`/`v0.4.1` tags (the `make release` cross-compile target exists; whether its output has been uploaded to a GitHub Release is an operator step, not verifiable from the repo alone).
 
 ### Each P2+ item that remains is **safe-by-default today**
 because anything unmodeled reads as a declared unknown (refuse/UNKNOWN), not a confident

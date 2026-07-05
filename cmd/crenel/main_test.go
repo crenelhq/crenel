@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -372,6 +373,13 @@ func TestAbsorbPostVerbFlags(t *testing.T) {
 			check:    func(g *globalFlags) bool { return len(g.params) == 1 && g.params[0] == "group=admins" && g.mode == "mesh" },
 			checkMsg: "param + mode absorbed",
 		},
+		{
+			name:     "bool allow-unverified after positional",
+			args:     []string{"grafana", "--allow-unverified"},
+			want:     []string{"grafana"},
+			check:    func(g *globalFlags) bool { return g.allowUnverified },
+			checkMsg: "allow-unverified should be set",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -487,5 +495,52 @@ func TestCLI_ApplyDryRun(t *testing.T) {
 	s := out.String()
 	if !strings.Contains(s, "photos.example.com") || !strings.Contains(s, "ABOUT TO GO PUBLIC") {
 		t.Errorf("apply dry-run should preview the new public exposure:\n%s", s)
+	}
+}
+
+// TestConfirmUnverifiedOverride covers the F2 gate's "(or interactive confirm)"
+// alternative to --allow-unverified (see core.UnverifiedWriteError):
+//   - a different error never prompts / never accepts;
+//   - --yes means non-interactive, so it refuses even a y answer waiting on stdin;
+//   - interactively, "y"/"yes" accepts and anything else (including EOF) refuses.
+func TestConfirmUnverifiedOverride(t *testing.T) {
+	uerr := &core.UnverifiedWriteError{Providers: []string{"edge[vps·traefik]"}}
+	cases := []struct {
+		name  string
+		err   error
+		yes   bool
+		stdin string
+		want  bool
+	}{
+		{name: "unrelated error never accepts", err: fmt.Errorf("boom"), stdin: "y\n", want: false},
+		{name: "--yes refuses without prompting", err: uerr, yes: true, stdin: "y\n", want: false},
+		{name: "interactive y accepts", err: uerr, stdin: "y\n", want: true},
+		{name: "interactive yes accepts", err: uerr, stdin: "yes\n", want: true},
+		{name: "interactive blank refuses", err: uerr, stdin: "\n", want: false},
+		{name: "interactive EOF refuses", err: uerr, stdin: "", want: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			out := &bytes.Buffer{}
+			c := &cli{gf: &globalFlags{yes: tc.yes}, out: out, in: strings.NewReader(tc.stdin)}
+			if got := c.confirmUnverifiedOverride(tc.err); got != tc.want {
+				t.Errorf("confirmUnverifiedOverride() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestUsage_DocumentsAckUnack is a regression guard: ack/unack were wired into
+// dispatch() but initially left out of `crenel help` — caught during a live
+// production dogfood (2026-07-05). Both verbs, and the --reason flag ack
+// requires, must appear in the usage text.
+func TestUsage_DocumentsAckUnack(t *testing.T) {
+	out := &bytes.Buffer{}
+	writeUsage(out)
+	s := out.String()
+	for _, want := range []string{"ack <host>", "unack <host>", "-reason"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("usage text should document %q, got:\n%s", want, s)
+		}
 	}
 }

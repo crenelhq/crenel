@@ -55,7 +55,7 @@ func (a OSAdapter) Adapt(ctx context.Context, configBytes []byte) ([]byte, error
 // transport uses so quoting survives an arbitrarily nested ssh→pct→docker chain.
 
 // ExecConfigStore reads/writes the boot Caddyfile over an exec chain landing a shell on
-// the host that HOLDS the file (for the home edge: `ssh root@pve1 pct exec 150 -- sh`).
+// the host that HOLDS the file (for the home edge: `ssh root@proxmox pct exec 100 -- sh`).
 // The bytes travel base64-embedded over stdin; nothing crosses a shell-parse boundary.
 type ExecConfigStore struct {
 	// Command is the exec PREFIX (argv, not shell-parsed) landing a stdin-reading POSIX
@@ -131,7 +131,7 @@ func (s ExecConfigStore) Write(ctx context.Context, b []byte) error {
 }
 
 // ExecCaddyCLI runs `caddy validate`/`caddy reload` over an exec chain landing a shell
-// INSIDE the caddy container (for the home edge: `ssh root@pve1 pct exec 150 -- docker
+// INSIDE the caddy container (for the home edge: `ssh root@proxmox pct exec 100 -- docker
 // exec -i caddy sh`). It implements CaddyCLI for the transport-backed durable path.
 type ExecCaddyCLI struct {
 	Command []string // exec prefix landing a stdin-reading shell in the container

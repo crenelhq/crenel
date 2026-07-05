@@ -19,12 +19,12 @@ func TestLoad_DurablePersistDecodes(t *testing.T) {
 	  "edges": [
 	    {
 	      "name": "home", "driver": "caddy", "granular_apply": true, "origins": {},
-	      "transport": {"type": "ssh-exec", "command": ["ssh","root@pve1","pct","exec","150","--","docker","exec","-i","caddy","sh"]},
+	      "transport": {"type": "ssh-exec", "command": ["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]},
 	      "caddy_persist": {
 	        "boot_path": "/etc/caddy/Caddyfile",
-	        "file_command": ["ssh","root@pve1","pct","exec","150","--","sh"],
+	        "file_command": ["ssh","root@proxmox","pct","exec","100","--","sh"],
 	        "file_path": "/etc/homeedge/caddy/Caddyfile",
-	        "caddy_command": ["ssh","root@pve1","pct","exec","150","--","docker","exec","-i","caddy","sh"]
+	        "caddy_command": ["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]
 	      }
 	    }
 	  ]

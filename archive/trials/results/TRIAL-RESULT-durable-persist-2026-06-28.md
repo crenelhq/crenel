@@ -6,7 +6,7 @@
 > teardown half) — see §6.**
 >
 > Sole executor, no sub-agents. Binary built from `feat/durable-home-persist` @ `a4a0f63`
-> (10,731,618 bytes), run FROM THE MAC over `ssh root@pve1 → pct exec 150 → …`. TS
+> (10,731,618 bytes), run FROM THE MAC over `ssh root@proxmox → pct exec 100 → …`. TS
 > `20260628T200507Z`. Backups (gitignored): `live-backup/durable-persist-20260628T200507Z/`.
 
 ---
@@ -178,7 +178,7 @@ invariant working as designed. Production ends byte-for-byte as found.
 > expose → restart → UNEXPOSE-THROUGH-CRENEL → restart cycle PASSED end-to-end on the real
 > home edge — the unexpose VERIFIED and removed (no rollback, no manual restore), and the
 > Caddyfile returned to the byte-for-byte anchor BY CRENEL.** Fixed binary from branch tip
-> `5183790` (sha `287d568f…`), same access model (Mac → `ssh root@pve1 → pct exec 150`),
+> `5183790` (sha `287d568f…`), same access model (Mac → `ssh root@proxmox → pct exec 100`),
 > TS `20260628T211207Z`. Backups: `live-backup/durable-persist-recycle-20260628T211207Z/`.
 
 **Pre-flight (clean, exactly where the first trial left it):** Caddyfile anchor `eac4c45a…`

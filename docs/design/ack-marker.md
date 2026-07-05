@@ -1,4 +1,4 @@
-# Crenel — the `ack` marker (design proposal)
+# Crenel — the `ack` marker
 
 > Operator acknowledgment of an intentionally-unmodeled route, expressed as a
 > marker on the route itself in the live config. Lets `default-deny` be
@@ -7,8 +7,11 @@
 > operator-vouched carve-out (deny certifies, and the carve-out is surfaced as
 > its own visible state — never silently green, never silently red).
 >
-> Status: **proposal, docs-only.** No code changes; `make check` stays green.
-> The maintainer's idea; drafted here for review.
+> Status: **implemented (partial), first shipped batch.** The maintainer's
+> idea; the crux (§3) is his catch. See **§11 Implementation status** for
+> exactly what shipped vs. what §9's original rollout sketch proposed — read
+> §11 before relying on any per-driver claim below, since a couple of
+> specifics (esp. §5's Traefik row) changed shape during implementation.
 >
 > Companions: **docs/DNS-DESIGN.md §11a** (the `managed-by:crenel` ownership
 > marker — the pattern this proposal directly generalizes), **STATE-OF-CRENEL.md
@@ -75,19 +78,19 @@ example is live on the maintainer's edge, in the shape §5h item A explicitly de
 
 ```caddyfile
 # home edge, docker-exec transport
-dockhand.homelab.example {
+app.homelab.example {
     # tailnet agents post here — bypass Authelia for this path
-    handle /api/hawser/* {
-        reverse_proxy dockhand:8080
+    handle /api/webhook/* {
+        reverse_proxy app:8080
     }
     # everything else is Authelia-gated as usual
     forward_auth authelia:9080 { ... }
-    reverse_proxy dockhand:8080
+    reverse_proxy app:8080
 }
 ```
 
 Crenel now correctly reads this route as **`matcher_conditional`** — it saw the
-`handle /api/hawser/*` matcher, it can't fully model per-path routing yet
+`handle /api/webhook/*` matcher, it can't fully model per-path routing yet
 (that's P5-WRITE), and rather than silently drop the path constraint it
 DECLARES the route unknown. Result:
 
@@ -127,9 +130,9 @@ crenel-ack:<slug>[:<reason-slug>]
 ```
 
 - Caddy: the route's `@id`, e.g.
-  `@id crenel-ack:hawser-tailnet-agents`.
+  `@id crenel-ack:webhook-tailnet-agents`.
 - Traefik: a router label,
-  `traefik.http.routers.dockhand-hawser.crenel-ack=hawser-tailnet-agents`.
+  `traefik.http.routers.app-webhook.crenel-ack=webhook-tailnet-agents`.
 - nginx: a leading `# crenel-ack:` comment on the `location` block.
 
 Crenel reads this in `normalize`, the same pass that today emits `Unparsed`.
@@ -153,8 +156,8 @@ That's the entire mechanism.
 |---|:---:|---|---|
 | Fully-parsed, understood | ENFORCED | `photos → home:8080 [auth: authelia]` | Today's normal path. |
 | Understood but foreign-owned | ENFORCED (edge-wide refuse to manage) | `photos [foreign: cdp]` | P2. |
-| Declared unknown, no ack | **UNKNOWN** | `dockhand/api/hawser [unknown: matcher_conditional]` | Today's honest gap; safe but never certifies. |
-| Declared unknown, **ack'd** | ENFORCED | `dockhand/api/hawser [ACK: hawser-tailnet-agents]` | **New.** Certifies deny; still visible as ACK. |
+| Declared unknown, no ack | **UNKNOWN** | `app/api/webhook [unknown: matcher_conditional]` | Today's honest gap; safe but never certifies. |
+| Declared unknown, **ack'd** | ENFORCED | `app/api/webhook [ACK: webhook-tailnet-agents]` | **New.** Certifies deny; still visible as ACK. |
 
 The ACK row is deliberately its own colour in the HUD — not the verified-green
 of an understood route, not the amber-alert of an unaddressed unknown. It reads
@@ -210,13 +213,13 @@ That's the elegant bit. The proposal is small because the pattern is right.
 ### 4a. Manual — the marker is a plain string
 
 The lowest form. An operator opens the Caddy config and adds `@id
-crenel-ack:hawser-tailnet-agents` on the affected route, reloads Caddy, and
+crenel-ack:webhook-tailnet-agents` on the affected route, reloads Caddy, and
 re-runs `crenel status`. The route now reads:
 
 ```
-dockhand.homelab.example                              [ACK: hawser-tailnet-agents]
-    ↳ /api/hawser/* → dockhand:8080  (declared unknown, acknowledged)
-    ↳ / → dockhand:8080  [auth: authelia]
+app.homelab.example                              [ACK: webhook-tailnet-agents]
+    ↳ /api/webhook/* → app:8080  (declared unknown, acknowledged)
+    ↳ / → app:8080  [auth: authelia]
 default-deny                                                        ENFORCED ✓
 ```
 
@@ -224,7 +227,7 @@ default-deny                                                        ENFORCED ✓
 
 ```
 acknowledged-unknown: 1 route
-  · dockhand.homelab.example /api/hawser/*  reason=hawser-tailnet-agents
+  · app.homelab.example /api/webhook/*  reason=webhook-tailnet-agents
 ```
 
 This is enough for the operator who is comfortable editing the config directly.
@@ -238,7 +241,7 @@ posture as `expose`:
 
 1. **Read live** — locate the route (host or host+path); if there's no matching
    declared-unknown to attach the marker to, refuse loudly.
-2. **Preview** — print the exact change ("stamp `@id crenel-ack:hawser-tailnet-
+2. **Preview** — print the exact change ("stamp `@id crenel-ack:webhook-tailnet-
    agents` on `apps.http.servers.srv0.routes[3]`"), ask the operator to confirm
    unless `--yes`.
 3. **Apply** — through the same admin/file transport the driver already uses
@@ -342,7 +345,7 @@ properties, in order of importance:
    ack surface. (Compare: a silent "trust me" flag that just moves the
    `Unparsed` entry out of the report would be strictly worse than today's
    `UNKNOWN` deny — that's not the proposal.)
-2. **Reason required.** The marker carries a reason slug (`crenel-ack:hawser-
+2. **Reason required.** The marker carries a reason slug (`crenel-ack:webhook-
    tailnet-agents`) and — for the verb form — a `--reason` flag. A future
    `crenel audit --ack-reasons` (out of scope for this proposal, cheap
    follow-on) can print the acknowledgment log directly.
@@ -430,3 +433,91 @@ The `ack` marker as designed here is the maintainer's idea, and the crux — tha
 live in the infra rather than in Crenel because Crenel doesn't cache config,
 inheriting every property of the existing `managed-by:crenel` ownership
 marker — is his catch. This doc writes it up for review.
+
+---
+
+## 11. Implementation status (first shipped batch)
+
+What actually shipped, against §9's original sketch — read this before relying
+on any per-driver claim in §5 or §9.
+
+**Model (§9 item 1) — shipped as designed.** `model.UnknownAcknowledged`
+(`"acknowledged_unknown"`), `model.ParseAckMarker`/`model.AckMarker`/
+`model.AckMarkerPrefix` (`internal/model/model.go`). `LiveEdgeState.FullyParsed`
+and `core.EdgeStatus.FullyParsed` both now ignore `UnknownAcknowledged` entries;
+`core.EdgeStatus.Acknowledged()` returns just those. `Unparsed.Reason` doubles as
+the reason-slug carrier (`"acknowledged by operator (<slug>) — <original
+diagnosis>"`) rather than a separate `Ack` field — keeps the original diagnosis
+visible alongside the ack instead of replacing it.
+
+**Read-side recognition (§9 item 2) — shipped for all three drivers, SCOPED to
+per-route declared-unknowns.** Caddy (`@id`), Traefik, and nginx (`#
+crenel-ack:` comment) all recognize the marker and reclassify. Deliberately
+**not** wired into edge/server-WIDE unknowns (Caddy's sibling-server
+`UnknownServerBlock`, nginx's non-server top-level chunk, Traefik's host-less
+forwarding case) — those have no single route to scope an ack to, and §7.3
+("scoped to one route, never a blanket ack") argues against inventing an
+edge-wide ack to cover them. If that gap matters in practice, it needs its own
+follow-on design, not a silent stretch of this one.
+
+**Traefik's carrier (§5 table) — changed shape.** The original table proposed
+"a `crenel-ack` label (labels provider) OR a comment (file-provider TOML/YAML)."
+This driver's file provider reads/writes **JSON**, not YAML/TOML, and JSON has
+no comment syntax — so the shipped carrier is a **`crenelAck` field Crenel adds
+to the router object itself** (`internal/drivers/edge/traefik/types.go`),
+holding the literal marker string (`"crenel-ack:<slug>"`). Traefik ignores
+unrecognized router fields at runtime, so this is inert to the running proxy —
+same principle as the label/comment idea, adapted to the actual file format
+this driver speaks.
+
+**Write-side (§9 item 5, `ack`/`unack` verbs) — Caddy only.** `ports.Acker`
+(`internal/ports/ports.go`) is the optional-capability interface (mirrors
+`Adopter`); only `caddy.Driver` implements it (`Ack`/`Unack` in
+`internal/drivers/edge/caddy/caddy.go`, walking the raw config the same way
+`Adopt`/`adoptWalk` already does, PATCHing `@id` in place). `crenel ack
+<host> --reason <slug>` / `crenel unack <host>` are wired in
+`cmd/crenel/commands.go`, gated by the same file-lock as every other mutating
+verb (`mutatingVerbs` in `cmd/crenel/lock.go`).
+
+Traefik and nginx do **not** yet have an `Ack`/`Unack` primitive — `crenel ack`
+on those edges returns a plain "no participating edge could ack a route"
+error. The manual path (§4a: hand-edit the `crenelAck` field / `#
+crenel-ack:` comment directly) already works on both, since read-side
+recognition doesn't depend on the write primitive — this is the honest,
+partial-support posture §5's own AdGuard/Cloudflare rows already establish for
+this proposal, extended to two more drivers for now. A follow-on can add
+`Ack`/`Unack` for Traefik (read-modify-write the JSON, same shape Adopt would
+need there) and nginx (insert/remove the leading comment) without touching
+anything shipped here.
+
+**`ack` is scoped to the FIRST matching route per host, not `--path`-scoped
+yet.** §4b's sketch included a `--path` flag for disambiguating multiple
+declared-unknown routes on the same host. Not implemented in this batch — if a
+host has more than one such route, `ack` targets whichever the driver's
+traversal reaches first. Fine for the common case (one carve-out per host);
+worth adding `--path` if a real multi-route-per-host case shows up.
+
+**Audit/status rendering (§9 item 4) — shipped, format differs slightly from
+§4a/§4d's mock.** `audit` gets a dedicated `acknowledged_unknown` finding at
+`"ok"` severity (`internal/core/audit.go`), separate from and never folding
+into `coverage_incomplete`'s count. `status` text output gets a distinct `ACK —
+acknowledged by operator (N, not blocking default-deny):` section
+(`cmd/crenel/commands.go`), listing locator + reason, alongside (not replacing)
+the existing `⚠ Not understood` section for genuine unknowns. The exact
+inline-per-route rendering §2a/§4a sketch (`[ACK: <slug>]` beside the route
+itself, colored as a "third state" in the HUD) was not built — the current
+form surfaces the same information (never hidden, distinct from both green and
+amber) via a separate section rather than inline annotation + a HUD color.
+Revisit if the inline form turns out to matter more than the section form in
+practice.
+
+**Tests (§9 item 6) — shipped per-driver plus core/CLI integration**, beyond
+§9's original scope of read-side RED→GREEN parity alone:
+`internal/drivers/edge/{caddy,traefik,nginx}/ack_test.go` (per-driver
+read-side reclassification + full-edge-certifies-ENFORCED cases),
+`internal/drivers/edge/caddy/ack_test.go` (write-side: stamp + read-back,
+idempotent re-ack, refuse-on-crenel-managed-route, revert-on-unack),
+`internal/core/ack_test.go` + `ack_engine_test.go` (audit findings, `Engine.
+Ack`/`Unack` fan-out across the `ports.Acker` capability + read-back-verify),
+`cmd/crenel/ack_test.go` (CLI `ack`/`unack` verbs through `dispatch`, including
+the `--reason`-required refusal).

@@ -50,7 +50,7 @@ type SSHExec struct {
 	// generated HTTP-client script to the process stdin, so nothing crosses a
 	// shell-parse boundary as an argument — quoting survives arbitrarily nested
 	// ssh→pct→docker chains. Example:
-	//   []string{"ssh", "root@pve1", "pct", "exec", "150", "--",
+	//   []string{"ssh", "root@proxmox", "pct", "exec", "100", "--",
 	//            "docker", "exec", "-i", "caddy", "sh"}
 	Command []string
 	// AdminURL is the admin API base URL AS SEEN FROM the far end (default

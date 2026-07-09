@@ -12,13 +12,17 @@ import (
 
 // foreignEdge returns a generator-owned edge whose audit is otherwise CLEAN (deny
 // enforced, fully parsed, the one route auth-protected) — so the ONLY severity
-// that decides OK()/exit is the ownership/generator finding under test.
+// that decides OK()/exit is the ownership/generator finding under test. The
+// generator is NPM, not pangolin, on purpose: since M-A4 a pangolin edge is
+// never "otherwise clean" — it carries the §4.3 overlay-ingress declaration
+// (and, on non-runtime evidence, the A.1 HTTP-provider pointer), real warnings
+// that would drown the invariant under test (audit_pangolin_test.go pins those).
 func foreignEdge() stubEdge {
-	return stubEdge{name: "traefik", live: model.LiveEdgeState{
-		Generator:           "pangolin",
+	return stubEdge{name: "nginx", live: model.LiveEdgeState{
+		Generator:           "nginx-proxy-manager",
 		DenyCatchAllPresent: true,
 		Routes: []model.Route{{Host: "vault.example.com", Upstream: model.Upstream{
-			Mode: model.ModeHTTPProxy, Address: "10.0.0.7:8200", ServerName: "vault.example.com", Auth: "badger"}}},
+			Mode: model.ModeHTTPProxy, Address: "10.0.0.7:8200", ServerName: "vault.example.com", Auth: "authelia"}}},
 	}}
 }
 
@@ -37,7 +41,7 @@ func TestReadOnly_ForeignEdgeAuditIsOK(t *testing.T) {
 	if !ok || f.Severity != "ok" {
 		t.Fatalf("ReadOnly audit of a foreign edge should emit ok-severity foreign_managed_readonly, got %+v", rep.Findings)
 	}
-	if !strings.Contains(f.Message, "pangolin") || !strings.Contains(f.Message, "read-only") {
+	if !strings.Contains(f.Message, "nginx-proxy-manager") || !strings.Contains(f.Message, "read-only") {
 		t.Errorf("the re-framed finding must still name the generator and the posture, got %q", f.Message)
 	}
 	if _, ok := findCode(rep, "ownership_unconfirmed"); ok {

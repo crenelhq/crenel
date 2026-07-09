@@ -108,6 +108,11 @@ type AuditScope struct {
 	// ChainDepth is the deepest configured chain follow-through (0 ⇒ no downstream
 	// edge was followed).
 	ChainDepth int
+	// DeclaredInternal: the operator declared this edge NOT internet-facing
+	// (--internal, M-A6). public_without_auth was downgraded to the ok-severity
+	// exposure_unscoped finding — declared, not observed; nothing was verified
+	// unreachable.
+	DeclaredInternal bool
 	// Evidence declares, per edge, WHAT the read observed (running process vs a
 	// file on disk vs an operator assertion). Populated when drivers report a
 	// read-evidence kind (M-A2+); empty means unclassified, never claimed RUNTIME.

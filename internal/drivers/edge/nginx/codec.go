@@ -40,7 +40,11 @@ type chunk struct {
 	catchAll bool   // default_server or wildcard server_name (_/*)
 	forwards bool   // has a proxy_pass to a real backend
 	authURI  string // auth_request URI (forward-auth reference), "" if none
-	ports    []int  // the listen port(s) of this server block (for implicit-default-server modeling)
+	// authBasic marks an `auth_basic` challenge anywhere in the block — HTTP basic
+	// auth enforced at the edge (NPM's access-list shape). Like an unmanaged
+	// auth_request it reads back as the recognized-but-unnamed model.AuthDetected.
+	authBasic bool
+	ports     []int // the listen port(s) of this server block (for implicit-default-server modeling)
 	// pathScoped marks a vhost that routes by location PATH beyond a single root
 	// `location /` — several proxying locations, or one non-root location. The
 	// host-granular model cannot represent it (reading it as host->firstBackend would
@@ -50,10 +54,19 @@ type chunk struct {
 }
 
 var (
-	serverNameRE   = regexp.MustCompile(`(?m)^\s*server_name\s+([^;]+);`)
-	proxyPassRE    = regexp.MustCompile(`(?m)^\s*proxy_pass\s+([^;]+);`)
-	authRequestRE  = regexp.MustCompile(`(?m)^\s*auth_request\s+([^;]+);`)
-	locationHeadRE = regexp.MustCompile(`^\s*location\s+(.+?)\s*\{`)
+	serverNameRE  = regexp.MustCompile(`(?m)^\s*server_name\s+([^;]+);`)
+	proxyPassRE   = regexp.MustCompile(`(?m)^\s*proxy_pass\s+([^;]+);`)
+	authRequestRE = regexp.MustCompile(`(?m)^\s*auth_request\s+([^;]+);`)
+	// authBasicRE matches an `auth_basic` challenge directive. `auth_basic off;` is
+	// the explicit opt-OUT and must not read as auth, so "off" is excluded here.
+	authBasicRE = regexp.MustCompile(`(?m)^\s*auth_basic\s+([^;]+);`)
+	// listenDefaultRE recognizes the catch-all flag on a listen directive: nginx
+	// accepts both `default_server` and the legacy alias `default` (which NPM's
+	// generated default_host uses: `listen 80 default;`). Matching the raw text for
+	// the literal "default_server" alone would miss the alias and misread NPM's
+	// deny server as an ordinary vhost.
+	listenDefaultRE = regexp.MustCompile(`(?m)^\s*listen\s+[^;]*\bdefault(_server)?\b`)
+	locationHeadRE  = regexp.MustCompile(`^\s*location\s+(.+?)\s*\{`)
 	// listenRE pulls the numeric port from a `listen` directive, tolerating an
 	// address/host prefix (`127.0.0.1:8080`, `[::]:80`) and trailing flags
 	// (`ssl`, `default_server`). Used to model nginx's per-port implicit default
@@ -182,7 +195,7 @@ func classify(raw string) chunk {
 			}
 		}
 	}
-	if strings.Contains(raw, "default_server") {
+	if listenDefaultRE.MatchString(raw) || strings.Contains(raw, "default_server") {
 		c.catchAll = true
 	}
 	for _, m := range listenRE.FindAllStringSubmatch(raw, -1) {
@@ -196,6 +209,13 @@ func classify(raw string) chunk {
 	}
 	if m := authRequestRE.FindStringSubmatch(raw); m != nil {
 		c.authURI = strings.TrimSpace(m[1])
+	}
+	if m := authBasicRE.FindStringSubmatch(raw); m != nil {
+		// `auth_basic off;` is the explicit opt-OUT — anything else (a quoted realm)
+		// enables the basic-auth challenge.
+		if strings.TrimSpace(m[1]) != "off" {
+			c.authBasic = true
+		}
 	}
 	// Path-granularity detection: a vhost that proxies from more than a single root
 	// `location /` routes by path, which the host-granular model cannot represent. The

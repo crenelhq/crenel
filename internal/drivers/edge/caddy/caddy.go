@@ -54,6 +54,7 @@ func IsUnresponsive(err error) bool { return errors.Is(err, ErrAdminUnresponsive
 // Driver implements ports.EdgeProvider against a Caddy admin API.
 type Driver struct {
 	server   string // managed server key, e.g. "srv0"
+	adminURL string // the admin base URL New was pointed at — evidence Source only, never dialed directly (the transport owns the wire)
 	resolver ports.OriginResolver
 	hc       *http.Client    // applied to the default Direct transport (WithHTTPClient)
 	xport    ports.Transport // HOW admin calls physically travel (default: Direct to admin_url)
@@ -322,6 +323,7 @@ func WithTimeouts(read, write time.Duration) Option {
 func New(baseURL string, resolver ports.OriginResolver, opts ...Option) *Driver {
 	d := &Driver{
 		server:   defaultManagedServer,
+		adminURL: baseURL,
 		resolver: resolver,
 		// No client-level Timeout: each call is bounded by a per-operation context
 		// deadline (read/write/health) instead, so we get precise, classifiable
@@ -419,6 +421,13 @@ func (d *Driver) persistenceModel() model.PersistenceModel {
 // this edge survives a control-plane restart. core consults it on the write path to warn
 // when a verified write lands on an ephemeral edge. Config-derived, cheap, never mutates.
 func (d *Driver) PersistenceModel() model.PersistenceModel { return d.persistenceModel() }
+
+// ReadEvidence implements ports.EvidenceReporter: this driver reads the admin API —
+// the RUNNING process reported the state (RUNTIME, the strongest read evidence;
+// audit-any-edge §5). Config-derived, cheap, never opens a connection.
+func (d *Driver) ReadEvidence() model.ReadEvidence {
+	return model.ReadEvidence{Kind: model.EvidenceRuntime, Source: d.adminURL + " (Caddy admin API)"}
+}
 
 // applyGeneratorOwnership marks the whole edge FOREIGN when a config generator is
 // detected (caddy-docker-proxy via its on-disk autosave file, or an operator-declared

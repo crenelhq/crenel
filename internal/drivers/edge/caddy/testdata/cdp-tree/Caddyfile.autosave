@@ -1,0 +1,12 @@
+grafana.homelab.example {
+	reverse_proxy 172.22.0.3:80
+}
+notes.homelab.example {
+	forward_auth 10.0.0.9:9091 {
+		uri /api/verify?rd=https://auth.homelab.example
+	}
+	reverse_proxy 172.22.0.4:80
+}
+photos.homelab.example {
+	reverse_proxy 172.22.0.5:80
+}

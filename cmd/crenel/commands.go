@@ -379,6 +379,23 @@ func hudModelFromStatus(rep core.StatusReport, drift int) ui.HUDModel {
 }
 
 func (c *cli) cmdAudit(ctx context.Context) error {
+	// --internal in a settings topology (M-A6): honored only when it does not
+	// CONTRADICT the wiring — an edge with a managed PUBLIC DNS provider is
+	// internet-facing by construction, so declaring it internal is refused loudly
+	// rather than silently blunting public_without_auth. --assume-public-boundary
+	// is the existing default here and needs no wiring.
+	if c.gf.internalScope {
+		if c.gf.assumePublicBoundary {
+			return fmt.Errorf("--internal and --assume-public-boundary contradict each other — say ONE boundary out loud")
+		}
+		for _, dp := range c.engine.DNS {
+			if dp.Scope() == model.ScopePublic {
+				return fmt.Errorf("--internal contradicts this topology: public DNS provider %q is configured — "+
+					"an edge with managed PUBLIC DNS records is internet-facing by construction; drop --internal (or remove the public provider)", dp.Name())
+			}
+		}
+		c.engine.DeclaredInternal = true
+	}
 	rep, err := c.engine.Audit(ctx)
 	if err != nil {
 		return err
@@ -415,6 +432,9 @@ func (c *cli) printAuditScope(s core.AuditScope) {
 	}
 	if s.ChainDepth == 0 {
 		fmt.Fprintln(c.out, "Scope: no edge chain configured — downstream edges NOT followed")
+	}
+	if s.DeclaredInternal {
+		fmt.Fprintln(c.out, "Scope: edge DECLARED internal (--internal) — exposed hosts are not treated as internet-facing; public_without_auth downgraded to exposure_unscoped (declared, NOT observed)")
 	}
 	// Per-edge read evidence (M-A2+): declared when drivers report it, sorted for
 	// deterministic output; absent edges are simply unclassified, never upgraded.

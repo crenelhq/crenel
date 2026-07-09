@@ -1,0 +1,37 @@
+# Fixture: a REAL-SHAPE hand-written Caddyfile for the zero-config audit target
+# (`crenel audit examples/seed-audit-wildcard.caddyfile`) — the home-edge idiom:
+# a wildcard site with per-host `@name host` + `handle` pairs (inheriting the
+# wildcard's DNS-01 TLS), a forward_auth snippet imported by protected hosts,
+# and the canonical `:80 { respond 403 }` default-deny. Fully parseable, so the
+# deny ternary reads ENFORCED and the audit is the clean-foreign baseline.
+{
+	email ops@example.com
+}
+
+(authelia) {
+	forward_auth authelia:9091 {
+		uri /api/verify?rd=https://auth.example.com
+		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+	}
+}
+
+*.homelab.example {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+
+	@grafana host grafana.homelab.example
+	handle @grafana {
+		import authelia
+		reverse_proxy 10.0.0.5:3000
+	}
+
+	@photos host photos.homelab.example
+	handle @photos {
+		reverse_proxy 10.0.0.6:2342
+	}
+}
+
+:80 {
+	respond 403
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/crenelhq/crenel/internal/model"
 	"github.com/crenelhq/crenel/internal/ports"
@@ -195,6 +196,28 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		totalRoutes += len(live.Routes)
 		edges = append(edges, edgeLive{binding: b, hosts: hosts})
 
+		// Read evidence (audit-any-edge §5): a CONFIG-evidence edge read a FILE, not
+		// the running daemon — a failed reload or out-of-band change means reality may
+		// differ. The standing config_evidence_only finding is the read-side analogue
+		// of "written; runtime verify unavailable": informational (ok severity — the
+		// operator CHOSE a file target), always printed, never dropped; plus the cheap
+		// mtime staleness HINT (risk A.2 — evidence to weigh, not a verdict). RUNTIME
+		// evidence needs no finding; the Scope block already declares it.
+		if er, ok := b.Provider.(ports.EvidenceReporter); ok {
+			if ev := er.ReadEvidence(); ev.Kind == model.EvidenceConfig {
+				msg := fmt.Sprintf("%sevidence is CONFIG: this audit read %s, not the running daemon — a failed reload or out-of-band change means reality may differ",
+					label, ev.Source)
+				if !ev.ModTime.IsZero() {
+					msg += fmt.Sprintf(" (config last modified %s)", humanAge(time.Since(ev.ModTime)))
+				}
+				rep.Findings = append(rep.Findings, AuditFinding{
+					Severity: "ok",
+					Code:     "config_evidence_only",
+					Message:  msg,
+				})
+			}
+		}
+
 		// Invariant 1 (per edge): catch-all default-deny — now TERNARY. A structural
 		// default-deny "ENFORCED" claim is a statement about the ENTIRE config; it is
 		// only sound if the entire config was parsed. So an ENFORCED claim requires
@@ -286,6 +309,23 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 				Code:     "ownership_unconfirmed",
 				Message: fmt.Sprintf("%s%d route(s) have unconfirmed ownership (foreign/unknown) — crenel will refuse to mutate them: %s",
 					label, len(hosts), strings.Join(hosts, ", ")),
+			})
+		}
+
+		// Risk A.1 (partial-coverage complacency, M-A4): Pangolin serves dynamic
+		// config to Traefik over the HTTP provider from pangolin:3001, so a
+		// NON-RUNTIME read of a Pangolin-detected edge (a dynamic-config FILE — the
+		// badger detector fires from the file too) may have seen a SUBSET of what
+		// the running Traefik actually routes. Warning, not ok: treating that
+		// report as complete is exactly the MISREAD-by-omission the register
+		// re-armed. A RUNTIME read (the Traefik API, M-A4's reader) never fires
+		// this — the API is the whole running truth.
+		if live.Generator == "pangolin" && !edgeEvidenceRuntime(b) {
+			rep.Findings = append(rep.Findings, AuditFinding{
+				Severity: "warning",
+				Code:     "pangolin_http_provider",
+				Message: fmt.Sprintf("%sthis config is partly served over the HTTP provider (pangolin generates routes into the running Traefik from its database) — "+
+					"a file read may be a SUBSET of what is exposed; audit the API instead (crenel audit http://<traefik>:8080)", label),
 			})
 		}
 
@@ -478,7 +518,7 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 	// because home only has the wildcard entry and vps has the explicit one.
 	type internalCov struct {
 		name      string
-		explicit  map[string]string  // explicit host (lowercased) → live value
+		explicit  map[string]string // explicit host (lowercased) → live value
 		wildcards []wildcardRewrite // wildcard patterns, e.g. ("*.homelab.example" → IP)
 	}
 	var internalCovs []internalCov
@@ -748,6 +788,7 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		// A host the tunnel's OWN ingress rules publish is PUBLIC by observation, even when
 		// crenel manages public DNS that does not list it (the tunnel, not crenel's DNS, is
 		// the public boundary) — additive, so it can only ADD a true-positive flag.
+		observedPublic := tunnelPublic[host] || (hasPublicDNS && publicDNSHosts[host])
 		if tunnelPublic[host] {
 			public = true
 		}
@@ -759,6 +800,20 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		// record it for an explicit informational finding (never a silent drop).
 		if hostAuthDownstream[host] {
 			downstreamSuppressed = append(downstreamSuppressed, host)
+			continue
+		}
+		// --internal (M-A6, risk A.4): the operator DECLARED this edge not
+		// internet-facing, so the ASSUMPTION-derived public flag downgrades to an
+		// ok-severity exposure_unscoped finding — the fact still prints (never a
+		// silent drop), only the severity changes. A declaration never beats an
+		// OBSERVATION: a tunnel-published or public-DNS-covered host stays a warning.
+		if e.DeclaredInternal && !observedPublic {
+			rep.Findings = append(rep.Findings, AuditFinding{
+				Severity: "ok",
+				Code:     "exposure_unscoped",
+				Message: fmt.Sprintf("host %s carries no forward-auth policy; edge DECLARED internal (--internal), so it is not flagged public — "+
+					"exposure is unscoped (declared, not observed): crenel did not verify this edge is unreachable from the internet", host),
+			})
 			continue
 		}
 		rep.Findings = append(rep.Findings, AuditFinding{
@@ -785,12 +840,22 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 	return rep, nil
 }
 
+// edgeEvidenceRuntime reports whether a binding's provider DECLARES runtime read
+// evidence (ports.EvidenceReporter). Drivers that report nothing are NOT runtime
+// — evidence is declared, never inferred upward (model.ReadEvidence doc).
+func edgeEvidenceRuntime(b EdgeBinding) bool {
+	er, ok := b.Provider.(ports.EvidenceReporter)
+	return ok && er.ReadEvidence().Kind == model.EvidenceRuntime
+}
+
 // auditScope derives this engine's AuditScope from its topology: which whole
 // check families the audit below can even run. DNSEvaluated is a wiring fact
 // (providers configured), ChainDepth the deepest configured chain follow-through
-// (0 = no chain — downstream edges not followed). TargetMode/Evidence stay zero
-// until the zero-config target bootstrap (M-A2+) synthesizes the engine and the
-// drivers report a read-evidence kind.
+// (0 = no chain — downstream edges not followed), TargetMode the zero-config
+// target declaration (set by the cmd bootstrap). Evidence collects each edge's
+// DECLARED read-evidence kind (ports.EvidenceReporter, M-A2): what the read
+// observed — running process vs a file on disk. An edge whose driver reports
+// nothing is simply unclassified (absent from the map), never claimed RUNTIME.
 func (e *Engine) auditScope() AuditScope {
 	depth := 0
 	for _, d := range e.chainDepth() {
@@ -798,7 +863,37 @@ func (e *Engine) auditScope() AuditScope {
 			depth = d
 		}
 	}
-	return AuditScope{DNSEvaluated: len(e.DNS) > 0, ChainDepth: depth}
+	var evidence map[string]model.EvidenceKind
+	for _, b := range e.Edges {
+		if er, ok := b.Provider.(ports.EvidenceReporter); ok {
+			if evidence == nil {
+				evidence = map[string]model.EvidenceKind{}
+			}
+			evidence[b.Name] = er.ReadEvidence().Kind
+		}
+	}
+	return AuditScope{
+		TargetMode:       e.TargetMode,
+		DNSEvaluated:     len(e.DNS) > 0,
+		ChainDepth:       depth,
+		DeclaredInternal: e.DeclaredInternal,
+		Evidence:         evidence,
+	}
+}
+
+// humanAge renders a duration as a coarse human age for the CONFIG staleness hint
+// ("41 days ago"). Coarse on purpose: the hint is evidence, not a measurement.
+func humanAge(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "under a minute ago"
+	case d < time.Hour:
+		return fmt.Sprintf("%d minute(s) ago", int(d.Minutes()))
+	case d < 48*time.Hour:
+		return fmt.Sprintf("%d hour(s) ago", int(d.Hours()))
+	default:
+		return fmt.Sprintf("%d days ago", int(d.Hours()/24))
+	}
 }
 
 // splitAcknowledged partitions an edge's Unparsed entries into real unknowns

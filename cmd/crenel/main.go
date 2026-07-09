@@ -37,12 +37,12 @@ type globalFlags struct {
 	// write is rolled back rather than left as a silent green. See
 	// core.UnverifiedWriteError.
 	allowUnverified bool
-	jsonOut      bool
-	granular     bool
-	layer4       bool
-	caddyPersist string
-	mode         string
-	auth         string
+	jsonOut         bool
+	granular        bool
+	layer4          bool
+	caddyPersist    string
+	mode            string
+	auth            string
 	// reason is the operator's crenel-ack:<reason> slug for `ack` (see
 	// docs/design/ack-marker.md) — required, never inferred.
 	reason string
@@ -68,6 +68,18 @@ type globalFlags struct {
 	hud    bool
 	banner bool
 	plain  bool
+	// internalScope / assumePublicBoundary are audit's forced boundary declaration
+	// (M-A6, §9 decision 5, the --auth none pattern): a zero-config target audit has
+	// no DNS topology, so it REFUSES until the operator says the boundary out loud —
+	// --assume-public-boundary keeps the conservative "edge route ⇒ public" default;
+	// --internal declares the edge not internet-facing (public_without_auth
+	// downgrades to the ok-severity exposure_unscoped). Mutually exclusive.
+	internalScope        bool
+	assumePublicBoundary bool
+	// probe opts in to the RUNTIME upgrade for CONFIG targets (M-A6): crenel may
+	// contact the admin/API endpoint the config itself declares (beyond the pasted
+	// target — risk A.6 is why this is a flag) to cross-check the running process.
+	probe bool
 	// width/height override the terminal size used to draw the full-width scanline
 	// banner. 0 = auto-detect (COLUMNS/LINES env, else the TIOCGWINSZ ioctl, else a
 	// default). Lets a recording pin an exact banner geometry deterministically.
@@ -133,6 +145,16 @@ func run(args []string) int {
 	if verb == "banner" {
 		ui.Style{Color: color, Cols: termCols(gf), Rows: termRows(gf), Version: version}.WriteHeroBanner(os.Stdout, termCols(gf))
 		return 0
+	}
+
+	// `audit <target>` — the zero-config positional target (audit-any-edge §2,
+	// M-A2): NO settings file is loaded; a one-edge read-only engine is synthesized
+	// from the sniffed target. Handled BEFORE loadSettings so the 30-second first
+	// run needs no config at all. Exit 2 = the sniffer refused (nothing audited).
+	if verb == "audit" {
+		if target := extractTargetArg(verbArgs); target != "" {
+			return runAuditTarget(gf, target, os.Stdout, os.Stderr)
+		}
 	}
 
 	settings, err := loadSettings(gf)
@@ -317,6 +339,12 @@ func absorbPostVerbFlags(gf *globalFlags, args []string) ([]string, error) {
 			gf.showSecrets = true
 		case "no-validate":
 			gf.noValidate = true
+		case "internal":
+			gf.internalScope = true
+		case "assume-public-boundary":
+			gf.assumePublicBoundary = true
+		case "probe":
+			gf.probe = true
 		default:
 			return false
 		}
@@ -424,6 +452,13 @@ Getting started:
 Read-only commands:
   status                 Show what is exposed right now (reads live state)
   audit                  Live-only invariant + cross-provider consistency checks
+  audit <target>         Zero-config READ-ONLY audit of ANY Caddy edge — no
+                         settings file. <target> is a Caddy admin URL
+                         (http://…:2019; the ONLY request made is GET /config/)
+                         or a Caddyfile path. Foreign/generator-owned edges are
+                         audited, never mutated; an unrecognized target is
+                         refused loudly (exit 2), never guessed. Auditing a
+                         foreign edge is NOT an endorsement of its config
   preview expose <svc>   Show the change for exposing a service (no apply)
   preview unexpose <svc> Show the change for unexposing a service (no apply)
   preview rename <old-host> <new-host>

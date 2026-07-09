@@ -12,14 +12,9 @@ import (
 	"github.com/crenelhq/crenel/internal/model"
 )
 
-// apiRouter is the subset of a Traefik /api/http/routers entry crenel reads to confirm
-// a route is live: its name (e.g. "crenel-foo.example.com@file"), the rule, and the
-// runtime status ("enabled" when Traefik accepted and is serving it).
-type apiRouter struct {
-	Name   string `json:"name"`
-	Rule   string `json:"rule"`
-	Status string `json:"status"`
-}
+// The /api/http/routers entry shape is shared with the M-A4 API read source:
+// see apiRouter in api_read.go (this file uses only Name/Rule/Status; the read
+// source uses the fuller shape).
 
 // VerifyRuntime probes the RUNNING Traefik (its HTTP API), not crenel's written file,
 // to confirm op's change is actually live — implementing ports.RuntimeVerifier (bench

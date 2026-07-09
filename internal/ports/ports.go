@@ -202,6 +202,21 @@ type RuntimeVerifier interface {
 	VerifyRuntime(ctx context.Context, op model.Op, ec model.EdgeChange) model.RuntimeVerification
 }
 
+// EvidenceReporter is an OPTIONAL capability an EdgeProvider may implement: it
+// DECLARES what its ReadLiveState actually observes — the running process (RUNTIME:
+// Caddy admin API, Traefik API) or a file/tree on disk (CONFIG: a Caddyfile, an
+// nginx tree). "Verified" in crenel means read-back-after-write; a pure read has no
+// write to verify, so instead every audited edge carries its evidence kind
+// (audit-any-edge §5). core folds it into AuditScope.Evidence and emits the standing
+// config_evidence_only finding (+ mtime staleness hint) for CONFIG edges — what stops
+// a stale file from producing a confident wrong answer (risk A.2). A provider that
+// does not implement it is simply UNCLASSIFIED — never assumed RUNTIME.
+type EvidenceReporter interface {
+	// ReadEvidence is config-derived (the driver knows its substrate at
+	// construction), cheap, and never mutates or opens a connection.
+	ReadEvidence() model.ReadEvidence
+}
+
 // HealthChecker is an OPTIONAL capability a provider may implement: a quick,
 // bounded liveness probe of its control plane. core uses it to avoid firing
 // compensating reloads into a wedged edge during rollback (which would worsen the

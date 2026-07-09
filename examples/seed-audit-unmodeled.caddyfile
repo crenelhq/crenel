@@ -1,0 +1,16 @@
+# Fixture: a Caddyfile with a directive the read adapter does NOT model
+# (php_fastcgi) — for asserting the detect-and-declare-unknown contract on the
+# zero-config target path: the unmodeled site is DECLARED (coverage drops,
+# `coverage_incomplete` fires) and the default-deny ternary downgrades to
+# UNKNOWN — never a silent drop, never an empty-but-green report.
+grafana.example.com {
+	reverse_proxy 10.0.0.5:3000
+}
+
+legacy.example.com {
+	php_fastcgi unix//run/php/php-fpm.sock
+}
+
+:443 {
+	respond 403
+}

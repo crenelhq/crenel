@@ -73,9 +73,9 @@ type EdgeBinding struct {
 
 // resolveIngressKind returns the edge's effective ingress posture for status/audit:
 // an operator-DECLARED kind wins; else a signature detected from the configured
-// ingress file; else whatever the driver itself reported on live (none today). ""
-// (unset) means an ordinary public listener — no off-edge mechanism. Centralized so
-// status and audit agree on one verdict per edge.
+// ingress file; else whatever the driver itself reported on live; else the
+// generator rule below. "" (unset) means an ordinary public listener — no
+// off-edge mechanism. Centralized so status and audit agree on one verdict per edge.
 func (b EdgeBinding) resolveIngressKind(live model.LiveEdgeState) model.IngressKind {
 	if b.IngressKind != "" {
 		return b.IngressKind
@@ -85,7 +85,21 @@ func (b EdgeBinding) resolveIngressKind(live model.LiveEdgeState) model.IngressK
 			return k
 		}
 	}
-	return live.IngressKind
+	if live.IngressKind != "" {
+		return live.IngressKind
+	}
+	// Pangolin ⇒ overlay-ingress AUTO-DECLARATION (audit-any-edge §4.3, M-A4):
+	// Pangolin's whole point is publishing resources over its WireGuard (newt)
+	// tunnels, so a Pangolin-generated edge is externally fronted by an overlay
+	// even when nothing was declared. Declared-not-observed on purpose: crenel
+	// reads Traefik, not Pangolin's tunnel state — whether the overlay publishes
+	// ADDITIONAL hostnames stays not-verifiable-here (the ingress_external finding
+	// says so). An operator declaration above always wins ("unless declared
+	// otherwise"), and never assumed-internal is the register's axis-4 rule.
+	if live.Generator == "pangolin" {
+		return model.IngressOverlay
+	}
+	return ""
 }
 
 // resolveIngressHosts recovers this edge's PER-HOST tunnel ingress mapping (the exact
@@ -147,6 +161,27 @@ type Engine struct {
 	// STRICTLY on this field so a writable engine's ownership warning never blunts
 	// (risk A.7). Reads are untouched: audit was always read-only. Default false.
 	ReadOnly bool
+
+	// TargetMode declares this engine was synthesized from a positional audit
+	// TARGET (`crenel audit <url|path>`, audit-any-edge §2) — one edge, no settings
+	// topology, no DNS, no origins, ReadOnly forced. It only feeds the
+	// AuditScope.TargetMode declaration (the "zero-config target" Scope line); it
+	// gates no behavior of its own — the posture is carried by ReadOnly, which the
+	// target bootstrap always sets alongside it. Default false.
+	TargetMode bool
+
+	// DeclaredInternal is the operator's explicit `--internal` declaration (risk
+	// A.4, M-A6): "this edge is NOT internet-facing." It downgrades the
+	// ASSUMPTION-derived public_without_auth warning (the no-DNS "edge route ⇒
+	// public" boundary default) to an ok-severity `exposure_unscoped` finding —
+	// declared, not observed, so the fact still prints, only the severity changes
+	// (the --auth none pattern: a forced spoken choice, never a silent default).
+	// It NEVER overrides OBSERVED public-ness (a tunnel-published host, or a host
+	// covered by managed public DNS): a declaration cannot beat an observation.
+	// cmd refuses the flag outright when a public DNS provider is configured — an
+	// edge with managed public records is internet-facing by construction.
+	// Default false.
+	DeclaredInternal bool
 }
 
 // New builds a single-edge Engine with compensating rollback enabled by default.

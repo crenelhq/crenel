@@ -105,6 +105,33 @@ Or grab a static binary for linux/darwin (amd64/arm64) from
 verify by SHA256. From a clone: `make build` (host platform) or `make release`
 (cross-compile to `./dist`).
 
+## Audit any edge in 30 seconds
+
+Point `crenel audit` at the edge you already run — no settings file, read-only,
+nothing written. Say the boundary out loud (`--assume-public-boundary` for an
+internet-facing edge, `--internal` for a LAN-only one) and crenel reports what
+is exposed, whether default-deny is structural, and where auth is missing:
+
+```bash
+crenel audit ./Caddyfile --assume-public-boundary
+crenel audit http://localhost:2019 --assume-public-boundary
+crenel audit /path/to/npm/data/nginx --assume-public-boundary
+crenel audit http://traefik:8080 --assume-public-boundary
+```
+
+- `./Caddyfile` — parses the file on disk (CONFIG evidence; add `--probe` to
+  cross-check the running process via its admin API).
+- `http://localhost:2019` — reads the running Caddy's admin API (RUNTIME
+  evidence — the process itself, not a file).
+- `/path/to/npm/data/nginx` — reads an Nginx Proxy Manager data dir
+  (`proxy_host/*.conf` tree), detects the NPM generator, audits it read-only.
+- `http://traefik:8080` — reads Traefik's API (Pangolin and docker-labels
+  setups included); generator detected, routes enumerated, writes refused.
+
+A directory containing `Caddyfile.autosave` audits a caddy-docker-proxy edge
+the same way. Only the URL you paste is ever contacted; anything beyond it is
+opt-in via `--probe`. Foreign edges exit 0 when otherwise clean — cron it.
+
 ## Quickstart: batteries included (one command)
 
 No edge yet? The [`bundle/`](bundle/README.md) brings up a working default-deny

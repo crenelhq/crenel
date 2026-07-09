@@ -273,6 +273,12 @@ func (d *Driver) normalize(text string) model.LiveEdgeState {
 				auth = model.AuthDetected
 			}
 		}
+		// An `auth_basic` challenge (HTTP basic auth at the edge — NPM's access-list
+		// shape) is auth crenel recognizes but cannot name: AuthDetected, exactly like
+		// an unmanaged auth_request. Never overrides a resolved policy name.
+		if auth == "" && c.authBasic {
+			auth = model.AuthDetected
+		}
 		for _, p := range portsOf(c) {
 			forwardingPorts[p] = true // a host vhost that proxies on this port
 		}

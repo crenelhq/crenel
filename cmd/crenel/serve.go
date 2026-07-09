@@ -19,7 +19,7 @@ import (
 // live `status` as the branded HUD (SVG) on an auto-refreshing page. It is
 // READ-ONLY BY CONSTRUCTION — it only ever calls the engine's read paths
 // (Status / DetectDrift); there is no route that exposes/unexposes/mutates. All
-// writes stay on the CLI, deliberately (see BUNDLE-DESIGN.md §1 + §4: the bundle's
+// writes stay on the CLI, deliberately (see docs/internal/BUNDLE-DESIGN.md §1 + §4: the bundle's
 // dashboard never lets the web mutate the edge).
 //
 // Flags (after the verb): --addr (listen address, default :8080, env

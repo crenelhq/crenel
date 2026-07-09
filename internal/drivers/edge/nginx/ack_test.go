@@ -24,11 +24,11 @@ server {
     }
 }
 
-# crenel-ack:webhook-tailnet-agents
+# crenel-ack:hawser-tailnet-agents
 server {
     listen 443 ssl;
     server_name app.example.com;
-    location /api/webhook {
+    location /api/hawser {
         proxy_pass http://10.0.0.9:8080;
     }
     location /other {
@@ -72,7 +72,7 @@ server {
 	if len(acked) != 1 {
 		t.Fatalf("expected exactly 1 acknowledged_unknown entry, got %d: %+v", len(acked), live.Unparsed)
 	}
-	if !strings.Contains(acked[0].Reason, "webhook-tailnet-agents") {
+	if !strings.Contains(acked[0].Reason, "hawser-tailnet-agents") {
 		t.Errorf("acked entry's Reason should carry the operator's reason slug, got %q", acked[0].Reason)
 	}
 	if len(stillUnknown) != 1 {
@@ -99,11 +99,11 @@ server {
     }
 }
 
-# crenel-ack:webhook-tailnet-agents
+# crenel-ack:hawser-tailnet-agents
 server {
     listen 443 ssl;
     server_name app.example.com;
-    location /api/webhook {
+    location /api/hawser {
         proxy_pass http://10.0.0.9:8080;
     }
     location /other {

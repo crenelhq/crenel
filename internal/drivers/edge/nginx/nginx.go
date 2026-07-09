@@ -526,7 +526,7 @@ func probeFailDetail(host string, wantServed bool, code int, err error) string {
 // server block for each host, in-place, preserving the block body verbatim — only
 // ownership changes. Idempotent: a host already managed (or with no matching
 // unmanaged block) is skipped. Unmanaged blocks for hosts not in the list are
-// untouched. Implements ports.Adopter (brownfield import). See USABILITY-DESIGN.md §A.
+// untouched. Implements ports.Adopter (brownfield import). See docs/internal/USABILITY-DESIGN.md §A.
 func (d *Driver) Adopt(ctx context.Context, hosts []string) error {
 	want := map[string]bool{}
 	for _, h := range hosts {

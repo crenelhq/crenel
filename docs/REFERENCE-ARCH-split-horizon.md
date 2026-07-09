@@ -4,7 +4,7 @@
 > **public edge in front of a home edge** for ingress, plus **split-horizon DNS across two
 > resolvers chosen by client vantage**, all coordinated as **one read-back-verified change** with
 > Crenel as the **single source of truth (SOT)**. This doc is the architecture; the driver-level
-> mechanics live in **[DNS-DESIGN.md](DNS-DESIGN.md)**, the invariants in **DESIGN.md**, secrets in
+> mechanics live in **[DNS-DESIGN.md](DNS-DESIGN.md)**, the invariants in **internal/DESIGN.md**, secrets in
 > **SECURITY.md**.
 >
 > **Honesty about status: read [§5](#5-built-vs-roadmap) before quoting capability.** The
@@ -14,7 +14,7 @@
 > awareness** is **BUILT and test-covered end-to-end through the real driver** (PRs #12 + #15
 > + #16 on `develop`); the live trial against the actual dual-resolver pair is now **PROVEN**
 > (2026-06-30: both resolvers restored byte-for-byte, `dns_coverage_parity` caught a real
-> divergence live; see the repo's `TRIAL-RECORD-live-proofs-2026-06-30.md`). Per-host
+> divergence live; see the repo's `internal/TRIAL-RECORD-live-proofs-2026-06-30.md`). Per-host
 > **tunnel/funnel ingress recovery** is BUILT for both cloudflared (§5h)
 > and Tailscale serve.json `AllowFunnel` (PR #17). The **Cloudflare-free** variant
 > ([§6](#6-the-cloudflare-free-alternative)) is a **roadmap provider**, not something that
@@ -204,10 +204,10 @@ recorded byte-for-byte (see the repo's `TRIAL-RESULT-*.md`).
 | Capability | Status |
 |---|---|
 | **Coordinated multi-scope expose** (edge + internal + public; ordered; read-back-verified; atomic rollback) | **BUILT · live-proven** (cross-chain trial) |
-| **Public DNS via Cloudflare, surgical** (per-record REST CRUD; `managed-by:crenel`; shared-zone-safe) | **BUILT · live-proven**: dedicated `crenel.sh` zone (PR #11) **and the shared `homelab.example` zone (2026-06-30):** apex wildcard byte-identical across expose/unexpose, only Crenel's marked record touched (see `TRIAL-RECORD-live-proofs-2026-06-30.md` §1) |
+| **Public DNS via Cloudflare, surgical** (per-record REST CRUD; `managed-by:crenel`; shared-zone-safe) | **BUILT · live-proven**: dedicated `crenel.sh` zone (PR #11) **and the shared `homelab.example` zone (2026-06-30):** apex wildcard byte-identical across expose/unexpose, only Crenel's marked record touched (see `internal/TRIAL-RECORD-live-proofs-2026-06-30.md` §1) |
 | **Two-edge chain write** (public front → home SOT, atomic across both) | **BUILT · live-proven** |
 | **Internal DNS via AdGuard native control-API driver** (single instance; zone-confined; no-wildcard guard) | **BUILT · fake-tested + unit** |
-| **Dual-AdGuard split with per-instance labeling** (two `scope:internal` providers, vantage-correct targets; `adguard[home]`/`adguard[vps]` distinguishable in every plan/apply/verify/audit label) | **BUILT** (PR #12, merged on `develop`): per-instance label woven through `dns_wire.go` + driver, per-instance ownership refuses a foreign overwrite on the right instance, end-to-end test through the real driver against `adguardfake`. Live dual-resolver trial now **PROVEN (2026-06-30):** both resolvers restored byte-for-byte, `dns_coverage_parity` caught a real divergence live (see `TRIAL-RECORD-live-proofs-2026-06-30.md` §2). |
+| **Dual-AdGuard split with per-instance labeling** (two `scope:internal` providers, vantage-correct targets; `adguard[home]`/`adguard[vps]` distinguishable in every plan/apply/verify/audit label) | **BUILT** (PR #12, merged on `develop`): per-instance label woven through `dns_wire.go` + driver, per-instance ownership refuses a foreign overwrite on the right instance, end-to-end test through the real driver against `adguardfake`. Live dual-resolver trial now **PROVEN (2026-06-30):** both resolvers restored byte-for-byte, `dns_coverage_parity` caught a real divergence live (see `internal/TRIAL-RECORD-live-proofs-2026-06-30.md` §2). |
 | **`dns_coverage_parity` audit** across two internal resolvers | **BUILT** (PR #12 base; **wildcard-aware after PR #15**). Diffs host *sets*, vantage-different *targets* are clean (presence check only); a wildcard rewrite is a CATCH-ALL, not a host, and the union is built from EXPLICIT names only with a value-mismatch guard that still flags `host`→A explicit vs covering `*.zone`→B (B ≠ A). RED→GREEN with stub + real-AdGuard-driver end-to-end. |
 | **`dns_value_drift` audit + `DriftValueDNS` reconcile-side correction** (owned-record target drift detected AND corrected) | **BUILT** (PRs #13, #14), scoped via the optional `ports.OwnedRecordReporter` capability. Surgical Cloudflare opts in (its `LiveRecords` is marker-filtered, so every record is provably Crenel's). Marker-less AdGuard deliberately does NOT implement the capability; a value check there would cry wolf on the operator's legitimately-foreign rewrites. Documented limit, not a fix. |
 | **Wildcard-aware sibling DNS-vs-edge checks** (`dns_without_edge_route` / `edge_route_without_dns`) | **BUILT** (PR #16). A wildcard `*.zone` is a CATCH-ALL: backed by any exposed host under the zone, so not flagged dangling unless nothing in the zone is exposed; covers any name in the zone for the reverse check. |
@@ -221,7 +221,7 @@ real divergence); (b) the **surgical Cloudflare trial on the shared `homelab.exa
 `finances.homelab.example` production expose from the home-edge host**: one Crenel run driving the home edge
 route, VPS edge allowlist, both AdGuard rewrites, and the public Cloudflare record, all gates
 green (the coordinated multi-scope expose at production scale). See the repo's
-`TRIAL-RECORD-live-proofs-2026-06-30.md`. What remains genuinely live-only is Tailscale
+`internal/TRIAL-RECORD-live-proofs-2026-06-30.md`. What remains genuinely live-only is Tailscale
 `serve.json` WRITE support (read side is per-host wildcard-aware; write path untested).
 
 ---
@@ -259,6 +259,6 @@ instead of in Cloudflare. In that variant:
 
 - **[DNS-DESIGN.md](DNS-DESIGN.md)**: driver-level design. The Cloudflare and AdGuard adapters, the
   control-API contract, credential handling, the safety posture.
-- **DESIGN.md**: the two load-bearing invariants + apply ordering this architecture inherits.
+- **internal/DESIGN.md**: the two load-bearing invariants + apply ordering this architecture inherits.
 - **SECURITY.md**: the secret inventory + redaction (one env-ref per provider; nothing hardcoded).
 - The repo's **`TRIAL-RESULT-*.md`**: the byte-for-byte records behind every "live-proven" claim.

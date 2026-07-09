@@ -14,7 +14,7 @@ import (
 // coordinated entries land across both edges + DNS as ONE all-or-nothing,
 // read-back-verified transaction (ordered + rolled back by apply.go). Where chain.go
 // recognizes a front leaf that dials the downstream, this synthesizes that leaf.
-// Driver-free, like the rest of core. See DESIGN.md "Cross-chain coordinated WRITE".
+// Driver-free, like the rest of core. See docs/internal/DESIGN.md "Cross-chain coordinated WRITE".
 
 // chainRole classifies an edge's responsibility for a service in a (possibly chain)
 // write projection.

@@ -34,12 +34,12 @@ services:
       timeout: 3s
       retries: 10
 
-  crenel:
+  keep:   # the castle keep — the control-plane service you exec crenel commands in
     build:
       context: ..
       dockerfile: bundle/Dockerfile
     image: crenel:bundle-v0
-    container_name: crenel-bundle-crenel
+    container_name: crenel-bundle-keep
     restart: unless-stopped
     # Share caddy's network namespace: crenel reaches the loopback-only admin at
     # 127.0.0.1:2019, and the dashboard it binds on :8080 is published by caddy.

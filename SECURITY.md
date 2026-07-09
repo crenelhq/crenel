@@ -2,11 +2,11 @@
 
 > The doc to read to understand what secrets Crenel touches, where they can leak,
 > what Crenel trusts, and how to run it safely. It formalizes the security analysis
-> behind the **Transport** axis (DESIGN.md "Transport / Connection") and the
-> **secret-redaction** hardening (this pass). Companions: **DESIGN.md** (architecture
-> + the two load-bearing invariants), **TOPOLOGY-RISK-REGISTER.md** (the long-tail
-> *correctness* safety net, a different axis from *secrecy*), **DEPLOY-VPS.md** (the
-> safe loopback-admin deployment runbook), **AUTH-DESIGN.md** (the auth-by-reference
+> behind the **Transport** axis (docs/internal/DESIGN.md "Transport / Connection") and the
+> **secret-redaction** hardening (this pass). Companions: **docs/internal/DESIGN.md** (architecture
+> + the two load-bearing invariants), **docs/internal/TOPOLOGY-RISK-REGISTER.md** (the long-tail
+> *correctness* safety net, a different axis from *secrecy*), **docs/internal/DEPLOY-VPS.md** (the
+> safe loopback-admin deployment runbook), **docs/internal/AUTH-DESIGN.md** (the auth-by-reference
 > posture).
 >
 > Scope: Crenel is an **on-demand operator CLI**, not a daemon. It has no network
@@ -79,7 +79,7 @@ never *interprets* a token) but it means those secrets ride along in two raw car
 | File | Contains | Protection |
 |---|---|---|
 | **Git-remote push credential** | the maintainer's credential for `origin` | Read fresh from an out-of-repo file via a `GIT_ASKPASS` helper at push time; **never** embedded in the remote URL, `.git/config`, process args, or scrollback |
-| **Operator backup files** (`live-backup/`, DEPLOY-VPS.md snapshots) | the **real** full edge config = every secret in 1a | `.gitignore`d; written `0600` by `export`; manual `curl` backups inherit the operator's umask, so **set `0600` yourself** |
+| **Operator backup files** (`live-backup/`, docs/internal/DEPLOY-VPS.md snapshots) | the **real** full edge config = every secret in 1a | `.gitignore`d; written `0600` by `export`; manual `curl` backups inherit the operator's umask, so **set `0600` yourself** |
 | **`export <file>` output** | live state snapshot (REAL values by default) | Written `0600`; `--redacted` writes a secret-free copy |
 | **Settings file** (`-config`) | provider/topology config: `admin_url`, SSH targets, `ssh_identity` path, origins, **auth-policy *references*** | Not secret by itself (references + addresses), but names your infra; the `ssh_identity` is a path, not a key. Keep it private as config hygiene |
 | **Caddy persist file** (`caddy_persist_path`) | managed routes mirrored as a Caddyfile; auth as `import <snippet>` **references**, not snippet bodies | Crenel emits references only; it never writes the operator's auth secret into the persisted Caddyfile |
@@ -105,12 +105,12 @@ edge (open any host, strip any auth, install a permissive catch-all). Therefore:
 
 ### 2b. The transport seam keeps the sensitive config inside SSH
 
-Crenel reaches an admin API through a pluggable **Transport** (DESIGN.md). The three
+Crenel reaches an admin API through a pluggable **Transport** (docs/internal/DESIGN.md). The three
 implementations map directly onto a trust model:
 
 | Transport | Where the admin call travels | When it is safe |
 |---|---|---|
-| **`direct`** | plaintext HTTP to `admin_url` | **Loopback only**: run Crenel *on* the edge host, hitting `127.0.0.1:2019`. Safe because the plaintext never leaves the box. (DEPLOY-VPS.md is exactly this.) |
+| **`direct`** | plaintext HTTP to `admin_url` | **Loopback only**: run Crenel *on* the edge host, hitting `127.0.0.1:2019`. Safe because the plaintext never leaves the box. (docs/internal/DEPLOY-VPS.md is exactly this.) |
 | **`ssh-exec`** | the admin call runs as a command on the far end (`ssh → … → curl 127.0.0.1:2019`); request/response travel inside the **SSH-encrypted channel** | Remote edge, **admin stays loopback-only and unpublished**. The home edge's container-localhost admin is reached with **zero port exposure and no tunnel**. The preferred remote transport. |
 | **`ssh-tunnel`** | Crenel opens an **ephemeral, crenel-managed** `ssh -N -L` and talks `direct` over it; closed on teardown | Remote edge; the forward binds `127.0.0.1:<local>` on the *operator's* box for the life of one invocation only; no `ssh -fN` left running |
 
@@ -148,7 +148,7 @@ clear.** It is either local-loopback (`direct` on-box) or inside SSH (`ssh-exec`
 ## 3. What Crenel persists vs. does not
 
 - **Does NOT persist:** desired state / source-of-truth (the live edge is the only
-  truth; DESIGN.md invariant 1), secrets of any kind, the push token (read fresh per
+  truth; docs/internal/DESIGN.md invariant 1), secrets of any kind, the push token (read fresh per
   push), credentials in process args or `.git/config`.
 - **Persists only on explicit operator action:** `export <file>` (a throwaway snapshot,
   `0600`), `caddy_persist_path` (managed routes + auth *references*, no secret bodies),
@@ -183,7 +183,7 @@ Redaction and the transport model close the *output* and *network* leaks. What r
    agent-forwarded key to a hostile bastion, or a compromised SSH client defeats B2.
    Crenel does not (and cannot) verify your host keys for you.
 2. **Backups/exports contain real secrets by necessity.** A redacted backup cannot be
-   restored, so the restore-grade backup (DEPLOY-VPS.md) holds real Cloudflare tokens,
+   restored, so the restore-grade backup (docs/internal/DEPLOY-VPS.md) holds real Cloudflare tokens,
    ACME keys, and auth hashes. `0600` + gitignore + "keep off shared storage" is the only
    protection; a stolen backup file is a full edge-secret compromise.
 3. **No daemon, but full operator trust at run time.** Crenel acts with the operator's
@@ -249,9 +249,9 @@ printed/exported, gated by `--show-secrets`, and the default-redacted-print path
 real-apply path are exercised independently by tests.
 
 **Backups:** `export` and operator backups are written `0600` and hold **real** values
-(redacting a restore-grade backup would make it useless for recovery; DEPLOY-VPS.md
+(redacting a restore-grade backup would make it useless for recovery; docs/internal/DEPLOY-VPS.md
 restore depends on byte-exact real config). Use `export --redacted` only for the
-shareable form. Manual `curl` backups (DEPLOY-VPS.md) inherit your umask, so
+shareable form. Manual `curl` backups (docs/internal/DEPLOY-VPS.md) inherit your umask, so
 `chmod 0600` them.
 
 ---

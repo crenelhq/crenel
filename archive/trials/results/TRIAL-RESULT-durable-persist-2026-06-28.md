@@ -6,7 +6,7 @@
 > teardown half) — see §6.**
 >
 > Sole executor, no sub-agents. Binary built from `feat/durable-home-persist` @ `a4a0f63`
-> (10,731,618 bytes), run FROM THE MAC over `ssh root@proxmox → pct exec 100 → …`. TS
+> (10,731,618 bytes), run FROM THE MAC over `ssh root@pve1 → pct exec 113 → …`. TS
 > `20260628T200507Z`. Backups (gitignored): `live-backup/durable-persist-20260628T200507Z/`.
 
 ---
@@ -35,7 +35,7 @@
 
 `docker inspect caddy` → `caddy run --config /etc/caddy/Caddyfile --adapter caddyfile`,
 **no `--resume`** (admin writes ephemeral); Caddyfile bind-mounted **read-only** from
-`/etc/homeedge/caddy` (the home-edge host) into the container. `crenel status` declared, LIVE:
+`/opt/stacks/caddy/conf` (the home-edge host) into the container. `crenel status` declared, LIVE:
 
 - ephemeral config (no `caddy_persist`): `Durability: ephemeral-admin ⚠ writes are
   LIVE-only — a control-plane restart DROPS them`.
@@ -47,7 +47,7 @@ Both read 51 services, default-deny ENFORCED. The persistence-model net is live-
 
 | Anchor | Value |
 |---|---|
-| Caddyfile (host `/etc/homeedge/caddy/Caddyfile`) | sha `eac4c45a…`, 8755 B, 278 lines |
+| Caddyfile (host `/opt/stacks/caddy/conf/Caddyfile`) | sha `eac4c45a…`, 8755 B, 278 lines |
 | Live admin JSON (`GET /config/`) | sha `e509c326…`, 24877 B, **51 hosts** |
 | `caddy adapt` baseline | 24877 B → host set |
 | caddy container | RestartCount 0, Running, Started `2026-06-27T22:00:48Z` |
@@ -178,7 +178,7 @@ invariant working as designed. Production ends byte-for-byte as found.
 > expose → restart → UNEXPOSE-THROUGH-CRENEL → restart cycle PASSED end-to-end on the real
 > home edge — the unexpose VERIFIED and removed (no rollback, no manual restore), and the
 > Caddyfile returned to the byte-for-byte anchor BY CRENEL.** Fixed binary from branch tip
-> `5183790` (sha `287d568f…`), same access model (Mac → `ssh root@proxmox → pct exec 100`),
+> `5183790` (sha `287d568f…`), same access model (Mac → `ssh root@pve1 → pct exec 113`),
 > TS `20260628T211207Z`. Backups: `live-backup/durable-persist-recycle-20260628T211207Z/`.
 
 **Pre-flight (clean, exactly where the first trial left it):** Caddyfile anchor `eac4c45a…`

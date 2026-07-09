@@ -31,7 +31,7 @@ type EdgeBinding struct {
 	// the public_without_auth warning (which would otherwise fire spuriously on a
 	// front edge). It does NOT change routing or the default-deny; it is a posture
 	// assertion about where auth is enforced in the chain. A genuine terminal edge
-	// leaves this false so the warning still fires. See DESIGN.md "Chain topology".
+	// leaves this false so the warning still fires. See docs/internal/DESIGN.md "Chain topology".
 	AuthDownstream bool
 
 	// IngressKind DECLARES this edge's off-edge reachability mechanism (a tunnel /
@@ -67,7 +67,7 @@ type EdgeBinding struct {
 	// drives whether a synthesized chain-FORWARD route renders upstream TLS + Host —
 	// the front-leg HTTPS gap the live cross-chain trial caught (TRIAL-FIX-4): a bare
 	// HTTP forward to a `:443` downstream gets a 400. Only consulted when DownstreamEdge
-	// is set. See chain_write.go forwardRoute and DESIGN.md "Transport / Connection".
+	// is set. See chain_write.go forwardRoute and docs/internal/DESIGN.md "Transport / Connection".
 	DownstreamScheme string
 }
 
@@ -137,6 +137,16 @@ type Engine struct {
 	// let an unconfirmed write stand as a silent green. Default false — load-bearing-
 	// on-the-human, same spirit as Force. See UnverifiedWriteError.
 	AllowUnverified bool
+
+	// ReadOnly declares this engine audit-only: every mutating verb (expose/unexpose/
+	// apply/reconcile/import/rename/resume/ack/unack) refuses BEFORE planning with
+	// ErrReadOnlyEngine, and no Persister/Adopter capability is ever invoked. Set from
+	// settings `read_only: true` ("I only ever audit this edge"); the zero-config
+	// audit-target mode forces it. It is the posture key for the foreign_managed_readonly
+	// re-frame in Audit (§3.3 of the audit-any-edge design) — the downgrade is keyed
+	// STRICTLY on this field so a writable engine's ownership warning never blunts
+	// (risk A.7). Reads are untouched: audit was always read-only. Default false.
+	ReadOnly bool
 }
 
 // New builds a single-edge Engine with compensating rollback enabled by default.

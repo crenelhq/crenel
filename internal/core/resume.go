@@ -35,6 +35,10 @@ type ResumeReport struct {
 func (e *Engine) Resume(ctx context.Context, op model.Op, confirm ConfirmFunc) (ResumeReport, error) {
 	rr := ResumeReport{Op: op}
 
+	// Read-only posture: refuse before planning — nothing to re-drive on an audit engine.
+	if err := e.gateReadOnly("resume"); err != nil {
+		return rr, err
+	}
 	cs, err := e.Plan(ctx, op)
 	if err != nil {
 		return rr, err

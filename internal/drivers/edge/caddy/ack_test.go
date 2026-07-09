@@ -43,7 +43,7 @@ func TestNormalize_AckedRouteReclassified(t *testing.T) {
 	if len(acked) != 1 {
 		t.Fatalf("expected exactly 1 acknowledged_unknown entry, got %d: %+v", len(acked), live.Unparsed)
 	}
-	if !strings.Contains(acked[0].Reason, "webhook-tailnet-agents") {
+	if !strings.Contains(acked[0].Reason, "hawser-tailnet-agents") {
 		t.Errorf("acked entry's Reason should carry the operator's reason slug, got %q", acked[0].Reason)
 	}
 	if len(stillUnknown) != 1 {

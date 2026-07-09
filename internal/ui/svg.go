@@ -14,7 +14,7 @@ import (
 //
 //	CRENEL_GEN_ASSETS=1 go test ./internal/ui/ -run TestGenerateAssets
 
-// Brand palette (also documented in BRANDING.md). The semantic trio matches the
+// Brand palette (also documented in docs/brand/BRANDING.md). The semantic trio matches the
 // ANSI truecolor constants used for the terminal.
 const (
 	svgBG    = "#0C0D12" // near-black background
@@ -98,6 +98,22 @@ func letterFillRects(ox, oy, cs int, fill string) string {
 	return b.String()
 }
 
+// letterCellSquares renders the letters as a grid of hollow squares — the
+// schematic "box-drawing / constructed-from-blocks" treatment (boxline variant).
+func letterCellSquares(ox, oy, cs int, stroke string) string {
+	var b strings.Builder
+	for r, row := range letterGridRows() {
+		for c, ru := range []rune(row) {
+			if ru != block {
+				continue
+			}
+			fmt.Fprintf(&b, `  <rect x="%d" y="%d" width="%d" height="%d" fill="none" stroke="%s" stroke-width="1.5"/>`+"\n",
+				ox+c*cs+1, oy+r*cs+1, cs-2, cs-2, stroke)
+		}
+	}
+	return b.String()
+}
+
 // crownWidth is the pixel span of the vector battlement.
 func crownWidth() int { return wmMerlonN*wmTooth + (wmMerlonN-1)*wmGap } // 720
 
@@ -126,8 +142,28 @@ func crownMerlons(x0, topY int, fill, bg string) string {
 	return b.String()
 }
 
+// crownGridSquares draws a cell-aligned battlement as hollow squares (boxline):
+// two tooth rows on the period-5 merlon pattern plus a solid parapet row, so the
+// crown matches the hollow-square letters. Spans the glyph width (35 cells).
+func crownGridSquares(ox, topY, cs int, stroke string) string {
+	cols := glyphCols()
+	var b strings.Builder
+	sq := func(c, r int) {
+		fmt.Fprintf(&b, `  <rect x="%d" y="%d" width="%d" height="%d" fill="none" stroke="%s" stroke-width="1.5"/>`+"\n",
+			ox+c*cs+1, topY+r*cs+1, cs-2, cs-2, stroke)
+	}
+	for c := 0; c < cols; c++ {
+		if c%5 < 3 { // merlon cells
+			sq(c, 0)
+			sq(c, 1)
+		}
+		sq(c, 2) // parapet, always
+	}
+	return b.String()
+}
+
 // scanlines overlays thin background-colored stripes over [x,y,w,h] — a CRT
-// raster cutting across the fill (used by the status-HUD's compact wordmark).
+// raster cutting across the fills (scanline variant).
 func scanlines(x, y, w, h int, bg string) string {
 	var b strings.Builder
 	for yy := y + 3; yy < y+h; yy += 5 {
@@ -136,19 +172,26 @@ func scanlines(x, y, w, h int, bg string) string {
 	return b.String()
 }
 
-// WordmarkSVG / WordmarkSVGLight render the canonical mark — refined
-// square-tooth merlons + embrasures, semantic-green crown — on the dark or
-// light surface.
-func WordmarkSVG() string      { return wordmarkSVG(false) }
-func WordmarkSVGLight() string { return wordmarkSVG(true) }
+// WordmarkVariants are the wordmark crown treatments offered for selection.
+var WordmarkVariants = []string{"crisp", "scanline", "boxline", "mono"}
 
-func wordmarkSVG(light bool) string {
+// WordmarkSVG / WordmarkSVGLight are the canonical mark — the "crisp" variant.
+func WordmarkSVG() string      { return WordmarkVariantSVG("crisp", false) }
+func WordmarkSVGLight() string { return WordmarkVariantSVG("crisp", true) }
+
+// WordmarkVariantSVG renders one wordmark variant on the dark or light surface.
+//
+//	crisp    — refined square-tooth merlons + embrasures, semantic-green crown
+//	scanline — crisp geometry with a CRT scanline raster
+//	boxline  — schematic hollow-square ("box-drawing") construction
+//	mono     — crisp geometry, monochrome (no green) — the restrained option
+func WordmarkVariantSVG(variant string, light bool) string {
 	cs := wmCell
 	pad := wmPad
 	lettersW := glyphCols() * cs // 700
 	crownX0 := pad - (crownWidth()-lettersW)/2
 	topY := pad
-	crownH := wmMerlonH + wmParapetH // 60
+	crownH := wmMerlonH + wmParapetH // 60 (the grid crown is 3*cs == 60 too)
 	lettersTop := topY + crownH + wmReveal
 	lettersBottom := lettersTop + len(letterGridRows())*cs
 	taglineY := lettersBottom + 34
@@ -164,17 +207,36 @@ func wordmarkSVG(light bool) string {
 	if light {
 		green = svgGreenDeep
 	}
-	crown := green
-	letters := svgGreen
-	if light {
-		letters = svgInk
+	var crown, letters string
+	if variant == "mono" {
+		mono := svgText // silver ink on dark
+		if light {
+			mono = svgInk
+		}
+		crown, letters = mono, mono
+	} else {
+		crown = green
+		letters = svgGreen
+		if light {
+			letters = svgInk
+		}
 	}
 
 	var b strings.Builder
 	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" width="%d" height="%d" role="img" aria-label="CRENEL">`+"\n", w, h, w, h)
 	fmt.Fprintf(&b, `  <rect width="%d" height="%d" fill="%s"/>`+"\n", w, h, bg)
-	b.WriteString(crownMerlons(crownX0, topY, crown, bg))
-	b.WriteString(letterFillRects(pad, lettersTop, cs, letters))
+
+	if variant == "boxline" {
+		b.WriteString(crownGridSquares(pad, topY, cs, crown))
+		b.WriteString(letterCellSquares(pad, lettersTop, cs, letters))
+	} else {
+		b.WriteString(crownMerlons(crownX0, topY, crown, bg))
+		b.WriteString(letterFillRects(pad, lettersTop, cs, letters))
+		if variant == "scanline" {
+			b.WriteString(scanlines(crownX0, topY, crownWidth(), lettersBottom-topY, bg))
+		}
+	}
+
 	fmt.Fprintf(&b, `  <text x="%d" y="%d" font-family="%s" font-size="15" letter-spacing="3" fill="%s">%s</text>`+"\n",
 		pad+2, taglineY, svgFont, tagline, escapeXML(wordmarkTagline))
 	b.WriteString("</svg>\n")

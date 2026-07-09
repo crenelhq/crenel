@@ -13,8 +13,7 @@
 - [ ] Invariants hold: structural default-deny, bounded honesty
       (declare-unknown, refuse-to-manage foreign routes), read-back-verify on
       every mutating path
-- [ ] Every commit is DCO-signed (`git commit -s`); first-time contributors:
-      CLA accepted (see CLA.md)
+- [ ] Every commit is DCO-signed (`git commit -s`)
 - [ ] No real hostnames, IPs, or credentials in code, tests, docs, or this PR
 
 ## Live-trial note (edge-driver / apply-path / persistence changes only)

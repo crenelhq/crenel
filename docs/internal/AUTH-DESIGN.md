@@ -75,7 +75,7 @@ own reference shape:
 auth_policies:
   authelia:
     # --- Caddy granular admin-API path: ONE of these two renders a VALID gate ---
-    caddy_forward_auth: authelia:9080                                  # authorizer endpoint → CANONICAL
+    caddy_forward_auth: authelia:9091                                  # authorizer endpoint → CANONICAL
     caddy_forward_auth_verify_uri: /api/verify?rd=https://auth.example.com  #   verify path (operator-declared)
     caddy_forward_auth_copy_headers: [Remote-User, Remote-Groups, Remote-Name, Remote-Email]
     # caddy_handler_json: '{ ...verbatim Caddy handler... }'           # OR paste a known-good gate (purest by-reference)

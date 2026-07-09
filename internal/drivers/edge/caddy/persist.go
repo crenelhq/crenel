@@ -19,7 +19,7 @@ import (
 // (proven on the live edge). When a persist path is configured, Crenel ADDITIVELY
 // writes its managed routes into the mounted Caddyfile (between sentinels, never
 // touching unmanaged config), validates it, and reloads with the CORRECT
-// invocation. See USABILITY-DESIGN.md §B. Default OFF.
+// invocation. See docs/internal/USABILITY-DESIGN.md §B. Default OFF.
 
 const (
 	// persistBegin/persistEnd delimit the crenel-managed region of the on-disk

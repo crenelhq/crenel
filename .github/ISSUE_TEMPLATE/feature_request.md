@@ -10,7 +10,7 @@ labels: enhancement
 **What Crenel does today**
 <!-- Include `status`/`audit` output if it declares your construct unknown;
      "declared unknown" vs "misread" matters a lot here. Check
-     TOPOLOGY-RISK-REGISTER.md and docs/security/KNOWN-LIMITS.md first:
+     ../../docs/internal/TOPOLOGY-RISK-REGISTER.md and docs/security/KNOWN-LIMITS.md first:
      if it's listed there, this is a request to extend a known boundary. -->
 
 **What you'd want it to do**

@@ -21,7 +21,7 @@ keeps **no stored desired state**: every command reads the edge's live
 configuration, computes a diff against that live state, previews it, applies it,
 and then **reads live again to prove the change actually took effect**. Full
 plain-language explanation: `docs/WHAT-CRENEL-DOES.md`. Full architecture:
-`DESIGN.md`.
+`internal/DESIGN.md`.
 
 ---
 
@@ -37,16 +37,16 @@ plain-language explanation: `docs/WHAT-CRENEL-DOES.md`. Full architecture:
 Companion docs already in the repo that this package leans on (not duplicated
 here, cited where relevant):
 
-- `DESIGN.md`: architecture, the two load-bearing invariants, every verb's behavior.
-- `AUTH-DESIGN.md`: the forward-auth-by-reference model and its guardrail.
-- `TOPOLOGY-RISK-REGISTER.md`: the authoritative long-tail risk analysis (the
+- `internal/DESIGN.md`: architecture, the two load-bearing invariants, every verb's behavior.
+- `internal/AUTH-DESIGN.md`: the forward-auth-by-reference model and its guardrail.
+- `internal/TOPOLOGY-RISK-REGISTER.md`: the authoritative long-tail risk analysis (the
   "detect-and-declare-unknown" principle lives here, §4).
 - `SECURITY.md`: the **secrecy** axis. It covers what credentials/secrets
   Crenel's process touches, the loopback-admin trust model, and the redaction
   guarantee. This audit package's threat model is about **correctness** (does
   Crenel ever misreport or mismanage exposure); `SECURITY.md`'s is about
   **secrecy** (can a credential leak). They're deliberately separate axes; see
-  `TOPOLOGY-RISK-REGISTER.md` §0's "Axis note."
+  `internal/TOPOLOGY-RISK-REGISTER.md` §0's "Axis note."
 - `STATE-OF-CRENEL.md`: current build status, what's proven live vs. only
   against fakes, PR-by-PR history.
 
@@ -74,7 +74,7 @@ here, cited where relevant):
 - Denial-of-service against the operator's own edge (Crenel is a CLI the
   operator runs on demand; it has no listener and no daemon mode other than the
   optional read-only `serve` dashboard).
-- The demo/branding assets (`BRANDING.md`, `TEASER-TIMELINE.md`, `.demo/`,
+- The demo/branding assets (`brand/BRANDING.md`, `internal/TEASER-TIMELINE.md`, `.demo/`,
   `examples/`) and the fake-CI TRIAL-RESULT/TRIAL-RECORD narrative docs.
 - Supply-chain of the Go toolchain itself. Crenel's own dependency surface is
   worth noting, though: `go.mod` has **zero third-party dependencies**. The
@@ -151,7 +151,7 @@ ranges, generic host labels). What still stands before sharing externally:
 
 For each finding: which claim in `CLAIMS-TO-VERIFY.md` (or a new one) it
 breaks, the minimal repro (ideally a failing `go test`), and which of the three
-verdicts from `TOPOLOGY-RISK-REGISTER.md` §0 it is (**READ-SAFE** /
+verdicts from `internal/TOPOLOGY-RISK-REGISTER.md` §0 it is (**READ-SAFE** /
 **READ-CORRECT** / **MANAGEABLE**), plus whether it's a **MISREAD** (Crenel
 reports something false) or **MISMANAGE** (a change reverts silently). That
 vocabulary is already the project's own severity language, so a finding

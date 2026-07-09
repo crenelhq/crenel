@@ -1,8 +1,8 @@
 // Package config holds centralized, parameterized constants for the tool.
 //
-// Every user-visible string that names the tool is sourced from this file
-// (plus the Go module path, which is the only other place the name is
-// hard-coded), so it stays consistent everywhere.
+// Crenel is a WORKING NAME. Every user-visible string that names the tool is
+// sourced from this file so a future rename is a one-line change here (plus the
+// Go module path, which is the only other place the name is hard-coded).
 package config
 
 const (

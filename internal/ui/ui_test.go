@@ -153,17 +153,55 @@ func TestWordmarkSVG_Deterministic(t *testing.T) {
 	if WordmarkSVG() != WordmarkSVG() || WordmarkSVGLight() != WordmarkSVGLight() {
 		t.Fatal("wordmark SVG renderer must be deterministic")
 	}
-	if !strings.HasPrefix(WordmarkSVG(), "<svg") || !strings.HasSuffix(WordmarkSVG(), "</svg>\n") {
-		t.Error("WordmarkSVG must be well-formed SVG")
+	// The canonical mark is the crisp variant.
+	if WordmarkSVG() != WordmarkVariantSVG("crisp", false) {
+		t.Errorf("WordmarkSVG must equal the crisp dark variant")
 	}
-	if !strings.Contains(WordmarkSVG(), "atomic agreement") {
-		t.Error("WordmarkSVG missing tagline")
+	if WordmarkSVGLight() != WordmarkVariantSVG("crisp", true) {
+		t.Errorf("WordmarkSVGLight must equal the crisp light variant")
 	}
-	if !strings.Contains(WordmarkSVG(), svgGreen) {
-		t.Error("WordmarkSVG must carry the dark-surface crown green")
-	}
-	if !strings.Contains(WordmarkSVGLight(), svgGreenDeep) {
-		t.Error("WordmarkSVGLight must carry the light-surface crown green")
+}
+
+// TestWordmarkVariants asserts each variant renders well-formed SVG with its
+// distinguishing treatment, in both surfaces, and that mono carries NO green.
+func TestWordmarkVariants(t *testing.T) {
+	for _, v := range WordmarkVariants {
+		for _, light := range []bool{false, true} {
+			s := WordmarkVariantSVG(v, light)
+			if !strings.HasPrefix(s, "<svg") || !strings.HasSuffix(s, "</svg>\n") {
+				t.Errorf("%s/light=%v: not well-formed SVG", v, light)
+			}
+			if !strings.Contains(s, "atomic agreement") {
+				t.Errorf("%s/light=%v: missing tagline", v, light)
+			}
+			switch v {
+			case "mono":
+				// Monochrome: neither green token may appear anywhere.
+				if strings.Contains(s, svgGreen) || strings.Contains(s, svgGreenDeep) {
+					t.Errorf("mono/light=%v must contain no green", light)
+				}
+			case "boxline":
+				// Schematic: hollow squares (stroked, fill="none").
+				if !strings.Contains(s, `fill="none"`) || !strings.Contains(s, "stroke=") {
+					t.Errorf("boxline/light=%v must be stroked hollow squares", light)
+				}
+			case "scanline":
+				// CRT raster: thin 2px stripes in the background color.
+				if !strings.Contains(s, `height="2"`) {
+					t.Errorf("scanline/light=%v must contain scanline stripes", light)
+				}
+			}
+			// Green-crown variants must carry a green token on the appropriate surface.
+			if v != "mono" {
+				want := svgGreen
+				if light {
+					want = svgGreenDeep
+				}
+				if !strings.Contains(s, want) {
+					t.Errorf("%s/light=%v: missing crown green %s", v, light, want)
+				}
+			}
+		}
 	}
 }
 

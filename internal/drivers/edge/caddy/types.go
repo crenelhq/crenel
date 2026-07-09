@@ -166,7 +166,7 @@ type Handler struct {
 	// production edges route a wildcard host (*.homelab.example) into a subroute that
 	// nests further — wildcard → subroute → per-host route → subroute → leaf
 	// reverse_proxy — so normalize must RECURSE through these to enumerate the real
-	// per-host services rather than stopping at the opaque wildcard. See DESIGN.md
+	// per-host services rather than stopping at the opaque wildcard. See docs/internal/DESIGN.md
 	// "Caddy edge driver" and the trial that surfaced this.
 	Routes []JSONRoute `json:"routes,omitempty"`
 	// HandleResponse, present on a reverse_proxy handler, is the forward-auth
@@ -176,7 +176,7 @@ type Handler struct {
 	// Its mere PRESENCE is what marks a reverse_proxy as an auth gate (isAuthGate), so
 	// the read model skips it for leaf enumeration and claims it for auth detection. It
 	// is read as opaque raw JSON (crenel never models the operator's verify URI /
-	// copy-headers — that is the auth-by-reference boundary). See AUTH-DESIGN.md §2.
+	// copy-headers — that is the auth-by-reference boundary). See docs/internal/AUTH-DESIGN.md §2.
 	HandleResponse json.RawMessage `json:"handle_response,omitempty"`
 	// CrenelPolicy carries the forward-auth POLICY name on crenel's own auth marker
 	// handler — a `vars` handler (handler=="vars") emitted ahead of the gate. crenel
@@ -184,7 +184,7 @@ type Handler struct {
 	// on read-back (unlike a reverse_proxy's unknown fields, which Caddy drops on
 	// normalize), so the policy NAME round-trips off a real edge — not just the fake.
 	// It is crenel's marker, not a stock-Caddy field: a documented fidelity boundary
-	// (the granular JSON auth reference). See AUTH-DESIGN.md §2.
+	// (the granular JSON auth reference). See docs/internal/AUTH-DESIGN.md §2.
 	CrenelPolicy string `json:"crenel_policy,omitempty"`
 	// Transport, on a reverse_proxy, configures the UPSTREAM connection. A non-nil tls
 	// block means the edge dials the downstream over HTTPS — the shape crenel renders on

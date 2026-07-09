@@ -78,19 +78,19 @@ example is live on the maintainer's edge, in the shape §5h item A explicitly de
 
 ```caddyfile
 # home edge, docker-exec transport
-app.homelab.example {
+dockhand.homelab.example {
     # tailnet agents post here — bypass Authelia for this path
-    handle /api/webhook/* {
-        reverse_proxy app:8080
+    handle /api/hawser/* {
+        reverse_proxy dockhand:8080
     }
     # everything else is Authelia-gated as usual
-    forward_auth authelia:9080 { ... }
-    reverse_proxy app:8080
+    forward_auth authelia:9091 { ... }
+    reverse_proxy dockhand:8080
 }
 ```
 
 Crenel now correctly reads this route as **`matcher_conditional`** — it saw the
-`handle /api/webhook/*` matcher, it can't fully model per-path routing yet
+`handle /api/hawser/*` matcher, it can't fully model per-path routing yet
 (that's P5-WRITE), and rather than silently drop the path constraint it
 DECLARES the route unknown. Result:
 
@@ -130,9 +130,9 @@ crenel-ack:<slug>[:<reason-slug>]
 ```
 
 - Caddy: the route's `@id`, e.g.
-  `@id crenel-ack:webhook-tailnet-agents`.
+  `@id crenel-ack:hawser-tailnet-agents`.
 - Traefik: a router label,
-  `traefik.http.routers.app-webhook.crenel-ack=webhook-tailnet-agents`.
+  `traefik.http.routers.dockhand-hawser.crenel-ack=hawser-tailnet-agents`.
 - nginx: a leading `# crenel-ack:` comment on the `location` block.
 
 Crenel reads this in `normalize`, the same pass that today emits `Unparsed`.
@@ -156,8 +156,8 @@ That's the entire mechanism.
 |---|:---:|---|---|
 | Fully-parsed, understood | ENFORCED | `photos → home:8080 [auth: authelia]` | Today's normal path. |
 | Understood but foreign-owned | ENFORCED (edge-wide refuse to manage) | `photos [foreign: cdp]` | P2. |
-| Declared unknown, no ack | **UNKNOWN** | `app/api/webhook [unknown: matcher_conditional]` | Today's honest gap; safe but never certifies. |
-| Declared unknown, **ack'd** | ENFORCED | `app/api/webhook [ACK: webhook-tailnet-agents]` | **New.** Certifies deny; still visible as ACK. |
+| Declared unknown, no ack | **UNKNOWN** | `dockhand/api/hawser [unknown: matcher_conditional]` | Today's honest gap; safe but never certifies. |
+| Declared unknown, **ack'd** | ENFORCED | `dockhand/api/hawser [ACK: hawser-tailnet-agents]` | **New.** Certifies deny; still visible as ACK. |
 
 The ACK row is deliberately its own colour in the HUD — not the verified-green
 of an understood route, not the amber-alert of an unaddressed unknown. It reads
@@ -213,13 +213,13 @@ That's the elegant bit. The proposal is small because the pattern is right.
 ### 4a. Manual — the marker is a plain string
 
 The lowest form. An operator opens the Caddy config and adds `@id
-crenel-ack:webhook-tailnet-agents` on the affected route, reloads Caddy, and
+crenel-ack:hawser-tailnet-agents` on the affected route, reloads Caddy, and
 re-runs `crenel status`. The route now reads:
 
 ```
-app.homelab.example                              [ACK: webhook-tailnet-agents]
-    ↳ /api/webhook/* → app:8080  (declared unknown, acknowledged)
-    ↳ / → app:8080  [auth: authelia]
+dockhand.homelab.example                              [ACK: hawser-tailnet-agents]
+    ↳ /api/hawser/* → dockhand:8080  (declared unknown, acknowledged)
+    ↳ / → dockhand:8080  [auth: authelia]
 default-deny                                                        ENFORCED ✓
 ```
 
@@ -227,7 +227,7 @@ default-deny                                                        ENFORCED ✓
 
 ```
 acknowledged-unknown: 1 route
-  · app.homelab.example /api/webhook/*  reason=webhook-tailnet-agents
+  · dockhand.homelab.example /api/hawser/*  reason=hawser-tailnet-agents
 ```
 
 This is enough for the operator who is comfortable editing the config directly.
@@ -241,7 +241,7 @@ posture as `expose`:
 
 1. **Read live** — locate the route (host or host+path); if there's no matching
    declared-unknown to attach the marker to, refuse loudly.
-2. **Preview** — print the exact change ("stamp `@id crenel-ack:webhook-tailnet-
+2. **Preview** — print the exact change ("stamp `@id crenel-ack:hawser-tailnet-
    agents` on `apps.http.servers.srv0.routes[3]`"), ask the operator to confirm
    unless `--yes`.
 3. **Apply** — through the same admin/file transport the driver already uses
@@ -345,7 +345,7 @@ properties, in order of importance:
    ack surface. (Compare: a silent "trust me" flag that just moves the
    `Unparsed` entry out of the report would be strictly worse than today's
    `UNKNOWN` deny — that's not the proposal.)
-2. **Reason required.** The marker carries a reason slug (`crenel-ack:webhook-
+2. **Reason required.** The marker carries a reason slug (`crenel-ack:hawser-
    tailnet-agents`) and — for the verb form — a `--reason` flag. A future
    `crenel audit --ack-reasons` (out of scope for this proposal, cheap
    follow-on) can print the acknowledgment log directly.

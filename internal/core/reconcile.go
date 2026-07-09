@@ -14,7 +14,7 @@ import (
 // operator-grade "detect + fix ALL drift" verb: it converges every edge + DNS
 // provider onto the CANONICAL currently-exposed set, which — in the live-state-
 // authoritative no-SOT model — is derived FROM live (not from a stored desired
-// state). See DESIGN.md "Reconcile" for the precise drift-vs-audit boundary.
+// state). See docs/internal/DESIGN.md "Reconcile" for the precise drift-vs-audit boundary.
 type DriftKind string
 
 const (
@@ -126,6 +126,10 @@ type canonicalState struct {
 func (e *Engine) Reconcile(ctx context.Context, confirm ReconcileConfirmFunc) (ReconcileReport, error) {
 	var rep ReconcileReport
 
+	// Read-only posture: refuse before planning (DetectDrift stays available — it reads).
+	if err := e.gateReadOnly("reconcile"); err != nil {
+		return rep, err
+	}
 	plan, canon, err := e.planReconcile(ctx)
 	if err != nil {
 		return rep, err

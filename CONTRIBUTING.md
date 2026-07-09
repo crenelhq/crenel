@@ -3,13 +3,13 @@
 Thanks for your interest. Crenel touches the seam between your machine and the
 public internet (what your edge exposes), so the contribution bar is
 deliberately about **honesty and proof**, not volume. This guide is the practical
-"how"; the legal "what" lives in [`DCO.txt`](DCO.txt), [`CLA.md`](CLA.md), and
+"how"; the legal "what" lives in [`DCO.txt`](DCO.txt) and
 [`LICENSE`](LICENSE). Participation is also governed by the
 [Code of Conduct](CODE_OF_CONDUCT.md).
 
 > **Project status.** Crenel has publicly launched (`v0.4.1`). The repository is
 > still developed day-to-day by a solo maintainer, and the testing and trial
-> bars below are exactly how the maintainer already works — the CLA/DCO
+> bars below are exactly how the maintainer already works — the DCO
 > machinery in this guide is what makes external contribution possible now that
 > the project is public.
 
@@ -22,7 +22,7 @@ deliberately about **honesty and proof**, not volume. This guide is the practica
 5. If the change touches an **edge driver or the apply path**, run (or describe)
    a **trial**; see *the trial-before-merge cadence*.
 6. Open a PR against `develop` with a clear description and the trial notes.
-   First-time contributors: see *Legal: DCO + CLA*.
+   First-time contributors: see *Legal: DCO*.
 
 ## The two ground rules (read these first)
 
@@ -33,7 +33,7 @@ invariants protect that, and they shape how you contribute:
   cannot determine must be *declared unknown*, never silently dropped or assumed
   safe. If your change makes Crenel parse something new, make sure the
   *un*-parseable tail still surfaces (counted in `status`/`audit`). See
-  `TOPOLOGY-RISK-REGISTER.md` and `DESIGN.md` §3.
+  `docs/internal/TOPOLOGY-RISK-REGISTER.md` and `docs/internal/DESIGN.md` §3.
 - **Live-state-authoritative.** There is no stored desired state. Every mutating
   verb is `read-live → plan → apply → read-back-verify`; an admin-API `200` is
   **not** proof. New mutating behavior must read back and verify.
@@ -93,7 +93,7 @@ cannot visually drift. If you touch wordmark/HUD rendering:
   beyond an `io.Writer`/returned string).
 - Keep **color semantic**, never decorative: green = safe/private/verified,
   amber = about-to-go-public/drift, red = fail-open. New fields pick a *role*
-  (`ui.Sem`), not a raw color. See [`BRANDING.md`](BRANDING.md).
+  (`ui.Sem`), not a raw color. See [`docs/brand/BRANDING.md`](docs/brand/BRANDING.md).
 - Regenerate the committed SVGs from the renderers and commit the result:
   ```bash
   CRENEL_GEN_ASSETS=1 go test ./internal/ui/ -run TestGenerateAssets
@@ -127,9 +127,7 @@ in output and `export --redacted`. When you attach logs, diffs, or trial results
 to an issue/PR, **scrub real hostnames, tokens, and IPs.** Never paste an
 unredacted export or admin-API dump. Tests must not embed real credentials.
 
-## Legal: DCO + CLA
-
-Both are required; they do different jobs.
+## Legal: DCO
 
 **DCO: every commit.** Sign off each commit to certify you wrote it / have the
 right to submit it (the [Developer Certificate of Origin](DCO.txt)):
@@ -141,17 +139,8 @@ git commit -s          # appends "Signed-off-by: Your Name <you@example.com>"
 Your `user.name` / `user.email` must be real and match the sign-off. To sign off
 a branch you forgot to sign: `git rebase --signoff develop`.
 
-**CLA: once, before your first merge.** Before your **first** contribution is
-merged, accept the [Contributor License Agreement](CLA.md) (individual or, if
-contributing on behalf of an employer, entity). The agreement explains *why* an
-open-core project needs the relicensing grant the DCO alone doesn't give. The
-acceptance flow is lightweight: a one-line entry in the contributor ledger in
-your first PR, or a CLA-assistant check once the project is hosted publicly. See
-[`CLA.md`](CLA.md) for the exact steps.
-
-> **Policy:** the maintainer will not merge a first-time external PR until (a)
-> all its commits are DCO-signed and (b) the CLA is on file for that contributor.
-> Subsequent PRs need only the per-commit DCO sign-off.
+> **Policy:** the maintainer will not merge a PR until all its commits are
+> DCO-signed.
 
 ## Open-core boundary
 
@@ -161,8 +150,7 @@ directory may add things like a compliance/audit ledger. The architecture keeps
 that seam clean: `internal/core` and `internal/model` never import a driver, and
 concrete drivers are wired only at `cmd/crenel` (asserted by a dependency test).
 Contributions to the Apache core are always welcome; see
-[`docs/OPEN-CORE.md`](docs/OPEN-CORE.md) for what lives on each side of the line
-and why the CLA matters for it.
+[`docs/OPEN-CORE.md`](docs/OPEN-CORE.md) for what lives on each side of the line.
 
 ## Code style
 

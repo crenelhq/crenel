@@ -7,7 +7,7 @@
 > to the code, then try to construct an input that defeats it. A confirmed
 > break is a finding regardless of how contrived the triggering config is.
 > "Contrived" configs are exactly what real-world edges turn out to look like
-> (see `TOPOLOGY-RISK-REGISTER.md` Appendix B for prevalence sourcing).
+> (see `../internal/TOPOLOGY-RISK-REGISTER.md` Appendix B for prevalence sourcing).
 >
 > Severity vocabulary: use `MISREAD-↓` / `MISREAD-↑` / `MISMANAGE` /
 > `READ-SAFE` / `READ-CORRECT` / `MANAGEABLE` from
@@ -155,7 +155,7 @@ the explicit `--auth none` opt-out. `--yes` does not bypass this refusal.
   already enforced) rather than silently dropping the requested policy.
 
 **Mechanism / where to look:** `model.ValidateAuth`, the CLI guardrail wired
-around `computeNewPublic`, `AUTH-DESIGN.md` §6. Anchoring tests:
+around `computeNewPublic`, `../internal/AUTH-DESIGN.md` §6. Anchoring tests:
 `internal/core/audit_test.go`, `internal/core/chain_p4_test.go`,
 `internal/core/chain_write_test.go`.
 
@@ -181,7 +181,7 @@ shadowed or overwritten.
   delete a foreign record" claim; test the boundary at the lowest level, not
   just the CLI.
 - Check the marker-matching logic for a **prefix-collision** class of bug (one
-  was found and fixed here before; see `DESIGN.md`/`STATE-OF-CRENEL.md` for
+  was found and fixed here before; see `../internal/DESIGN.md`/`STATE-OF-CRENEL.md` for
   the `HasPrefix` → word-boundary fix history). Confirm a record whose comment
   merely *starts with* something marker-like but isn't Crenel's own doesn't
   get treated as owned, and vice versa: a marker-ish-but-foreign comment

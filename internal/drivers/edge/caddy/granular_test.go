@@ -179,14 +179,14 @@ func TestGranularApply_WildcardShadowingAdditive(t *testing.T) {
 	if z.top != 2 {
 		t.Fatalf("top-level route count must stay 2 (no flat sibling), got %d", z.top)
 	}
-	shrimp := z.inner["*.homelab.example"]
-	if len(shrimp) != 2 {
-		t.Fatalf("*.homelab.example subroute should grow from 1 to 2 inner routes, got %d", len(shrimp))
+	wildZone := z.inner["*.homelab.example"]
+	if len(wildZone) != 2 {
+		t.Fatalf("*.homelab.example subroute should grow from 1 to 2 inner routes, got %d", len(wildZone))
 	}
-	if innerHosts(shrimp)[0] != host {
-		t.Errorf("crenel exact-host route should be at index 0 of the zone subroute, got %v", innerHosts(shrimp))
+	if innerHosts(wildZone)[0] != host {
+		t.Errorf("crenel exact-host route should be at index 0 of the zone subroute, got %v", innerHosts(wildZone))
 	}
-	if id, _ := shrimp[0]["@id"].(string); id != "crenel-route-"+host {
+	if id, _ := wildZone[0]["@id"].(string); id != "crenel-route-"+host {
 		t.Errorf("nested route must carry its @id, got %q", id)
 	}
 	if len(z.inner["*.smallbiz.example"]) != 1 {

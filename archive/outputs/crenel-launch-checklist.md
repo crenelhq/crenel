@@ -26,7 +26,7 @@ The correctness phase (§5i, PRs #11–#17) is complete and offline-provable.
 | Item | Status | Notes |
 |---|---|---|
 | `LICENSE` (Apache-2.0) | ✅ present | repo root |
-| `NOTICE` | ✅ present | repo root; carries the trademark line |
+| `NOTICE` | ✅ present | repo root; carries the "Crenel is a working name" note + trademark line |
 | `DCO.txt` (Developer Certificate of Origin v1.1) | ✅ present | repo root |
 | `CLA.md` (one-time CLA, dual sign-off model) | ✅ present, **template state** | per its own front-matter: "Status: prepared, not yet activated… legal-entity name, contact address, and the final project name are filled in at activation" |
 | `CODE_OF_CONDUCT.md` | ❌ TBD | Apache projects typically ship the Contributor Covenant v2.1 verbatim; add before the first external contribution |
@@ -41,7 +41,7 @@ The correctness phase (§5i, PRs #11–#17) is complete and offline-provable.
 | Working name "Crenel" + rationale documented | ✅ DONE | README + NOTICE — "rename is one find/replace; see internal/config/naming.go" |
 | Final name decision | ❌ TBD | the rename is mechanical; the *decision* is what's outstanding |
 | Domain registrations | ❌ TBD | confirm `crenel.sh` (already used as the live-trial dedicated zone, so the operator already controls it) AND the final org's primary domain |
-| GitHub org `crenelhq` | ❌ TBD — **NOT VERIFIED FROM THIS REPO.** The go.mod module path is `github.com/crenelhq/crenel`, which assumes the org exists. The repo itself currently lives on the self-hosted Forgejo at `10.0.0.13:3030/homelab/crenel`. Status of the `crenelhq` GitHub org and the upstream `crenelhq/crenel` repo needs to be checked outside this session before launch. |
+| GitHub org `crenelhq` | ❌ TBD — **NOT VERIFIED FROM THIS REPO.** The go.mod module path is `github.com/crenelhq/crenel`, which assumes the org exists. The repo itself currently lives on the self-hosted Forgejo at `10.0.0.13:3030/nate/crenel`. Status of the `crenelhq` GitHub org and the upstream `crenelhq/crenel` repo needs to be checked outside this session before launch. |
 | Wordmark + brand assets | ✅ DONE | `docs/brand/` — wordmark light/dark SVG, status HUD SVG; `BRANDING.md` defines the semantic-color rule |
 
 ## D. Package-name reservations

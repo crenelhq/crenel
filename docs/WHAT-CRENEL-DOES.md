@@ -355,11 +355,11 @@ short list that remains."
 - **`STATE-OF-CRENEL.md`**: the single source of truth for what's built vs gated, PR by PR.
 - **`docs/REFERENCE-ARCH-split-horizon.md`**: the preferred architecture (public edge + home SOT
   + dual-AdGuard split) this is all built to drive.
-- **`DESIGN.md`**: the architecture and the load-bearing invariants.
+- **`internal/DESIGN.md`**: the architecture and the load-bearing invariants.
 - **`SECURITY.md`**: the threat model, what secrets the config holds, and the redaction guarantee.
 - The **`archive/trials/results/TRIAL-RESULT-*.md`** files: the byte-for-byte records behind
   the durable-persist, chain-write, rename, and dedicated-zone Cloudflare proofs, plus
-  **`TRIAL-RECORD-live-proofs-2026-06-30.md`** (repo root) for the 2026-06-30 operator-record
+  **`internal/TRIAL-RECORD-live-proofs-2026-06-30.md`** for the 2026-06-30 operator-record
   proofs (shared-zone Cloudflare, dual-AdGuard parity, and the `finances.homelab.example`
   full-chain expose). Hostnames/IPs in all of these are anonymized for publication; the
   commands, configs, and results are otherwise verbatim.

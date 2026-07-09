@@ -11,7 +11,7 @@
 > Crenel is not an appliance. It's the control plane. The same binary drives the
 > Caddy / Traefik / nginx / DNS stack you *already* run (point its config at your
 > edge and bring up none of these services). The bundle is just a great default to
-> start from. See `../BUNDLE-DESIGN.md`.
+> start from. See `../../docs/internal/BUNDLE-DESIGN.md`.
 
 ## What's in v0 (and what's deliberately not)
 
@@ -25,7 +25,7 @@
 v0 is Caddy-only on purpose: Caddy is the one edge Crenel has proven end-to-end on
 real infrastructure. The breadth is real in the architecture and arrives one
 bench-validated driver at a time, never claimed before it's proven. (Honest
-gating: `BUNDLE-DESIGN.md` §4.)
+gating: `../docs/internal/BUNDLE-DESIGN.md` §4.)
 
 ## Quickstart
 
@@ -43,7 +43,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: demo.crenel.test' http://loca
 #   -> 403   (default-deny: no route exists yet)
 
 # 4. Drive it: ONE command exposes the demo through the edge (writes stay on the CLI).
-docker compose exec crenel crenel expose demo --auth none
+docker compose exec keep crenel expose demo --auth none
 #   crenel: read-live -> plan -> apply -> READ-BACK-VERIFY. The dashboard flips to
 #   EXPOSED 1 (public, amber: published with no auth, on purpose).
 
@@ -52,7 +52,7 @@ curl -s -H 'Host: demo.crenel.test' http://localhost:8088 | head -3
 #   -> whoami output (Hostname/IP/headers)
 
 # 6. Close it again, atomically.
-docker compose exec crenel crenel unexpose demo
+docker compose exec keep crenel unexpose demo
 #   -> dashboard back to EXPOSED 0 · DEFAULT-DENY ENFORCED; step 5 returns 403 again.
 
 # Tear down.
@@ -63,7 +63,7 @@ docker compose down
 model builder):
 
 ```bash
-docker compose exec crenel crenel status --hud
+docker compose exec keep crenel status --hud
 ```
 
 ## How it fits together

@@ -110,7 +110,7 @@ func TestGranularApply_NestsPerHostRouteIntoWildcardSubroute(t *testing.T) {
 
 	pre := parseZones(t, fake)
 	if pre.top != 3 || len(pre.inner["*.homelab.example"]) != 4 {
-		t.Fatalf("fixture shape unexpected: top=%d shrimp-inner=%d", pre.top, len(pre.inner["*.homelab.example"]))
+		t.Fatalf("fixture shape unexpected: top=%d wildZone-inner=%d", pre.top, len(pre.inner["*.homelab.example"]))
 	}
 
 	live0, _ := d.ReadLiveState(ctx)
@@ -128,14 +128,14 @@ func TestGranularApply_NestsPerHostRouteIntoWildcardSubroute(t *testing.T) {
 		t.Errorf("top-level route count must stay 3 (no flat sibling), got %d", post.top)
 	}
 	// It landed INSIDE the *.homelab.example subroute, at index 0 (exact match wins).
-	shrimp := post.inner["*.homelab.example"]
-	if len(shrimp) != 5 {
-		t.Fatalf("*.homelab.example subroute should grow to 5 inner routes, got %d", len(shrimp))
+	wildZone := post.inner["*.homelab.example"]
+	if len(wildZone) != 5 {
+		t.Fatalf("*.homelab.example subroute should grow to 5 inner routes, got %d", len(wildZone))
 	}
-	if got := innerHosts(shrimp)[0]; got != host {
-		t.Errorf("new per-host route should be at index 0 of the zone subroute, got first=%q (all=%v)", got, innerHosts(shrimp))
+	if got := innerHosts(wildZone)[0]; got != host {
+		t.Errorf("new per-host route should be at index 0 of the zone subroute, got first=%q (all=%v)", got, innerHosts(wildZone))
 	}
-	if id, _ := shrimp[0]["@id"].(string); id != "crenel-route-"+host {
+	if id, _ := wildZone[0]["@id"].(string); id != "crenel-route-"+host {
 		t.Errorf("nested route must carry its @id, got %q", id)
 	}
 	// The OTHER zone is untouched.

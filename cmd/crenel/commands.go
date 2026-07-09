@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -160,7 +161,7 @@ func (c *cli) writeStatusBanner(ctx context.Context, rep core.StatusReport) {
 		drift = len(plan.Drift)
 	}
 	m := hudModelFromStatus(rep, drift)
-	st := ui.Style{Color: c.color, Cols: termCols(c.gf)}
+	st := ui.Style{Color: c.color, Cols: termCols(c.gf), Rows: termRows(c.gf)}
 	if c.gf.showHUD() {
 		st.WriteHUD(c.out, m)
 	} else {
@@ -387,6 +388,7 @@ func (c *cli) cmdAudit(ctx context.Context) error {
 			return err
 		}
 	} else {
+		c.printAuditScope(rep.Scope)
 		for _, f := range rep.Findings {
 			mark := map[string]string{"ok": "✓", "warning": "▲", "critical": "✗"}[f.Severity]
 			fmt.Fprintf(c.out, "%s [%s] %s\n", mark, strings.ToUpper(f.Severity), f.Message)
@@ -396,6 +398,39 @@ func (c *cli) cmdAudit(ctx context.Context) error {
 		return fmt.Errorf("audit found critical findings")
 	}
 	return nil
+}
+
+// printAuditScope renders the audit's "what was NOT evaluated" header block
+// (core.AuditScope, audit-any-edge §3.4): the implicit reductions of the claim —
+// public-ness fallback with no DNS, chain not followed, target mode — made
+// explicit, the same honesty move as the coverage line. Scope lines carry no
+// severity mark; they bound the findings below, they are not findings. The JSON
+// path carries the same struct verbatim (Scope on the report).
+func (c *cli) printAuditScope(s core.AuditScope) {
+	if s.TargetMode {
+		fmt.Fprintln(c.out, "Scope: zero-config target — one edge, no settings topology")
+	}
+	if !s.DNSEvaluated {
+		fmt.Fprintln(c.out, "Scope: no DNS providers configured — public-ness assumes each edge is the public boundary; split-horizon/dangling-DNS checks NOT evaluated")
+	}
+	if s.ChainDepth == 0 {
+		fmt.Fprintln(c.out, "Scope: no edge chain configured — downstream edges NOT followed")
+	}
+	// Per-edge read evidence (M-A2+): declared when drivers report it, sorted for
+	// deterministic output; absent edges are simply unclassified, never upgraded.
+	for _, edge := range sortedEvidenceEdges(s.Evidence) {
+		fmt.Fprintf(c.out, "Scope: edge[%s] evidence: %s\n", edge, s.Evidence[edge])
+	}
+}
+
+// sortedEvidenceEdges returns the evidence map's edge names in sorted order.
+func sortedEvidenceEdges(m map[string]model.EvidenceKind) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func (c *cli) cmdExport(ctx context.Context, args []string) error {
@@ -760,7 +795,7 @@ type applyDoc struct {
 // preview ("about to go public" highlighted) → all-or-nothing apply → read-back-
 // verify. Flags (after the file): --adopt (adopt matching unmanaged hosts inline),
 // --prune (unexpose owned hosts absent from the file), --dry-run (preview only).
-// See USABILITY-DESIGN.md §C.
+// See docs/internal/USABILITY-DESIGN.md §C.
 func (c *cli) cmdApply(ctx context.Context, args []string) error {
 	var file string
 	var opts core.DeclarativeOptions
@@ -915,7 +950,7 @@ func (c *cli) printDeclarative(rep core.DeclarativeReport) {
 // unmanaged-but-matching routes it would bring under management, and (on confirm,
 // or --yes) stamps ownership markers in-place without changing behavior. With
 // --dry-run it only previews (and exits non-zero if anything is adoptable, for
-// CI). See USABILITY-DESIGN.md §A.
+// CI). See docs/internal/USABILITY-DESIGN.md §A.
 func (c *cli) cmdImport(ctx context.Context, args []string) error {
 	dryRun := false
 	for _, a := range args {
@@ -1188,7 +1223,7 @@ func (c *cli) guardPersistOrigin(op model.Op) error {
 // `--yes` does NOT bypass it — it skips the are-you-sure, not the did-you-mean-to-
 // leave-this-open. Wired to the same publicness notion as the amber "about to go
 // public" highlight (cs.NewPublic). A planning error is left for the real apply to
-// surface. See AUTH-DESIGN.md §6.
+// surface. See docs/internal/AUTH-DESIGN.md §6.
 func (c *cli) guardPublicAuth(ctx context.Context, op model.Op) error {
 	if op.Verb != model.Expose || op.Auth != "" {
 		return nil // unexpose never publishes; any explicit --auth (policy or none) is a choice

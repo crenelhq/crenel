@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -race ./...
+      - run: make release
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: false
+          files: |
+            dist/*

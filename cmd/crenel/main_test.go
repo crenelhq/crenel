@@ -531,9 +531,9 @@ func TestConfirmUnverifiedOverride(t *testing.T) {
 }
 
 // TestUsage_DocumentsAckUnack is a regression guard: ack/unack were wired into
-// dispatch() but initially left out of `crenel help` — caught during a live
-// production dogfood (2026-07-05). Both verbs, and the --reason flag ack
-// requires, must appear in the usage text.
+// dispatch() but initially left out of `crenel help` — caught during the
+// CT113 dogfood (2026-07-05). Both verbs, and the --reason flag ack requires,
+// must appear in the usage text.
 func TestUsage_DocumentsAckUnack(t *testing.T) {
 	out := &bytes.Buffer{}
 	writeUsage(out)

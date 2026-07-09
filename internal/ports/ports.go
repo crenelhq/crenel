@@ -153,7 +153,7 @@ type Acker interface {
 // so they survive a control-plane restart. core calls it AFTER a successful,
 // read-back-verified apply. Drivers whose mutations already persist (a config
 // file, a DNS provider) do not implement it; only the in-memory Caddy admin API
-// needs it. See USABILITY-DESIGN.md §B.
+// needs it. See docs/internal/USABILITY-DESIGN.md §B.
 type Persister interface {
 	// Persist writes crenel-managed live routes to durable storage additively
 	// (rewriting only crenel-managed blocks), validating before and reloading at
@@ -169,7 +169,7 @@ type Persister interface {
 // WARN when a verified write lands on an EPHEMERAL edge (admin-API only, no durable
 // path), so the operator is never silently left with a change a restart will drop. An
 // edge that does not implement it is treated as durable (a file provider whose write IS
-// the boot config) — no warning. See model.PersistenceModel and DESIGN.md "Durability".
+// the boot config) — no warning. See model.PersistenceModel and docs/internal/DESIGN.md "Durability".
 type DurabilityReporter interface {
 	// PersistenceModel returns the edge's declared durability posture. It is config-
 	// derived (the admin API carries no boot-source marker), cheap, and never mutates.

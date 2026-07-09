@@ -1,8 +1,8 @@
 # Crenel — Design
 
-> **Crenel** (a crenel is the open gap in a battlement's parapet — the
-> deliberate opening you shoot through). All naming is centralized in
-> `internal/config/naming.go`.
+> **Crenel** is a working name (a crenel is the open gap in a battlement's
+> parapet — the deliberate opening you shoot through). All naming is centralized
+> in `internal/config/naming.go` so a rename is one find/replace.
 
 ## What this is
 
@@ -736,7 +736,7 @@ drivers). It is pure and deterministic, so rendering is unit-tested.
   safe/private/verified, **amber** = about to go public / drift, **red** =
   fail-open / unexpectedly exposed. Roles (`Sem`) map to ANSI truecolor and to the
   SVG palette; color is emitted only when enabled (the plain/NO_COLOR/non-TTY path
-  returns text unchanged). See `BRANDING.md`.
+  returns text unchanged). See `../brand/BRANDING.md`.
 - **The status HUD is the real `status` output.** `crenel status` derives a
   `HUDModel` from the read-only `StatusReport` + `DetectDrift` and renders it as a
   compact colored header (default, on a TTY) or a full "CORE MATRIX // EXPOSURE
@@ -867,7 +867,7 @@ an argv list Crenel does *not* shell-parse — that lands a shell wherever the a
 loopback lives, supporting arbitrary nesting:
 
 ```
-["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]
+["ssh","root@pve1","pct","exec","113","--","docker","exec","-i","caddy","sh"]
 ```
 
 Crenel builds a small POSIX-`sh` script that runs `curl` (or `wget`) against the
@@ -923,7 +923,7 @@ edge, and per-edge on `EdgeSettings`):
 "transport": {
   "type": "ssh-exec",                 // "direct" (default) | "ssh-exec" | "ssh-tunnel"
   // ssh-exec:
-  "command": ["ssh","root@proxmox","pct","exec","100","--",
+  "command": ["ssh","root@pve1","pct","exec","113","--",
               "docker","exec","-i","caddy","sh"],
   "admin_url": "http://127.0.0.1:2019", // admin URL AS SEEN FROM the far end
   "curl": "curl",                       // far-end http client (curl | wget)
@@ -1055,13 +1055,13 @@ verified; only its durability is in question, so a persist failure is a WARNING,
 rollback.
 
 **The two-channel reality (the home edge).** The boot Caddyfile lives on the LXC HOST
-(`/etc/homeedge/caddy/Caddyfile`, bind-mounted **read-only** into the container), but
+(`/opt/stacks/caddy/conf/Caddyfile`, bind-mounted **read-only** into the container), but
 `caddy validate/reload/adapt` must run INSIDE the container. So a durable persist crosses
 TWO exec channels, each an operator-supplied argv prefix Crenel does not shell-parse (the
 script travels over stdin, exactly like the ssh-exec admin transport):
 
 - the **file channel** (`ExecConfigStore`) — a shell on the host that holds the file
-  (`ssh root@proxmox pct exec 100 -- sh`) for `cat` / atomic `base64 | mv`;
+  (`ssh root@pve1 pct exec 113 -- sh`) for `cat` / atomic `base64 | mv`;
 - the **caddy channel** (`ExecCaddyCLI`/`ExecAdapter`) — a shell in the container
   (`… docker exec -i caddy sh`) for validate/reload/adapt.
 

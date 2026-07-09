@@ -4,9 +4,9 @@
 > `expose`/`unexpose`: what providers it speaks to, how it keeps a **public** view
 > (Cloudflare, authoritative) and an **internal** view (AdGuard Home, resolver
 > rewrites) in sync, how credentials are handled, and the safety posture.
-> Companions: **DESIGN.md** (the two load-bearing invariants + apply ordering),
+> Companions: **internal/DESIGN.md** (the two load-bearing invariants + apply ordering),
 > **SECURITY.md** (the secret inventory + redaction this design inherits),
-> **AUTH-DESIGN.md** (auth-by-reference, the same "operator owns the secret" stance).
+> **internal/AUTH-DESIGN.md** (auth-by-reference, the same "operator owns the secret" stance).
 >
 > Status: **design + faithful fakes + unit tests only.** No real Cloudflare or
 > AdGuard endpoint is contacted by this repo or its test suite. A live trial is a
@@ -54,7 +54,7 @@ correct answers depending on who is asking:
 | Asker | Resolver | Answer | Why |
 |---|---|---|---|
 | Off-LAN, no Tailscale | **Cloudflare** public NS (`carmelo`/`emely.ns.cloudflare.com`) | the **VPS edge** public IP (`203.0.113.7`) | the only reachable path is the public internet |
-| LAN / Tailscale | **AdGuard Home** (LXC 130 `10.0.0.53`, + synced VPS `100.100.0.2`) | the **home Caddy** `10.0.0.13` | stays local — no VPS hairpin, direct LAN/WireGuard |
+| LAN / Tailscale | **AdGuard Home** (LXC 116 `10.0.0.53`, + synced VPS `100.100.0.2`) | the **home Caddy** `10.0.0.13` | stays local — no VPS hairpin, direct LAN/WireGuard |
 
 - **Cloudflare** is **public-authoritative**: it owns the apex zones
   `homelab.example` and `smallbiz.example` and is what the rest of the world queries.
@@ -80,7 +80,7 @@ Workspace). A DNS automation that is careless about scope is actively dangerous 
 ## 2. What an `expose` does to DNS
 
 Crenel's model is **live-state-authoritative**: there is no stored desired state, only
-the transient `Op` of one CLI invocation (DESIGN.md). DNS slots into that unchanged.
+the transient `Op` of one CLI invocation (internal/DESIGN.md). DNS slots into that unchanged.
 A `crenel expose grafana` with DNS enabled produces **one `ChangeSet`** aggregating:
 
 1. the **edge** change (the route + default-deny — the existing behavior), then
@@ -433,11 +433,11 @@ contract, exact-vs-wildcard posture) and a gated live-trial plan. Both are now
   then on the real shared production zone — Crenel touched only its own
   `managed-by:crenel`-marked record and the operator's pre-existing wildcard stayed
   byte-identical across expose/unexpose (§11 below;
-  `TRIAL-RECORD-live-proofs-2026-06-30.md` §1).
+  `internal/TRIAL-RECORD-live-proofs-2026-06-30.md` §1).
 - **AdGuard control-API driver + dual-resolver split-horizon:** proven live on a
   disposable instance, then across both production resolvers together, each restored
   byte-for-byte — with the `dns_coverage_parity` audit catching a real divergence
-  (§12 below; `TRIAL-RECORD-live-proofs-2026-06-30.md` §2).
+  (§12 below; `internal/TRIAL-RECORD-live-proofs-2026-06-30.md` §2).
 - **Per-host exact public records** (Crenel never touches an operator wildcard) shipped
   as the default, exactly as this section assumed.
 

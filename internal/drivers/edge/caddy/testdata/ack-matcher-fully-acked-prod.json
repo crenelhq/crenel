@@ -10,8 +10,8 @@
               "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.5:3000"}]}]
             },
             {
-              "@id": "crenel-ack:webhook-tailnet-agents",
-              "match": [{"host": ["app.example.com"], "path": ["/api/webhook/*"]}],
+              "@id": "crenel-ack:hawser-tailnet-agents",
+              "match": [{"host": ["app.example.com"], "path": ["/api/hawser/*"]}],
               "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.9:8080"}]}]
             },
             {

@@ -24,13 +24,13 @@ func (r *recRunner) Run(_ context.Context, argv []string, stdin []byte) ([]byte,
 	return []byte(r.stdout), []byte(r.stderr), r.code, nil
 }
 
-var homeFileCmd = []string{"ssh", "root@proxmox", "pct", "exec", "100", "--", "sh"}
-var homeCaddyCmd = []string{"ssh", "root@proxmox", "pct", "exec", "100", "--", "docker", "exec", "-i", "caddy", "sh"}
+var homeFileCmd = []string{"ssh", "root@ml350", "pct", "exec", "113", "--", "sh"}
+var homeCaddyCmd = []string{"ssh", "root@ml350", "pct", "exec", "113", "--", "docker", "exec", "-i", "caddy", "sh"}
 
 func TestExecConfigStore_ReadWrite(t *testing.T) {
 	// READ: cat the host-side path over the file channel.
 	rd := &recRunner{stdout: "*.homelab.example {\n}\n"}
-	store := ExecConfigStore{Command: homeFileCmd, Path: "/etc/homeedge/caddy/Caddyfile", Runner: rd}
+	store := ExecConfigStore{Command: homeFileCmd, Path: "/opt/stacks/caddy/conf/Caddyfile", Runner: rd}
 	got, err := store.Read(context.Background())
 	if err != nil {
 		t.Fatalf("read: %v", err)
@@ -41,7 +41,7 @@ func TestExecConfigStore_ReadWrite(t *testing.T) {
 	if strings.Join(rd.gotArgv, " ") != strings.Join(homeFileCmd, " ") {
 		t.Fatalf("read argv: %v", rd.gotArgv)
 	}
-	if rd.gotStdin != "cat '/etc/homeedge/caddy/Caddyfile'" {
+	if rd.gotStdin != "cat '/opt/stacks/caddy/conf/Caddyfile'" {
 		t.Fatalf("read script: %q", rd.gotStdin)
 	}
 
@@ -54,7 +54,7 @@ func TestExecConfigStore_ReadWrite(t *testing.T) {
 	if err := store.WriteCandidate(context.Background(), body); err != nil {
 		t.Fatalf("stage: %v", err)
 	}
-	wantStage := "printf %s '" + enc + "' | base64 -d > '/etc/homeedge/caddy/Caddyfile.crenel-candidate'"
+	wantStage := "printf %s '" + enc + "' | base64 -d > '/opt/stacks/caddy/conf/Caddyfile.crenel-candidate'"
 	if st.gotStdin != wantStage {
 		t.Fatalf("stage script:\n got %q\nwant %q", st.gotStdin, wantStage)
 	}
@@ -65,8 +65,8 @@ func TestExecConfigStore_ReadWrite(t *testing.T) {
 	if err := store.Write(context.Background(), body); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	wantScript := "printf %s '" + enc + "' | base64 -d > '/etc/homeedge/caddy/Caddyfile.crenel-commit' && " +
-		"mv '/etc/homeedge/caddy/Caddyfile.crenel-commit' '/etc/homeedge/caddy/Caddyfile'"
+	wantScript := "printf %s '" + enc + "' | base64 -d > '/opt/stacks/caddy/conf/Caddyfile.crenel-commit' && " +
+		"mv '/opt/stacks/caddy/conf/Caddyfile.crenel-commit' '/opt/stacks/caddy/conf/Caddyfile'"
 	if wr.gotStdin != wantScript {
 		t.Fatalf("write script:\n got %q\nwant %q", wr.gotStdin, wantScript)
 	}
@@ -75,7 +75,7 @@ func TestExecConfigStore_ReadWrite(t *testing.T) {
 	rm := &recRunner{}
 	store.Runner = rm
 	_ = store.RemoveCandidate(context.Background())
-	if rm.gotStdin != "rm -f '/etc/homeedge/caddy/Caddyfile.crenel-candidate'" {
+	if rm.gotStdin != "rm -f '/opt/stacks/caddy/conf/Caddyfile.crenel-candidate'" {
 		t.Fatalf("cleanup script: %q", rm.gotStdin)
 	}
 }

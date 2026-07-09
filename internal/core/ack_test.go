@@ -21,7 +21,7 @@ func TestAudit_AcknowledgedUnknownIsOKAndNotCoverageIncomplete(t *testing.T) {
 			Mode: model.ModeHTTPProxy, Address: "10.0.0.5:3000", ServerName: "grafana.example.com", Auth: "authelia"}}},
 		Unparsed: []model.Unparsed{
 			{Locator: "apps.http.servers.srv0.routes[1]", Kind: model.UnknownAcknowledged,
-				Reason: "acknowledged by operator (webhook-tailnet-agents) — route scoped by a path matcher"},
+				Reason: "acknowledged by operator (hawser-tailnet-agents) — route scoped by a path matcher"},
 		},
 	}}
 	e := core.NewMulti([]core.EdgeBinding{{Name: "home", Provider: edge}}, "example.com")
@@ -53,7 +53,7 @@ func TestAudit_MixedAcknowledgedAndRealUnknown(t *testing.T) {
 		Routes:              []model.Route{httpRoute("grafana.example.com")},
 		Unparsed: []model.Unparsed{
 			{Locator: "apps.http.servers.srv0.routes[1]", Kind: model.UnknownAcknowledged,
-				Reason: "acknowledged by operator (webhook-tailnet-agents) — route scoped by a path matcher"},
+				Reason: "acknowledged by operator (hawser-tailnet-agents) — route scoped by a path matcher"},
 			{Locator: "apps.http.servers.srv0.routes[2]", Kind: model.UnknownHandler,
 				Reason: "route has no reverse_proxy/subroute crenel can resolve"},
 		},
@@ -74,7 +74,7 @@ func TestAudit_MixedAcknowledgedAndRealUnknown(t *testing.T) {
 	if !ok || f.Severity != "warning" {
 		t.Fatalf("a real unacked unknown must still leave deny UNKNOWN, got %+v", rep.Findings)
 	}
-	// Regression guard (live production dogfood, 2026-07-05): this message must count
+	// Regression guard (live dogfood on CT113, 2026-07-05): this message must count
 	// only the REAL unknown (1), matching coverage_incomplete right below it — not
 	// the raw Unparsed length (2, which would double-count the acked entry and
 	// contradict the finding underneath it).

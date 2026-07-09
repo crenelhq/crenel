@@ -11,7 +11,7 @@
 > This list was checked against `internal/core`, `internal/drivers`, and the
 > test suite at the time this package was written, not just copied from
 > planning docs. A couple of items below correct claims that had gone stale
-> in `STATE-OF-CRENEL.md`/`TOPOLOGY-RISK-REGISTER.md`; where this doc and an
+> in `STATE-OF-CRENEL.md`/`../internal/TOPOLOGY-RISK-REGISTER.md`; where this doc and an
 > older planning doc disagree, trust this one and the code, and flag the
 > planning doc as stale separately.
 
@@ -60,7 +60,7 @@ per-path auth policy. The model is host-granular
 (`(host) → backend`), not `(host, path) → backend`. A host with `/admin`
 authenticated and `/` open is invisible as a *distinction* even though its
 existence is now flagged. This is tracked as **P5** in
-`TOPOLOGY-RISK-REGISTER.md` and is a real model extension, not a small fix.
+`../internal/TOPOLOGY-RISK-REGISTER.md` and is a real model extension, not a small fix.
 
 ---
 
@@ -104,7 +104,7 @@ An edge that fronts more than one DNS zone (e.g. `*.zone-a.example` and
 `*.zone-b.example` on the same edge) is read without crashing, and both
 wildcards are visible, but per-service DNS record derivation and some
 audit logic still assume a single `zone`. This is a documented, lower-
-prevalence follow-on (`TOPOLOGY-RISK-REGISTER.md` P6 / axis 7.3), not yet
+prevalence follow-on (`../internal/TOPOLOGY-RISK-REGISTER.md` P6 / axis 7.3), not yet
 built.
 
 ---
@@ -173,7 +173,7 @@ the ones in the test fixtures.
 
 ## 10. Long-tail topologies not yet modeled at all
 
-Beyond the items above, `TOPOLOGY-RISK-REGISTER.md` P6 lists several
+Beyond the items above, `../internal/TOPOLOGY-RISK-REGISTER.md` P6 lists several
 topologies with no dedicated modeling yet: HA active-passive edge pairs /
 shared-VIP failover, TLS terminated at a layer Crenel can't observe, a
 Traefik **KV** provider (Consul/etcd/Redis, where Crenel's file-based driver

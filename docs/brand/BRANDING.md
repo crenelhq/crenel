@@ -143,13 +143,12 @@ letter-spaced, muted).
 - **Light** = deep verified-green (`#00A34D`) crown over **ink** letters on soft
   off-white (the radium green is too bright on near-white).
 
-Earlier exploratory variants (scanline/boxline/mono treatments) were dropped
-during the 2026-06-29 lock — one lane, one mark. Their renderers were removed
-from `internal/ui` entirely, not just the generated files; `WordmarkSVG` /
-`WordmarkSVGLight` render only the winning (crisp) treatment. The committed
-SVGs are regenerated from the renderer, never hand-edited (guarded by
-`TestWordmarkSVG_Deterministic`). Use a `<picture>` element to serve the right
-surface:
+Earlier exploratory variants (crisp/scanline/boxline/mono files) have been
+**removed from `docs/brand/`**. One lane, one mark. Their renderers survive in
+`internal/ui` (`WordmarkVariantSVG`) purely as tested presentation code; no new
+surface should use them. The committed SVGs are regenerated from the renderer,
+never hand-edited (guarded by `TestWordmarkSVG_Deterministic`). Use a `<picture>`
+element to serve the right surface:
 
 ```html
 <picture>

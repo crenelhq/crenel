@@ -16,6 +16,10 @@ import (
 // the per-driver support table in the design doc) or none has a matching
 // declared-unknown route for host.
 func (e *Engine) Ack(ctx context.Context, host, reason string) error {
+	// Read-only posture: the ack marker is a live-config WRITE, so it refuses too.
+	if err := e.gateReadOnly("ack"); err != nil {
+		return err
+	}
 	if !e.ackUnackOnEdges(func(acker ports.Acker) error { return acker.Ack(ctx, host, reason) }) {
 		return fmt.Errorf("ack %s: no participating edge could ack a route for this host (see docs/design/ack-marker.md for the manual marker shape per driver)", host)
 	}
@@ -39,6 +43,10 @@ func (e *Engine) Ack(ctx context.Context, host, reason string) error {
 // for host remains. A no-op (not an error) if host was not currently ack'd on
 // any edge.
 func (e *Engine) Unack(ctx context.Context, host string) error {
+	// Read-only posture: removing the marker is a write like stamping it.
+	if err := e.gateReadOnly("unack"); err != nil {
+		return err
+	}
 	if !e.ackUnackOnEdges(func(acker ports.Acker) error { return acker.Unack(ctx, host) }) {
 		return fmt.Errorf("unack %s: no participating edge could unack a route for this host", host)
 	}

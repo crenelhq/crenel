@@ -8,7 +8,7 @@
 //
 // Every transport honors the caller's context deadline (the driver bounds each call
 // by its read/write timeout) so crenel can never hang on a slow or wedged admin API,
-// regardless of how the call travels. See DESIGN.md "Transport / Connection".
+// regardless of how the call travels. See docs/internal/DESIGN.md "Transport / Connection".
 package transport
 
 import (

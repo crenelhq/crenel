@@ -14,7 +14,7 @@ import (
 // ("about to go public" highlighted), and applies all-or-nothing with read-back
 // verify. It is a point-in-time ASSERTION (live stays the truth), NOT a watched
 // mirror, and it holds NO stored desired state: the file is intent only for the
-// duration of this call. See USABILITY-DESIGN.md §C.
+// duration of this call. See docs/internal/USABILITY-DESIGN.md §C.
 
 // Exposure is one desired exposure from an apply file. Host may be omitted (then
 // derived from Service + zone). Edges/Scopes optionally restrict where it lands;
@@ -23,7 +23,7 @@ type Exposure struct {
 	Host    string          `json:"host,omitempty"`
 	Service string          `json:"service"`
 	Mode    model.RouteMode `json:"mode,omitempty"`
-	// Auth names a forward-auth policy to attach (see AUTH-DESIGN.md). "" =
+	// Auth names a forward-auth policy to attach (see docs/internal/AUTH-DESIGN.md). "" =
 	// unspecified, "none" = explicit opt-out, else a named policy. A public host
 	// with auth unspecified is refused by the CLI guardrail.
 	Auth   string        `json:"auth,omitempty"`
@@ -93,6 +93,10 @@ func (e *Engine) PlanDeclarative(ctx context.Context, exposures []Exposure, opts
 // unmanaged without --adopt, or true conflicts) abort BEFORE any mutation.
 func (e *Engine) ApplyDeclarative(ctx context.Context, exposures []Exposure, opts DeclarativeOptions, confirm ConfirmFunc) (DeclarativeReport, error) {
 	var rep DeclarativeReport
+	// Read-only posture: refuse before planning (PlanDeclarative / --dry-run stays available).
+	if err := e.gateReadOnly("apply"); err != nil {
+		return rep, err
+	}
 	plan, err := e.planDeclarative(ctx, exposures, opts)
 	if err != nil {
 		return rep, err

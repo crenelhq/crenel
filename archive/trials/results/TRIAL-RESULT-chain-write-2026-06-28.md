@@ -38,17 +38,17 @@ apply rejection on production** — not a fake.
 
 ## Access model used (resolved at execution time)
 
-The plan's literal "crenel on the VPS, home via `ssh root@proxmox`" had a name-resolution
-snag: on the VPS, `proxmox` resolves to a public IP (`203.0.113.7`) that is firewalled on
+The plan's literal "crenel on the VPS, home via `ssh root@pve1`" had a name-resolution
+snag: on the VPS, `pve1` resolves to a public IP (`203.0.113.7`) that is firewalled on
 :22, so the hostname timed out. The Proxmox host's reachable **Tailscale IP `100.100.0.7`**
-*is* open on :22 from the VPS, and the pre-authorized key **`vps-to-proxmox-20260628`** was
-already present in proxmox's root `authorized_keys`. Resolution (no home-side change needed):
+*is* open on :22 from the VPS, and the pre-authorized key **`vps-to-pve1-20260628`** was
+already present in pve1's root `authorized_keys`. Resolution (no home-side change needed):
 
 - **crenel ran ON THE VPS** (`~/crenel-test/crenel-develop`, develop `f3d144d`, linux/arm64).
 - **FRONT (vps):** transport `direct` → `http://127.0.0.1:2019` (VPS loopback).
 - **HOME:** transport `ssh-exec`, exec prefix
-  `ssh -i ~/.ssh/proxmox_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes root@100.100.0.7 pct exec 100 -- docker exec -i caddy sh`
-  → curl `http://127.0.0.1:2019` on the container loopback. `100.100.0.7` **is** `proxmox`
+  `ssh -i ~/.ssh/pve1_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes root@100.100.0.7 pct exec 113 -- docker exec -i caddy sh`
+  → curl `http://127.0.0.1:2019` on the container loopback. `100.100.0.7` **is** `pve1`
   (its Tailscale IP); host key pinned + verified (`SHA256:S4fx6Lpf…`), not TOFU.
 - **No home admin published, no tunnel, no home container config touched.** Both admin APIs
   stayed loopback-only and unpublished the entire run (stop-condition #6 never approached).
@@ -63,14 +63,14 @@ crenel's granular auth path renders auth as a handler literally named `forward_a
 
 ```
 internal/drivers/edge/caddy/types.go:140  handlerForwardAuth = "forward_auth"  // crenel's auth reference handler
-emitted JSON:  {"handler":"forward_auth","crenel_policy":"authelia","upstreams":[{"dial":"authelia:9080"}]}
+emitted JSON:  {"handler":"forward_auth","crenel_policy":"authelia","upstreams":[{"dial":"authelia:9091"}]}
 ```
 
 But in Caddy, **`forward_auth` is a Caddyfile *directive*** (sugar the caddyfile adapter
 expands into a `reverse_proxy` + `handle_response` subrequest) — **there is no JSON handler
 module `http.handlers.forward_auth`.** The home edge's live config confirms it: the only
 handler modules present are `headers`, `reverse_proxy`, `subroute`, `vars`, and the string
-`forward_auth` appears **0 times** (Authelia is wired as a `reverse_proxy` to `authelia:9080`).
+`forward_auth` appears **0 times** (Authelia is wired as a `reverse_proxy` to `authelia:9091`).
 
 So the granular PUT was rejected by Caddy at config-load validation:
 
@@ -108,7 +108,7 @@ correct `reverse_proxy`-based `forward_auth`, or (b) require the operator's snip
 | 3 prod hosts (`auth`/`git`.homelab.example, `auth`.smallbiz.example) | **200** |
 | `caddy-edge` (VPS) / `caddy` (home) RestartCount | **0 / 0**, both running |
 | Admin-API wedge (crowdsec storm signature) | **none** — clean 500 + responsive admin |
-| Throwaway responder (LXC 100 :9999) | stood up, verified reachable from caddy container, then **torn down** (port free) |
+| Throwaway responder (LXC 113 :9999) | stood up, verified reachable from caddy container, then **torn down** (port free) |
 
 No hard stop-and-restore condition was tripped; no R1–R4 recovery was needed (crenel's own
 atomic abort left both edges clean). Backups + sha anchors at
@@ -152,7 +152,7 @@ routing but goes open-200, and was not the GO'd success criterion). **Pending th
 | Transport reaches both real admins, zero exposure (front `direct`, home `ssh-exec`) | ✅ re-proven; home admin `10.0.0.13:2019` stayed refused from the VPS the entire run (never on tailnet, no tunnel, no home container change) |
 | Read-only `status`/`preview` match reality; public-without-auth guardrail refuses | ✅ VPS 32 / home 51, both deny ENFORCED; preview = front `→10.0.0.13:443`, home `→10.0.0.13:9999 [auth:authelia]`; `expose` w/o `--auth` refused (exit 1, `--yes` no bypass) |
 | **Coordinated cross-chain WRITE lands on BOTH edges** (the headline coordination) | ✅ **PROVEN on production** — `applied`, home+front each `read-back ✓`, `verified`, exit 0; counts +1 each (33/52), both denies still ENFORCED |
-| **TRIAL-FIX-3: auth gate is VALID Caddy the home edge ACCEPTS** | ✅ **PROVEN** — gate rendered as `vars` marker + `reverse_proxy→authelia:9080` + `handle_response` (status 2xx) + rewrite `/api/verify?rd=https://auth.homelab.example` + 4 `Remote-*` copy-headers; **byte-faithful** to `home.homelab.example`'s live gate (diff = copy-header order only) |
+| **TRIAL-FIX-3: auth gate is VALID Caddy the home edge ACCEPTS** | ✅ **PROVEN** — gate rendered as `vars` marker + `reverse_proxy→authelia:9091` + `handle_response` (status 2xx) + rewrite `/api/verify?rd=https://auth.homelab.example` + 4 `Remote-*` copy-headers; **byte-faithful** to `home.homelab.example`'s live gate (diff = copy-header order only) |
 | **TRIAL-FIX-2: route nested inside the `*.zone` wildcard subroute** | ✅ **PROVEN** — crenel-selftest landed in `srv0 route[1] (*.homelab.example) → subroute`, exactly where the read side enumerates per-host routes |
 | **302 auth-challenge through the chain** | ❌ **not reached** — `400 "Client sent an HTTP request to an HTTPS server"` (NEW front-leg TLS gap, below) |
 | Clean `unexpose`, zero crenel residue | ✅ home+front each `read-back ✓`, `verified`; **0** `crenel-route` @id tags remain anywhere; VPS byte-for-byte identical to the Step-0 anchor |
@@ -330,7 +330,7 @@ ready** (separate, pending the maintainer's explicit GO) — keep `downstream_ad
 | Read-only `status`/`preview` match reality; public-without-auth guardrail refuses | ✅ VPS deny ENFORCED (31 fwd routes), home deny ENFORCED (51 terminal); preview = front `→10.0.0.13:443`, home `→10.0.0.13:9999 [auth:authelia]`; `expose` w/o `--auth` refused (exit 1, `--yes` no bypass) |
 | **Coordinated cross-chain WRITE lands on BOTH edges** | ✅ **PROVEN** — `applied`, home+front each `read-back ✓`, `verified: live state matches intent`, exit 0; counts +1 each (32/52), both denies still ENFORCED |
 | **FIX-2: route nested inside the `*.zone` wildcard subroute** | ✅ **PROVEN** — crenel-selftest front route is a sibling of `vault`/`git` inside `srv0`'s `*.homelab.example` subroute |
-| **FIX-3: home auth gate is VALID Caddy + dials the REAL Authelia** | ✅ **PROVEN** — gate = `vars crenel_policy:authelia` + `reverse_proxy→authelia:9080` + `handle_response` + rewrite `/api/verify?rd=https://auth.homelab.example` + 4 `Remote-*` copy-headers, then proxy to `10.0.0.13:9999`. Byte-faithful to home's native Authelia gate. |
+| **FIX-3: home auth gate is VALID Caddy + dials the REAL Authelia** | ✅ **PROVEN** — gate = `vars crenel_policy:authelia` + `reverse_proxy→authelia:9091` + `handle_response` + rewrite `/api/verify?rd=https://auth.homelab.example` + 4 `Remote-*` copy-headers, then proxy to `10.0.0.13:9999`. Byte-faithful to home's native Authelia gate. |
 | **FIX-4: front forward renders upstream TLS + Host** | ✅ **PROVEN on production** — `reverse_proxy` with `transport.tls{insecure_skip_verify, server_name:{http.request.host}}` + `Host:{http.request.host}` → `10.0.0.13:443`, byte-faithful to the real VPS forward. **The RUN 2 `400` is GONE.** |
 | **End-to-end through the chain** | ⚠️ **`403`, not `302`** — auth **attached + enforcing a deny** (NOT an open `200`, NOT a `400`). See the nuance below. |
 | Clean `unexpose`, zero crenel residue, byte-for-byte restore | ✅ home+front each `read-back ✓`, `verified`; **0** `crenel-route` @id anywhere; **both edges byte-for-byte identical** to the Step-0 anchors (python-normalized diff; `jq` is not on the VPS) |
@@ -344,7 +344,7 @@ Both hosts traverse byte-equivalent gates (crenel's gate is byte-faithful to hom
 - `home.homelab.example` is configured (`one_factor`) → unauthenticated → **`302`** redirect to the portal (Caddy's `handle_response` copies the redirect through).
 - `crenel-selftest.homelab.example` has **no rule** → Authelia's `default_policy` (deny) → **`403`** with no redirect (deny ≠ "offer login") → Caddy surfaces the bare `403`.
 
-So the `403` is the **auth gate working**: the python responder on `:9999` was **never reached** (its directory-listing body never appeared — a `403`, then after unexpose an *empty* `200`, never the listing), proving the gate intercepted. A `403` is therefore a *stronger* deny than the `302` proxy-criterion, not a failure. (Authelia's own config was **not** read — that container was out of the trial's authorized scope and carries secrets; the conclusion rests on the in-scope caddy-edge gate inspection + the live `302` control + the gate dialing `authelia:9080`.)
+So the `403` is the **auth gate working**: the python responder on `:9999` was **never reached** (its directory-listing body never appeared — a `403`, then after unexpose an *empty* `200`, never the listing), proving the gate intercepted. A `403` is therefore a *stronger* deny than the `302` proxy-criterion, not a failure. (Authelia's own config was **not** read — that container was out of the trial's authorized scope and carries secrets; the conclusion rests on the in-scope caddy-edge gate inspection + the live `302` control + the gate dialing `authelia:9091`.)
 
 **To see the literal `302`:** add an Authelia `access_control` rule for `crenel-selftest.homelab.example` (e.g. `policy: one_factor`) and re-run — an **auth-provider** change, deliberately not made here (out of crenel's scope and the trial's authorization).
 
@@ -370,7 +370,7 @@ Step-0 anchors (this run's restore baseline): VPS `43901caf…` (4604 B), HOME `
 **The full proof is in:** a single `crenel` coordinated a real, ordered, read-back-verified
 WRITE across **both** production edges, rendering a **TLS-correct front forward** (FIX-4 — no
 more `400`) and a **valid, enforcing Authelia gate** at the home edge (FIX-3 — dials the real
-`authelia:9080`), nested correctly (FIX-2), then tore it all down to a **byte-for-byte clean**
+`authelia:9091`), nested correctly (FIX-2), then tore it all down to a **byte-for-byte clean**
 restore, with the admin never exposed and production healthy throughout. The end-to-end
 response is a **`403` (Authelia default-deny for the unconfigured throwaway host)** rather than
 the literal `302` portal redirect — auth **attached and enforcing**, the difference owned by
@@ -408,7 +408,7 @@ production; crenel's cross-chain coordinated-write feature is proven end-to-end.
 | Read-only `status`/`preview` match reality; public-without-auth guardrail refuses | ✅ VPS deny ENFORCED (31 fwd), home deny ENFORCED (51 terminal); preview = front `→10.0.0.13:443`, home `→10.0.0.13:9999 [auth:authelia]`; `expose` w/o `--auth` refused (exit 1, `--yes` no bypass) |
 | **Coordinated cross-chain WRITE lands on BOTH edges** | ✅ **PROVEN** — `applied`, home+front each `read-back ✓`, `verified: live state matches intent`, exit 0; counts +1 each (32/52), both denies still ENFORCED |
 | **FIX-2: nested inside the `*.zone` wildcard subroute** | ✅ **PROVEN** — `@id crenel-route-crenel-selftest.homelab.example` landed as a sibling of the other `*.homelab.example` hosts on both edges |
-| **FIX-3: home auth gate is VALID Caddy + dials the REAL Authelia** (JSON captured live) | ✅ **PROVEN** — `vars crenel_policy:authelia` → `reverse_proxy→authelia:9080` with `rewrite /api/verify?rd=https://auth.homelab.example` + `X-Forwarded-Method/Uri` + `handle_response` copying all 4 `Remote-*` headers → then `reverse_proxy→10.0.0.13:9999`. Byte-faithful to home's native gate. |
+| **FIX-3: home auth gate is VALID Caddy + dials the REAL Authelia** (JSON captured live) | ✅ **PROVEN** — `vars crenel_policy:authelia` → `reverse_proxy→authelia:9091` with `rewrite /api/verify?rd=https://auth.homelab.example` + `X-Forwarded-Method/Uri` + `handle_response` copying all 4 `Remote-*` headers → then `reverse_proxy→10.0.0.13:9999`. Byte-faithful to home's native gate. |
 | **FIX-4: front forward renders upstream TLS + Host** (JSON captured live) | ✅ **PROVEN** — `reverse_proxy` with `transport{protocol:http, tls:{insecure_skip_verify, server_name:{http.request.host}}}` + `headers.request.set.Host:{http.request.host}` → `10.0.0.13:443`. No `400`. |
 | **End-to-end through the chain** | ⚠️ **`403`, not `302`** — auth **attached + enforcing a deny** (NOT open `200`, NOT `400`). Diagnosis below. |
 | Clean `unexpose`, zero residue, byte-for-byte restore | ✅ home+front each `read-back ✓`, `verified`; **0/0** crenel `@id` residue; **both edges RAW sha256 == Step-0 anchors exactly** |
@@ -462,7 +462,7 @@ at `live-backup/trial-chain-write-20260628T162634Z/` (on the VPS, `0600`).
 
 **Reconfirmed on a fresh build, even cleaner than RUN 3.** A single `crenel` coordinated a real,
 ordered, read-back-verified WRITE across **both** production edges — TLS-correct front forward
-(FIX-4), valid enforcing Authelia gate dialing the real `authelia:9080` (FIX-3), correctly nested
+(FIX-4), valid enforcing Authelia gate dialing the real `authelia:9091` (FIX-3), correctly nested
 (FIX-2) — captured at the JSON level live, then tore it down to a **RAW byte-for-byte identical**
 restore (no drift), admin never exposed, production healthy throughout. The end-to-end response is
 a **`403`** (Authelia default-deny for the unconfigured throwaway host), with the **`302`** portal
@@ -492,23 +492,23 @@ to the literal `302` is an auth-provider config change, deliberately out of scop
 
 Before touching anything, I extracted the home edge's own working `home.homelab.example` Authelia gate
 from the live backup and compared it field-by-field to crenel's render. **They match in every
-load-bearing field** — same endpoint `authelia:9080` (the HOME Authelia, on the home container
+load-bearing field** — same endpoint `authelia:9091` (the HOME Authelia, on the home container
 network, exactly as home's own routes use), same `rewrite /api/verify?rd=https://auth.homelab.example`,
 same `X-Forwarded-Method/Uri`, same 4 `Remote-*` copy-headers, same `handle_response` 2xx semantics.
 The only diffs are cosmetic (a `subroute` wrapper, a no-op `vars crenel_policy` marker, copy-header
 order) and do not affect the auth decision. **So the gate is NOT pointed at a wrong/second Authelia;
 it dials the correct home Authelia.** (the maintainer's "maybe there's a vps-edge Authelia" was correctly
-disregarded — there is one Authelia, `authelia/authelia:4.39.20`, on LXC 100.)
+disregarded — there is one Authelia, `authelia/authelia:4.39.20`, on LXC 113.)
 
 ## Then: a mutation-free direct probe pinned the cause to Authelia's per-host policy
 
 Asking the home Authelia's `/api/verify` directly (forward-auth headers, **no crenel route exposed**):
 
-| `X-Forwarded-Host` → `authelia:9080/api/verify` | before rule | after temp rule | after revert |
+| `X-Forwarded-Host` → `authelia:9091/api/verify` | before rule | after temp rule | after revert |
 |---|---|---|---|
 | `crenel-selftest.homelab.example` | **403** (no rule) | **302** → portal | **403** (rule gone) |
 | `home.homelab.example` (configured) | 302 | 302 | 302 |
-| `app.homelab.example` (configured) | 302 | — | 302 |
+| `dockhand.homelab.example` (configured) | 302 | — | 302 |
 | `randomzzz999.homelab.example` (never configured) | **403** | **403** | **403** |
 
 Authelia uses **explicit per-host rules** (`default_policy: deny`, no `*.homelab.example` wildcard —
@@ -516,8 +516,8 @@ Authelia uses **explicit per-host rules** (`default_policy: deny`, no `*.homelab
 
 ## The temporary Authelia change (authorized, minimal, fully reverted)
 
-- **Backed up** `/etc/homeedge/authelia/config/configuration.yml` (LXC 100) → `…crenel-trial-bak`,
-  sha `7f622e23…` (the restore anchor), `0600`. Edit performed **on LXC 100** so the secret-bearing
+- **Backed up** `/opt/stacks/authelia/config/configuration.yml` (LXC 113) → `…crenel-trial-bak`,
+  sha `7f622e23…` (the restore anchor), `0600`. Edit performed **on LXC 113** so the secret-bearing
   config never transited to the VPS or any log.
 - **Inserted** a marker-delimited rule after `home.homelab.example`:
   ```yaml
@@ -538,7 +538,7 @@ curl https://crenel-selftest.homelab.example/  →  HTTP/2 302
   set-cookie: authelia_session=…;  x-frame-options: DENY;  permissions-policy: …;  referrer-policy: …
   via: 2.0 Caddy + 1.1 Caddy        (front VPS hop + home hop — the full chain)
 ```
-VPS front (FIX-4 TLS forward) → home edge (FIX-3 gate → real `authelia:9080`) → Authelia portal 302.
+VPS front (FIX-4 TLS forward) → home edge (FIX-3 gate → real `authelia:9091`) → Authelia portal 302.
 The crenel gate bytes were identical to the 403 runs; only the Authelia rule changed. `home`
 control still 302; 3 prod hosts 200 throughout.
 
@@ -549,17 +549,17 @@ control still 302; 3 prod hosts 200 throughout.
 | crenel `unexpose` | read-back ✓ both, verified, exit 0 |
 | Both caddy edges byte-for-byte | **VPS `43901caf…` / HOME `e509c326…` == Step-1 anchors**, 0/0 crenel `@id` residue |
 | Authelia config restored | byte-for-byte from backup → sha **`7f622e23…` == original**, `CRENEL-TRIAL-TEMP` marker count 0 |
-| Authelia post-revert probe | `crenel-selftest` → **403** again; `home`/`app` → 302; `randomzzz999` → 403 (no collateral) |
+| Authelia post-revert probe | `crenel-selftest` → **403** again; `home`/`dockhand` → 302; `randomzzz999` → 403 (no collateral) |
 | Authelia container | **healthy**, running; `RestartCount=0` (manual `docker restart` doesn't increment it; bounced 3× total — apply-rule, one accidental no-op, real restore — all healthy) |
 | 3 prod hosts | 200 / 200 / 200 |
 | caddy RestartCount | VPS 0 / HOME 0, both running; no wedge |
 | Home admin on tailnet | refused throughout |
 | Responder (`:9999`) | stopped; refused from caddy |
-| LXC-100 trial backup | shredded/removed — Authelia config dir back to pristine (only `configuration.yml` + the maintainer's own `.bak`s) |
+| LXC-113 trial backup | shredded/removed — Authelia config dir back to pristine (only `configuration.yml` + the maintainer's own `.bak`s) |
 | Temp files | VPS trial config + helper scripts removed; Mac scratchpad wiped; no secrets printed |
 
-**One honest process note:** the first restore attempt ran `cp`/`sha256sum` on the **proxmox host**
-instead of **inside LXC 100** (missing `pct exec 100 --`), so it was a no-op and Authelia briefly
+**One honest process note:** the first restore attempt ran `cp`/`sha256sum` on the **pve1 host**
+instead of **inside LXC 113** (missing `pct exec 113 --`), so it was a no-op and Authelia briefly
 restarted still carrying the temp rule. Caught immediately from the output (`cp: cannot stat …`,
 marker count still 2, `crenel-selftest` still 302), re-ran the restore correctly inside the
 container, and confirmed the byte-for-byte revert. No crenel route was up during that window
@@ -593,14 +593,14 @@ editing Authelia each run**. So the Authelia config was NOT left pristine — th
 ```
 
 - **Record backup kept:** the pre-edit pristine config (sha `7f622e23…`, byte-identical to the
-  original pre-trial bytes) is preserved on LXC 100 as
-  `/etc/homeedge/authelia/config/configuration.yml.bak.20260628-pre-crenel-selftest` (`0600`), alongside
+  original pre-trial bytes) is preserved on LXC 113 as
+  `/opt/stacks/authelia/config/configuration.yml.bak.20260628-pre-crenel-selftest` (`0600`), alongside
   the maintainer's own `configuration.yml.bak.*` files.
 - **Final active Authelia config:** sha `f1c6d250…` = pristine + the single permanent `crenel-selftest`
   rule. `authelia validate-config` → exit 0; `docker restart authelia` → healthy.
-- **Verified (direct probe to `authelia:9080/api/verify`):** `crenel-selftest.homelab.example` → **302**
+- **Verified (direct probe to `authelia:9091/api/verify`):** `crenel-selftest.homelab.example` → **302**
   (`Location: https://auth.homelab.example/?rd=…crenel-selftest…` + `Set-Cookie authelia_session`);
-  `home.homelab.example` → 302; `app.homelab.example` → 302; `randomzzz999.homelab.example` → **403**
+  `home.homelab.example` → 302; `dockhand.homelab.example` → 302; `randomzzz999.homelab.example` → **403**
   (default-deny intact — no collateral, the rule is host-specific).
 - **Edges:** both Caddy edges remain **byte-for-byte** at the Step-1 anchors (`43901caf…` / `e509c326…`),
   **0** crenel `@id` residue — the edge teardown was correct and is unchanged by this amendment.

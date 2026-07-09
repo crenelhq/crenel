@@ -7,9 +7,9 @@
 > detect-and-declare-unknown + P1.5 multi-server + partial P2 generator detection +
 > P3 ingress + **P4 chain-aware read model**).
 >
-> Companions: **DESIGN.md** (architecture + invariants), **TOPOLOGY-RISK-REGISTER.md**
-> (the long-tail safety spec — authoritative for §4 / the backlog), **STRAIN.md**
-> (where the port strains), **AUTH-DESIGN.md** / **USABILITY-DESIGN.md** (feature
+> Companions: **docs/internal/DESIGN.md** (architecture + invariants), **docs/internal/TOPOLOGY-RISK-REGISTER.md**
+> (the long-tail safety spec — authoritative for §4 / the backlog), **docs/internal/STRAIN.md**
+> (where the port strains), **docs/internal/AUTH-DESIGN.md** / **docs/internal/USABILITY-DESIGN.md** (feature
 > semantics), **archive/BUILD_LOG.md** (per-increment narrative).
 >
 > **Anonymized for publication:** the maintainer's hostnames/zones/addresses appear
@@ -38,7 +38,7 @@
 > coordinated cross-chain write, surgical Cloudflare on the **shared** `homelab.example` zone,
 > the dual-AdGuard split-horizon parity trial, and — closing punch-list #1 — the first
 > **full-chain production expose (`finances.homelab.example` from the home-edge host, all 7 gates green)**.
-> See §6.z **A0** and **TRIAL-RECORD-live-proofs-2026-06-30.md**. What's genuinely live-only
+> See §6.z **A0** and **docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md**. What's genuinely live-only
 > now: Tailscale `serve.json` WRITE support.
 >
 > **Public launch + independent audit (2026-07-03 → 07-04).** Crenel shipped its first
@@ -49,9 +49,9 @@
 > a stream-only config, an include-only config, or a map/upstream-only helper file all
 > read as a false `ENFORCED` with zero routes/zero warnings). Fixed on `develop`
 > (`548d8ad`; `server_not_read` now DECLARES the unrecognized block, downgrading deny to
-> UNKNOWN) and shipped public as `v0.4.1`. The audit + independent verification also left
-> four LOW items (F2/F3/F4/F5) at their original disposition. **This pass closes three of
-> those four** — a minimal
+> UNKNOWN) and shipped public as `v0.4.1`. See `docs/audits/independent-audit-2026-07-03.md`
+> for the full audit + verification + the four remaining LOW items (F2/F3/F4/F5) it left
+> at their original disposition. **This pass closes three of those four** — a minimal
 > GitHub Actions CI (F5), a file-lock around the mutating apply path (F3), and a gate
 > that REFUSES (rolls back) rather than silently stands an unconfirmed file-driver write
 > when no runtime probe is configured (F2, `UnverifiedWriteError`/`--allow-unverified`) —
@@ -114,7 +114,7 @@ multi-agent adversarial review caught + fixed a real prefix-collision break in
 `homelab.example` **shared-zone surgical trial is now PROVEN LIVE (2026-06-30):** a
 3-provider verify-expose of `crenel-fliptest` created only Crenel's `managed-by:crenel`
 record while the pre-existing apex **wildcard stayed BYTE-IDENTICAL** across expose→unexpose,
-all restored byte-for-byte (operator-record — see **TRIAL-RECORD-live-proofs-2026-06-30.md** §1).
+all restored byte-for-byte (operator-record — see **docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md** §1).
 
 **Two gaps the live preview surfaced → HARDENED (this pass, `feat/dns-hardening`):**
 
@@ -185,7 +185,7 @@ covering `*.zone` site (inheriting its TLS — NOT a shadowing top-level site), 
 validates + **`caddy adapt` cross-checks** the candidate re-adapts to the live managed
 state, then writes the host file + reloads — all over the home edge's TWO exec channels
 (file→LXC host, caddy→container). Read-only-verified the boot model live (Caddyfile, no
-`--resume`, ro-mounted from `/etc/homeedge/caddy`); the durable WRITE is now **PROVEN
+`--resume`, ro-mounted from `/opt/stacks/caddy/conf`); the durable WRITE is now **PROVEN
 LIVE end-to-end on the home edge** (expose + restart-survival + unexpose, byte-for-byte by
 Crenel; TRIAL-RESULT-durable-persist-2026-06-28.md). See §5g.
 
@@ -203,8 +203,8 @@ config). See §5f.
 Caddy admin driver uses for ALL admin calls, with `direct` (default; zero behavior
 change), `ssh-exec` (run the call as a nested-exec curl against a loopback admin — no
 port, no tunnel) and `ssh-tunnel` (crenel-managed local forward) implementations.
-**READ-ONLY-verified LIVE** against the maintainer's home edge over ssh-exec (`ssh root@proxmox →
-pct exec 100 → docker exec -i caddy → sh` → curl `127.0.0.1:2019`): `crenel status`
+**READ-ONLY-verified LIVE** against the maintainer's home edge over ssh-exec (`ssh root@pve1 →
+pct exec 113 → docker exec -i caddy → sh` → curl `127.0.0.1:2019`): `crenel status`
 read 51 live services, default-deny ENFORCED, with the home admin still loopback-only
 and the live config **byte-identical** before/after. See §5e.
 
@@ -224,7 +224,7 @@ Historical build order (all **BUILT** unless noted). Narrative in archive/BUILD_
 |---|---|
 | **M0** | Scaffold, hexagonal core/ports/model, fake Caddy admin API; read-only `status`/`preview`; mutating `expose`/`unexpose` with read-back verify + structural default-deny; dnscontrol DNS (internal); `audit` + `export`. |
 | **M1** | Transactional apply: compensating **rollback** + additive **granular** Caddy apply. |
-| **M2** | **Traefik** file-provider driver (2nd edge; the port holds — STRAIN.md). |
+| **M2** | **Traefik** file-provider driver (2nd edge; the port holds — docs/internal/STRAIN.md). |
 | **M3** | Public DNS scope + unified cross-provider plan/apply with exposure-rank ordering. |
 | **M4** | **Multi-edge** topology (home + VPS double-write): projection, cross-edge all-or-nothing transaction, per-edge wedge-safe rollback. |
 | **M5** | **NetBird** mesh edge (3rd driver): reads; refuses mutation loudly. |
@@ -364,7 +364,7 @@ clobbers) when live holds unparsed constructs, real forward-auth, or passthrough
   block* are lost on an unrelated apply (the marker says "regenerated; edit other
   blocks"). Documented fidelity boundary, not a safety hole.
 - **Traefik/nginx "live" read** is the desired file, not the running process (no
-  admin read-back like Caddy's). Documented strain (STRAIN.md).
+  admin read-back like Caddy's). Documented strain (docs/internal/STRAIN.md).
 - **DNS reconcile** is presence/absence + mode only; record *value* drift (right
   name, wrong target) is not detected/fixed by `reconcile`. (The `expose` apply path IS
   value-aware as of v0.3.1 — a changed value re-asserts + read-back-verifies; only the
@@ -439,7 +439,7 @@ Six fixes (each its own commit, kept green), plus doc corrections:
 | F3 | `fix(reconcile): carry forward-auth through the canonical set` | Reconcile re-add/re-render dropped auth (protected → unprotected). Carry auth in `canonicalState`; read-back now re-asserts auth on touched routes. |
 | F4 | `fix(caddy): bound the persist validate/reload subprocesses` | `caddy validate`/`reload` ran on an unbounded context (could hang). Bounded by the write timeout. |
 | F5 | `fix(traefik,nginx): declare host-less forwarding routers unparsed` | A host-less router/server that *forwards* was silently dropped; now emits `Unparsed` (forward-only, to avoid redirect-server noise). |
-| docs | `docs: correct stale milestone list + Caddy auth/full-load claims` | DESIGN.md milestones (was "M1 in progress"); AUTH-DESIGN.md Caddy full-load auth claim (full-load *refuses* auth; `import` is the persist form). |
+| docs | `docs: correct stale milestone list + Caddy auth/full-load claims` | docs/internal/DESIGN.md milestones (was "M1 in progress"); docs/internal/AUTH-DESIGN.md Caddy full-load auth claim (full-load *refuses* auth; `import` is the persist form). |
 
 **Smoke test (brownfield quickstart against `examples/settings-brownfield.json`):**
 `status → audit → import --dry-run → apply --dry-run` all coherent; the HUD/coverage/
@@ -557,7 +557,7 @@ terminal+auth both nest, byte-for-byte restore). The Caddy fake was made faithfu
 (path-addressed nested PUT + global nested `@id` GET/DELETE) — the gap that let the
 fake-based suite miss this. **The live cross-chain trial has since RUN at production scale**
 (the `finances.homelab.example` full-chain expose from the home-edge host, 2026-06-30 — this route nests
-across the `*.homelab.example` wildcard subroute on both edges; TRIAL-RECORD-live-proofs-2026-06-30.md §3).
+across the `*.homelab.example` wildcard subroute on both edges; docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md §3).
 A byte-logged re-run isolating the nesting axis alone remains an optional tidy-up.
 
 **TRIAL-FIX-3 — valid forward-auth JSON renderer (2026-06-28).** The trial's OTHER
@@ -567,7 +567,7 @@ is a Caddyfile DIRECTIVE, not a JSON module**, so the home Caddy rejected the lo
 provision (`unknown module: http.handlers.forward_auth`) and the all-or-nothing
 transaction backed out (zero changes). Inspecting the real home edge config
 (`live-backup/trial-chain-write-*`) showed Authelia expressed as a `reverse_proxy` to
-`authelia:9080` with a `handle_response` subrequest (2xx → copy `Remote-*` headers →
+`authelia:9091` with a `handle_response` subrequest (2xx → copy `Remote-*` headers →
 continue; else return the 302) and a rewrite to `/api/verify?rd=…` — the canonical
 `forward_auth` expansion. Fixed: the granular path now renders, before the backend, a
 `vars` policy **marker** (`crenel_policy`, which round-trips the name off a real edge —
@@ -584,7 +584,7 @@ that let the fakes round-trip the bogus handler). Reproduce-then-fix tests:
 `caddyfake/fake_test.go` (synthetic `forward_auth` rejected / canonical gate accepted),
 `caddy/auth_test.go` (canonical render + verbatim blob + snippet-only refused),
 `core/chain_write_nested_test.go` (`TestChainWrite_ValidAuthGateNestedOnBothEdges` +
-`--auth none`). See AUTH-DESIGN.md §2.1.
+`--auth none`). See docs/internal/AUTH-DESIGN.md §2.1.
 
 **TRIAL-FIX-4 — front-leg upstream TLS on chain-forward routes (2026-06-28).** With
 nesting (FIX-2) and the valid auth gate (FIX-3) both landed live, RUN 2 of the trial
@@ -616,8 +616,8 @@ load-bearing guard), `core/chain_write_tls_test.go` (the scheme-inference matrix
 **The live cross-chain trial with `--auth authelia` has RUN:** the chain-write reruns drove the
 literal `302 → auth.homelab.example` (TRIAL-RESULT-chain-write-2026-06-28.md), and the coordinated
 auth-gated write is now proven at production scale by the `finances.homelab.example` full-chain
-expose (2026-06-30 — TRIAL-RECORD-live-proofs-2026-06-30.md §3). See DESIGN.md "Cross-chain
-coordinated WRITE → Front-leg upstream TLS" and AUTH-DESIGN.md §2.1.
+expose (2026-06-30 — docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md §3). See docs/internal/DESIGN.md "Cross-chain
+coordinated WRITE → Front-leg upstream TLS" and docs/internal/AUTH-DESIGN.md §2.1.
 
 ### 5e. TRANSPORT — the pluggable connection axis (HOW Crenel reaches an admin API)
 
@@ -648,7 +648,7 @@ unexpose reverses) — the exact trial shape, against fakes. No live infra in an
 the guarded tier self-skips if `sh`/`curl`/`base64` are absent.
 
 **LIVE READ-ONLY verification (no mutation):** configured ssh-exec for the maintainer's HOME edge
-(`["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]` →
+(`["ssh","root@pve1","pct","exec","113","--","docker","exec","-i","caddy","sh"]` →
 curl `http://127.0.0.1:2019`) and ran `crenel status` + a read-only `preview` through
 it. Crenel read the home edge's **live** config — **51 services, default-deny
 ENFORCED** — with the admin still **container-loopback-only** (nothing published, no
@@ -706,7 +706,7 @@ survive a restart. Each item is impl + tests, every commit green under `go build
 | **model** | **Persistence as a detect-and-declare property** | `model.PersistenceModel` (durable-config/durable-file/resume/ephemeral-admin/unknown) on `LiveEdgeState`, set per-edge by the driver (caddy: durable-file when a persist path is configured, resume/durable declarable, else **ephemeral-admin** — the safe default; traefik/nginx: durable-config). The admin API carries NO boot-source marker, so it is DECLARED, never inferred. | "Will this write survive a restart?" is first-class, never assumed durable. |
 | **surface** | **status / audit / write-path** | status `Durability:` line (ephemeral edges flagged); audit `ephemeral_writes` warning when an ephemeral edge actually holds crenel-managed routes; `ports.DurabilityReporter` → a `PersistWarning` when a verified write lands on an ephemeral edge. | A live-but-ephemeral write is never silently trusted (the DURABILITY MISREAD). |
 | **reconciler** | **Durable wildcard-site Caddyfile reconcile** | `caddy/persist_caddyfile.go` + `caddyfile_edit.go`: a managed host's durable form is a per-host `@crenel_<host> host …` + `handle { [import <snippet>] reverse_proxy … }` INSIDE the covering `*.zone` site (inheriting its TLS — the flat persister's top-level `host {}` would SHADOW the wildcard and lose its cert config). Pipeline: partition by zone (refuse an operator-owned host) → render → **self-check** (parse the region back == managed routes) → `caddy validate` → **`caddy adapt` cross-check** (the candidate re-adapts to the live managed backend+auth) → write host file + reload. A bad candidate never touches the live boot file. | The on-disk config is a re-adaptation-VERIFIED mirror of live (no second SOT); a managed write reproduces on restart, byte-faithful to the operator's file. |
-| **wiring** | **Two-channel exec seams + config** | `ConfigStore`/`Adapter` seams (+ `CaddyCLI`): local FS + `OSAdapter` on-box; `ExecConfigStore`/`ExecCaddyCLI`/`ExecAdapter` (transport-Runner-backed) for the home edge's TWO channels — file→LXC host (`/etc/homeedge/caddy/Caddyfile`, ro-mounted), caddy→container. Config block `caddy_persist` (`examples/settings-durable-home.json`). | The reconcile is identical whether the boot file is local or one `pct exec` away. |
+| **wiring** | **Two-channel exec seams + config** | `ConfigStore`/`Adapter` seams (+ `CaddyCLI`): local FS + `OSAdapter` on-box; `ExecConfigStore`/`ExecCaddyCLI`/`ExecAdapter` (transport-Runner-backed) for the home edge's TWO channels — file→LXC host (`/opt/stacks/caddy/conf/Caddyfile`, ro-mounted), caddy→container. Config block `caddy_persist` (`examples/settings-durable-home.json`). | The reconcile is identical whether the boot file is local or one `pct exec` away. |
 
 **Tests (all green, race-clean):** a FAITHFUL fake adapter (adapts the candidate via the
 same parse primitives real caddy exercises; a `drop=host` variant proves the re-adaptation
@@ -817,7 +817,7 @@ Pulled from the register's roadmap (§5) + what this pass surfaced. Ordered by
    front-forward + downstream-route + DNS as one ordered, read-back-verified,
    all-or-nothing transaction (auth attaches downstream; gate spans both edges).
    ~~A live cross-chain write trial~~ **DONE** — the coordinated auth-gated write is
-   proven at production scale (§5c/§5d; TRIAL-RECORD-live-proofs-2026-06-30.md §3).
+   proven at production scale (§5c/§5d; docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md §3).
    **Remaining (follow-on):** chain `Adopt` of a pre-existing forward; an `auth: app`
    annotation for in-app auth.
 5. ~~**Read-back-verify auth on the apply/declarative paths**~~ **DONE (§5h).** `verifyDeclarative`
@@ -934,12 +934,12 @@ open are closed. Each was run against real infrastructure and reverted (or left 
   edge forward/allowlist, both internal AdGuard rewrites, public Cloudflare record — all 7 gates green.
   This is also the **live cross-chain coordinated WRITE on the real home + VPS chain** at production
   scale, on top of the config-level chain-write in TRIAL-RESULT-chain-write-2026-06-28.md.
-  (operator-record — **TRIAL-RECORD-live-proofs-2026-06-30.md** §3.)
+  (operator-record — **docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md** §3.)
 - **Surgical Cloudflare on the shared `homelab.example` zone (2026-06-30).** Only Crenel's marked
   record created; the apex wildcard stayed byte-identical across expose→unexpose; all restored.
-  (operator-record — TRIAL-RECORD-live-proofs-2026-06-30.md §1.)
+  (operator-record — docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md §1.)
 - **Dual-AdGuard split-horizon parity (2026-06-30).** Both resolvers driven, restored byte-for-byte;
-  `dns_coverage_parity` caught a real divergence live. (operator-record — TRIAL-RECORD-live-proofs-2026-06-30.md §2.)
+  `dns_coverage_parity` caught a real divergence live. (operator-record — docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md §2.)
 - **Durable-persist write on the home edge (2026-06-28).** Durable expose + restart-survival +
   unexpose, byte-for-byte by Crenel (TRIAL-RESULT-durable-persist-2026-06-28.md).
 
@@ -955,7 +955,7 @@ open are closed. Each was run against real infrastructure and reverted (or left 
 - **chain `Adopt` of a pre-existing forward** + **`auth: app`** annotation for in-app auth. Both are P4-write follow-ons (modeling, not safety).
 
 **C. Doc / launch-readiness — CLOSED (public launch has shipped).**
-- ~~`crenelhq` GitHub org status~~ **DONE** — `github.com/crenelhq/crenel` is public and live: `v0.4.0` shipped, an independent audit (2026-07-03) found one MEDIUM (nginx false-ENFORCED, F1 — see §0), fixed on `develop` and shipped as `v0.4.1`. CI now runs `go build/vet/test -race` + `gitleaks` on every push/PR.
+- ~~`crenelhq` GitHub org status~~ **DONE** — `github.com/crenelhq/crenel` is public and live: `v0.4.0` shipped, an independent audit (2026-07-03) found one MEDIUM (nginx false-ENFORCED, F1 — see §0/CHANGELOG), fixed on `develop` and shipped as `v0.4.1`. CI now runs `go build/vet/test -race` + `gitleaks` on every push/PR.
 - ~~`LICENSE` (Apache-2.0) + `NOTICE` + `CONTRIBUTING.md`/DCO~~ **DONE** — all present at repo root.
 - ~~`CODE_OF_CONDUCT.md`~~ **DONE** — Contributor Covenant, added alongside this pass.
 - ~~the open-core boundary~~ **DONE** — `docs/OPEN-CORE.md`.

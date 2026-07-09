@@ -11,7 +11,7 @@
 Each of these is a failure mode Crenel is specifically built to make
 impossible (or, where full prevention isn't possible, to make loud and
 declared instead of silent). The vocabulary (`MISREAD-↓`, `MISREAD-↑`,
-`MISMANAGE`) is `TOPOLOGY-RISK-REGISTER.md`'s and is worth reusing in findings.
+`MISMANAGE`) is `../internal/TOPOLOGY-RISK-REGISTER.md`'s and is worth reusing in findings.
 
 ### 1a. Silent fail-open
 
@@ -42,7 +42,7 @@ or fix exactly this class of divergence.
 another tool (Nginx Proxy Manager, a Docker-label proxy, Pangolin, a hand-built
 config Crenel didn't create). The mutation read-back-verifies green in the
 moment, then is silently reverted the next time the other tool regenerates its
-config. This is `TOPOLOGY-RISK-REGISTER.md`'s **#1-ranked** danger
+config. This is `../internal/TOPOLOGY-RISK-REGISTER.md`'s **#1-ranked** danger
 (highest prevalence × highest severity).
 
 **The defense:** the pre-mutation ownership gate (`gateOwnership`) refuses to
@@ -93,7 +93,7 @@ exposed.
 
 **The defense:** the `Unparsed[]`/`Coverage()`/ternary-`Ownership` machinery
 described in SECURITY-MODEL.md §1c. This is the universal net underneath
-1a/1e/1c-elsewhere; almost every entry in `TOPOLOGY-RISK-REGISTER.md`'s §2
+1a/1e/1c-elsewhere; almost every entry in `../internal/TOPOLOGY-RISK-REGISTER.md`'s §2
 register is closed (or bounded) by this single mechanism rather than by
 topology-specific modeling.
 
@@ -110,7 +110,7 @@ a threat model it never claimed to meet.
 - **Not an authentication/authorization system.** Crenel attaches a forward-auth
   policy **by reference**: a name resolved to a per-driver reference (an
   Authelia/Authentik endpoint, a Traefik middleware, an nginx `auth_request`
-  location). See `AUTH-DESIGN.md`. It never implements, verifies, or owns the
+  location). See `../internal/AUTH-DESIGN.md`. It never implements, verifies, or owns the
   auth provider's actual logic, secrets, or session handling. "Crenel says a
   host has policy `authelia` attached" is a claim about *routing configuration*,
   not a claim that Authelia itself is correctly configured or unbypassable.
@@ -147,7 +147,7 @@ a threat model it never claimed to meet.
 ## 3. The asymmetry that shapes severity
 
 Two failure directions are not equally dangerous, and findings should be
-triaged accordingly (this is `TOPOLOGY-RISK-REGISTER.md`'s framework, restated
+triaged accordingly (this is `../internal/TOPOLOGY-RISK-REGISTER.md`'s framework, restated
 for this package):
 
 - **MISREAD-↓ / under-report exposure (or over-report protection).** Reports

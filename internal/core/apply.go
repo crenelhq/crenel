@@ -75,6 +75,10 @@ func (e *Engine) gateRuntimeVerify(ctx context.Context, verify []VerifyResult, a
 // world actually matches the intent. This is what catches the silent-reload
 // footgun.
 func (e *Engine) Apply(ctx context.Context, op model.Op, confirm ConfirmFunc) (ApplyReport, error) {
+	// Read-only posture: refuse before planning — no driver Plan/Apply is reached.
+	if err := e.gateReadOnly(string(op.Verb)); err != nil {
+		return ApplyReport{Op: op}, err
+	}
 	cs, err := e.Plan(ctx, op)
 	if err != nil {
 		return ApplyReport{Op: op}, err
@@ -133,7 +137,7 @@ func (e *Engine) applyPlanned(ctx context.Context, op model.Op, cs model.ChangeS
 	// route before announcing the name to the world (announce LAST); when making it
 	// LESS reachable, stop announcing to the world FIRST, then tear the routes down.
 	// All edges share the edge rank, so they all precede public-DNS on expose and
-	// all follow it on unexpose. See DESIGN.md.
+	// all follow it on unexpose. See docs/internal/DESIGN.md.
 	steps := e.buildSteps(ctx, op, cs, edgeSnaps)
 
 	// applied holds compensators in apply order; rollback runs them in reverse.

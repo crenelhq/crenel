@@ -2,7 +2,7 @@
 // (dynamic-configuration file) — added to de-risk the EdgeProvider port: a port
 // with only one implementation (Caddy) is fake agnosticism. Traefik is a "dumb
 // data-plane" edge, and it fits the port cleanly; where it nonetheless STRAINS is
-// documented in STRAIN.md and in the doc comments below.
+// documented in docs/internal/STRAIN.md and in the doc comments below.
 //
 // Shape contrast with the Caddy driver (this is the point of a second driver):
 //   - Caddy is driven through an HTTP ADMIN API; a reload can silently no-op, so
@@ -145,7 +145,7 @@ func (d *Driver) Validate(ctx context.Context) error {
 // so file != running until the hot-reload succeeds. A production-grade driver
 // would additionally read Traefik's read-only API (GET /api/http/routers) to
 // confirm the running state — exactly the read-back-verify the Caddy admin API
-// gives for free. Against the fake (a file), we treat file == live. See STRAIN.md.
+// gives for free. Against the fake (a file), we treat file == live. See docs/internal/STRAIN.md.
 func (d *Driver) ReadLiveState(ctx context.Context) (model.LiveEdgeState, error) {
 	cfg, err := d.read()
 	if err != nil {
@@ -485,7 +485,7 @@ func validate(cfg dynamicConfig) error {
 // entryPoints verbatim (a router's key is an identifier, not behaviour). Only
 // ownership changes. Idempotent: a host already under a crenel-* key (or with no
 // matching unmanaged HTTP router) is skipped. Implements ports.Adopter. See
-// USABILITY-DESIGN.md §A.
+// docs/internal/USABILITY-DESIGN.md §A.
 func (d *Driver) Adopt(ctx context.Context, hosts []string) error {
 	want := map[string]bool{}
 	for _, h := range hosts {

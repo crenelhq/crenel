@@ -19,12 +19,12 @@ func TestLoad_DurablePersistDecodes(t *testing.T) {
 	  "edges": [
 	    {
 	      "name": "home", "driver": "caddy", "granular_apply": true, "origins": {},
-	      "transport": {"type": "ssh-exec", "command": ["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]},
+	      "transport": {"type": "ssh-exec", "command": ["ssh","root@ml350","pct","exec","113","--","docker","exec","-i","caddy","sh"]},
 	      "caddy_persist": {
 	        "boot_path": "/etc/caddy/Caddyfile",
-	        "file_command": ["ssh","root@proxmox","pct","exec","100","--","sh"],
-	        "file_path": "/etc/homeedge/caddy/Caddyfile",
-	        "caddy_command": ["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]
+	        "file_command": ["ssh","root@ml350","pct","exec","113","--","sh"],
+	        "file_path": "/opt/stacks/caddy/conf/Caddyfile",
+	        "caddy_command": ["ssh","root@ml350","pct","exec","113","--","docker","exec","-i","caddy","sh"]
 	      }
 	    }
 	  ]
@@ -46,7 +46,7 @@ func TestLoad_DurablePersistDecodes(t *testing.T) {
 	if p.BootPath != "/etc/caddy/Caddyfile" {
 		t.Errorf("boot_path = %q", p.BootPath)
 	}
-	if p.FilePath != "/etc/homeedge/caddy/Caddyfile" {
+	if p.FilePath != "/opt/stacks/caddy/conf/Caddyfile" {
 		t.Errorf("file_path = %q", p.FilePath)
 	}
 	if len(p.FileCommand) == 0 || p.FileCommand[0] != "ssh" {

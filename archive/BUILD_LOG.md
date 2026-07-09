@@ -125,7 +125,7 @@ is a Caddyfile DIRECTIVE, not a JSON handler module** — no real Caddy register
 transaction backed out (zero changes). The fakes round-tripped the bogus handler, so the
 suite never caught it. Inspecting the captured real home config
 (`live-backup/trial-chain-write-20260628T115717Z/home-edge-config-*.json`) showed Authelia
-expressed as a `reverse_proxy` → `authelia:9080` with a `handle_response` subrequest
+expressed as a `reverse_proxy` → `authelia:9091` with a `handle_response` subrequest
 (2xx → copy `Remote-User/Groups/Name/Email` → continue; else return the 302) + a rewrite to
 `/api/verify?rd=https://auth.homelab.example` — the canonical `forward_auth` expansion. Four
 green increments, each `go build ./... && go vet ./... && go test -race -count=1 ./...` clean,
@@ -134,7 +134,7 @@ pushed to Forgejo per increment.
 **Increment 1 — read model reads the backend behind the gate, not the authorizer.**
 `Handler` gains `HandleResponse`; `isAuthGate()` = a `reverse_proxy` carrying
 `handle_response`. `firstReverseProxyDial` now SKIPS the gate (it dials the AUTHORIZER), so
-a real Authelia route reads its true service backend (`shlink-web:8080`, not `authelia:9080`).
+a real Authelia route reads its true service backend (`shlink-web:8080`, not `authelia:9091`).
 `detectAuth` recognizes the structural gate as `(detected)` AND round-trips crenel's policy
 name off a `vars` marker (`crenel_policy`) — vars keys survive real-Caddy normalize, unlike a
 `reverse_proxy`'s unknown fields. Tests: brownfield gate → backend+`(detected)`; marker →
@@ -334,7 +334,7 @@ the refactor commit. `WithTransport` injects an alternate channel.
 
 **ssh-exec (no port, no tunnel).** Reach the admin by running the call as a COMMAND on
 the far end. The operator configures an exec PREFIX as argv crenel does NOT shell-parse
-(`["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]`);
+(`["ssh","root@pve1","pct","exec","113","--","docker","exec","-i","caddy","sh"]`);
 crenel generates a POSIX-sh curl/wget script and feeds it to the prefix over **STDIN**.
 That is the key insight for nesting: nothing crosses a shell-parse boundary as an
 argument, so quoting survives an arbitrarily deep `ssh → pct exec → docker exec` chain
@@ -371,7 +371,7 @@ front-forward + downstream-real-backend+auth + DNS in order, read-back-verified;
 unexpose reverses) — the exact trial shape, no live infra.
 
 **LIVE READ-ONLY verification.** Pointed ssh-exec at the real home edge
-(`ssh root@proxmox → pct exec 100 → docker exec -i caddy → sh → curl 127.0.0.1:2019`) and
+(`ssh root@pve1 → pct exec 113 → docker exec -i caddy → sh → curl 127.0.0.1:2019`) and
 ran `crenel status` + a read-only `preview`. crenel read the home edge's **live** config
 — **51 services, default-deny ENFORCED** — with the admin still container-loopback-only
 (nothing published, no tunnel) and the live config **sha256 byte-identical before/after**
@@ -1372,7 +1372,7 @@ correctly (Default-deny PRESENT, two wildcard subroutes, audit exit 0).
 
 **Definitive, from the code:** Crenel targets **ONE** edge — whichever single
 Caddy admin API you point `admin_url` at. It does **NOT** double-write to both the
-home Caddy (LXC 100, 10.0.0.13) and the VPS edge (100.100.0.2).
+home Caddy (LXC 113, 10.0.0.13) and the VPS edge (100.100.0.2).
 
 Evidence:
 - `core.Engine` holds a single `Edge ports.EdgeProvider` (not a slice) —
@@ -1852,6 +1852,6 @@ Live edge-side diagnostics remain a separate, on-hold task.
 - Wrote `DESIGN.md` (full hexagonal architecture, the two load-bearing ideas:
   live-state-authoritative + structural default-deny), `README.md` (plain +
   technical descriptions), and centralized naming in `internal/config/naming.go`.
-- Decision: name "Crenel" adopted; all naming centralized in one file.
+- Decision: working name "Crenel"; all naming centralized so a rename is one edit.
 - Decision: no persisted desired state — `Op` is the only intent and is transient.
 - Next: model types.

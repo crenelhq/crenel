@@ -13,7 +13,8 @@ import (
 //
 //	CRENEL_GEN_ASSETS=1 go test ./internal/ui/ -run TestGenerateAssets
 //
-// It writes the canonical wordmark pair and the status-HUD mock.
+// It writes the canonical (crisp) wordmark pair, every variant × {dark,light},
+// and the status-HUD mock.
 func TestGenerateAssets(t *testing.T) {
 	if os.Getenv("CRENEL_GEN_ASSETS") == "" {
 		t.Skip("set CRENEL_GEN_ASSETS=1 to (re)generate docs/brand/*.svg")
@@ -36,10 +37,17 @@ func TestGenerateAssets(t *testing.T) {
 	writes := []struct {
 		name, data string
 	}{
-		// Canonical pair — what the README points at.
+		// Canonical pair (crisp) — what the README points at.
 		{"crenel-wordmark.svg", WordmarkSVG()},
 		{"crenel-wordmark-light.svg", WordmarkSVGLight()},
 		{"crenel-status-hud.svg", StatusHUDSVG(hud)},
+	}
+	// Every variant in both surfaces, for selection.
+	for _, v := range WordmarkVariants {
+		writes = append(writes,
+			struct{ name, data string }{"crenel-wordmark-" + v + "-dark.svg", WordmarkVariantSVG(v, false)},
+			struct{ name, data string }{"crenel-wordmark-" + v + "-light.svg", WordmarkVariantSVG(v, true)},
+		)
 	}
 	for _, wsp := range writes {
 		p := filepath.Join(dir, wsp.name)

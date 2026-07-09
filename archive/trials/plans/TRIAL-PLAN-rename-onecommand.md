@@ -26,7 +26,7 @@
 
 Sole executor. Home edge only, throwaway self-test backend (`crenel-rename-old`/`-new` →
 `homepage:3000`), NO real service touched, NO DNS/auth/chain. Full backup + sha256 anchor of
-`/etc/homeedge/caddy/Caddyfile` (the home-edge host) BEFORE anything; drift check (now also enforced
+`/opt/stacks/caddy/conf/Caddyfile` (the home-edge host) BEFORE anything; drift check (now also enforced
 in-reconciler). read-back-verify every mutation; ssh-exec only; home admin never published.
 Byte-for-byte anchor restore is ABORT-ONLY — the demo should leave production clean BY crenel.
 Binary built from `feat/rename-verb` tip. Config: the rename config with both names in

@@ -51,6 +51,11 @@ func build(s config.Settings) (*wiring, error) {
 	}
 
 	w.engine = core.NewMulti(bindings, s.Zone, dnsProviders...)
+	// `read_only: true` builds an audit-only engine: every mutating verb refuses
+	// before planning (core.ErrReadOnlyEngine), and audit re-frames the edge-wide
+	// generator finding to ok-severity foreign_managed_readonly (the expected
+	// posture on a foreign edge, not a problem to fix).
+	w.engine.ReadOnly = s.ReadOnly
 	return w, nil
 }
 

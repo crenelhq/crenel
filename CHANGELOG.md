@@ -4,78 +4,6 @@ All notable changes to Crenel are recorded here. Versioning is informal while
 pre-1.0 (`v0.x` = "works, with documented boundaries"). The authoritative
 current-state map is [`STATE-OF-CRENEL.md`](STATE-OF-CRENEL.md).
 
-## v0.4.2 — 2026-07-05
-
-Follow-through on the independent audit (2026-07-03): closes three of its four
-remaining LOW items, plus the `ack` marker — a real-use feature the audit
-didn't ask for but that makes `audit`/`drift` stay clean on a brownfield edge.
-All packages green under `-race`, **zero external dependencies**.
-
-- **CI (F5).** A minimal GitHub Actions workflow — `go build`, `go vet`,
-  `go test -race`, and `gitleaks` — on every push to `main` and every PR.
-  Previously just `go test -race` in the `Makefile` with no automated gate.
-- **F2 — verify-honesty gate.** A file-based edge (Traefik/nginx) with no
-  runtime probe configured can only re-read its OWN written file — never
-  proof the running daemon picked up the change. Every mutating verb
-  (`expose`/`unexpose`/`rename`/`resume`/`reconcile`/`apply`) now REFUSES —
-  rolling back the write — when that happens, unless `--allow-unverified` is
-  passed (or accepted interactively when not running `--yes`). The report
-  already said "written; runtime verify unavailable" honestly; now the write
-  itself is gated on it instead of standing as an unconfirmed green. Caddy is
-  unaffected (its own admin-API re-read already is the live check).
-- **F3 — file-lock on the mutating apply path.** Two overlapping
-  `expose`/`reconcile`/`apply`/... invocations could interleave their
-  read-plan-apply-verify cycles and stomp each other's rollback compensators.
-  An exclusive, non-blocking flock (stdlib `syscall.Flock`, no new dependency)
-  now serializes every mutating verb; a second overlapping run fails fast
-  with a clear message instead of racing the first.
-- **The `ack` marker.** Some declared-unknown routes are intentional
-  operator-vetted carve-outs (a path scoped by a matcher Crenel doesn't yet
-  model), not silent-wrong risks — but until now there was no way to tell
-  Crenel that without either living with `UNKNOWN` forever or rewriting the
-  config into a shape it understands. `crenel ack <host> --reason <slug>`
-  stamps a `crenel-ack:<slug>` marker INTO the live config itself (a Caddy
-  `@id`, a Traefik field, an nginx comment — no sidecar store, the same
-  pattern the `managed-by:crenel` ownership marker already uses); `audit`/
-  `status` show it as its own **ACK** state — never hidden, never blocking
-  default-deny — instead of a recurring `UNKNOWN`. Never makes a route
-  reachable; that's still only `expose`. Read-side recognition ships across
-  Caddy/Traefik/nginx; the `ack`/`unack` write verbs are Caddy-only for now
-  (Traefik/nginx recognize a hand-written marker but Crenel can't stamp one
-  for them yet — an honest, documented gap, not a silent one). See
-  [`docs/design/ack-marker.md`](docs/design/ack-marker.md).
-- **Docs.** `STATE-OF-CRENEL.md` refreshed (stale header/SHA, the audit
-  record, launch-readiness bucket closed out); `CODE_OF_CONDUCT.md` added
-  (Contributor Covenant); `CONTRIBUTING.md`'s stale pre-launch framing fixed.
-
-F4 (reconcile TOCTOU) remains open, documented, low-severity — the one audit
-item this release doesn't close.
-
-## v0.4.1 — 2026-07-03
-
-Fixes the one MEDIUM finding from the independent audit below (**F1**): the
-nginx read path silently skipped every top-level config chunk that was not a
-`server{}` block. A realistic server-less shape — a stock `nginx.conf`
-wrapping its vhosts in `http { server {} }`, a stream-only (L4/SNI-passthrough)
-config, an include-only main config that delegates everything, or a bare
-map/upstream helper file — therefore read as default-deny **ENFORCED with
-zero routes and zero warnings**: a false green, not just "degenerate input"
-as the audit first estimated.
-
-`normalize` now DECLARES any unrecognized non-server top-level block as an
-`Unparsed` (`server_not_read`) entry, so `DenyState()` downgrades to
-**UNKNOWN** instead of falsely certifying ENFORCED. A pure comment/blank
-chunk is still skipped, so a legitimate bare-`server{}` fragment (servers +
-comments only) keeps reading fully-parsed/ENFORCED with its routes intact.
-Tests cover all four realistic server-less shapes (each now UNKNOWN), the
-comment-only no-cry-wolf case, and a bare-`server{}` ENFORCED regression.
-
-## v0.4.0 — 2026-07-03
-
-Initial public release. `github.com/crenelhq/crenel` goes live — the
-correctness phase (M0–M13, P0–P4, DNS hardening, live-proof trials) that
-`STATE-OF-CRENEL.md` documents in full, published for the first time.
-
 ## v0.3.2 — 2026-06-30
 
 Consolidation release: the experimental Cloudflare DNS hardening from v0.3.1 is now
@@ -388,7 +316,7 @@ of non-test Go across 41 files.
 
 Anything below reads as a *declared unknown* (refuse / `UNKNOWN`) rather than a
 confident wrong answer. Full register in
-[`TOPOLOGY-RISK-REGISTER.md`](TOPOLOGY-RISK-REGISTER.md); current state in
+[`docs/internal/TOPOLOGY-RISK-REGISTER.md`](docs/internal/TOPOLOGY-RISK-REGISTER.md); current state in
 [`STATE-OF-CRENEL.md`](STATE-OF-CRENEL.md) §3.
 
 - **Caddy: use `--granular` on any real/brownfield edge.** Full-load (the

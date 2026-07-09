@@ -58,7 +58,7 @@ edges' Caddy admin APIs. Today, neither admin API is reachable off its own loopb
 | Edge | Admin API | Bound to | Reachable from |
 |---|---|---|---|
 | **VPS front** (`vps-edge`, TS `100.100.0.2`) | `127.0.0.1:2019` | VPS loopback | the VPS only (confirmed: TS-IP `100.100.0.2:2019` → connection refused) |
-| **HOME downstream** (`caddy` container on LXC 100 `10.0.0.13`) | `127.0.0.1:2019` **inside the container** | container-localhost | the `caddy` container only. **Port 2019 is `EXPOSE`d by the image but NOT published** → unreachable from the LXC host (`127.0.0.1:2019` refused on the LXC) and from the VPS (`10.0.0.13:2019` refused over Tailscale, though ICMP/ping + `:443` + `:22` all succeed) |
+| **HOME downstream** (`caddy` container on LXC 113 `10.0.0.13`) | `127.0.0.1:2019` **inside the container** | container-localhost | the `caddy` container only. **Port 2019 is `EXPOSE`d by the image but NOT published** → unreachable from the LXC host (`127.0.0.1:2019` refused on the LXC) and from the VPS (`10.0.0.13:2019` refused over Tailscale, though ICMP/ping + `:443` + `:22` all succeed) |
 
 **Conclusion: there is no host today that can reach both admin APIs, so a single-
 transaction live run is impossible without a deliberate, reversible change to make the
@@ -71,7 +71,7 @@ trial is a separate, backed-up step").
 > crenel can now reach a loopback-only, UNPUBLISHED admin by running the admin call as a
 > nested-exec curl on the far end — **no home-admin publish, no manual SSH tunnel, no
 > container recreate.** This is **READ-ONLY-verified LIVE** against the home edge:
-> `crenel status` over `ssh root@proxmox → pct exec 100 → docker exec -i caddy → sh → curl
+> `crenel status` over `ssh root@pve1 → pct exec 113 → docker exec -i caddy → sh → curl
 > 127.0.0.1:2019` read 51 services, deny ENFORCED, config byte-identical (sha256
 > `174d1d92…`, the HOME anchor below). The live WRITE trial should therefore run with the
 > home edge configured as an `ssh-exec` transport (see `examples/settings-transport-sshexec.json`)
@@ -94,7 +94,7 @@ ephemeral SSH tunnel (RECOMMENDED).**
   `127.0.0.1:2019:2019` in the home `caddy` compose, then `docker compose up -d` (one
   container recreate, ~10 s home blip — the home image has **no crowdsec**, so the recreate
   is clean). Revert both after the trial.
-- From the VPS, open an **ephemeral authenticated** tunnel to it (LXC 100 sshd is up and
+- From the VPS, open an **ephemeral authenticated** tunnel to it (LXC 113 sshd is up and
   reachable from the VPS — confirmed): `ssh -fN -L 127.0.0.1:12019:127.0.0.1:2019 root@10.0.0.13`.
 - crenel home edge `admin_url = http://127.0.0.1:12019`. Neither admin is ever on the
   tailnet/LAN; the only off-box hop is the SSH-tunneled home admin (authenticated, ephemeral).
@@ -126,7 +126,7 @@ P4-write atomic guarantee, so it's a weaker trial of the actual feature.
 ### What the maintainer must set up / decide before GO
 1. **Choose the execution option** (A recommended).
 2. For **A/B**: approve the temporary home-Caddy admin exposure + one container recreate.
-   For **A**: approve the ephemeral VPS→LXC100 SSH tunnel.
+   For **A**: approve the ephemeral VPS→LXC113 SSH tunnel.
 3. Confirm the throwaway backend host:port (§2) — default `10.0.0.13:9999`.
 4. Give the explicit **GO** (§ the 🟥 GO GATE).
 
@@ -171,7 +171,7 @@ projection above is computed against reality, not a toy fixture.
 The simplest sufficient backend: a trivial HTTP responder on a reachable home host/port,
 fronted by the throwaway hostname `crenel-selftest.homelab.example`.
 
-- **Stand up (Step T below):** on **LXC 100** (the home apps box, `10.0.0.13`), run a
+- **Stand up (Step T below):** on **LXC 113** (the home apps box, `10.0.0.13`), run a
   one-liner responder on **port 9999** in the foreground/backgrounded for the trial window:
   ```
   python3 -m http.server 9999 --bind 0.0.0.0    # or: a 2-line whoami; body proves the path
@@ -230,11 +230,11 @@ re-snapshots and re-verifies health, and that fresh snapshot becomes the restore
 
 > Notation: 🟥 = mutating (needs GO + happens only after it). All others are read-only/setup.
 > Commands assume **Option A**; Option B/C variants noted inline. Run from a terminal with
-> `ssh vps-edge` and `ssh root@proxmox` working (both confirmed).
+> `ssh vps-edge` and `ssh root@pve1` working (both confirmed).
 
 ### Step 0 — fresh backups + health (read-only) [pre-GO]
 - `TS2=$(date -u +%Y%m%dT%H%M%SZ)`; re-`GET /config/` on the VPS → `vps-front-config-$TS2.json`;
-  re-capture the home config (`pct exec 100 -- docker exec caddy wget -qO- http://127.0.0.1:2019/config/`)
+  re-capture the home config (`pct exec 113 -- docker exec caddy wget -qO- http://127.0.0.1:2019/config/`)
   → `home-edge-config-$TS2.json`; copy both to the Mac; `python3 -m json.tool` each (valid);
   record sha256. Curl the three prod hosts → all 200. Confirm `RestartCount=0` on both containers.
 - **STOP if:** either config fails to parse, either edge is already unhealthy, or RestartCount≠0.
@@ -249,7 +249,7 @@ re-snapshots and re-verifies health, and that fresh snapshot becomes the restore
   {
     "zone": "homelab.example",
     "auth_policies": { "authelia": {
-      "caddy_forward_auth": "authelia:9080",
+      "caddy_forward_auth": "authelia:9091",
       "caddy_forward_auth_verify_uri": "/api/verify?rd=https://auth.homelab.example",
       "caddy_forward_auth_copy_headers": ["Remote-User", "Remote-Groups", "Remote-Name", "Remote-Email"]
     } },
@@ -265,10 +265,10 @@ re-snapshots and re-verifies health, and that fresh snapshot becomes the restore
   (No `dns` block → DNS disabled → relies on the existing wildcards.)
 
 ### Step 2 — open home-admin access (Option A) [pre-GO; reversible setup]
-- On LXC 100: back up `/etc/homeedge/caddy/Caddyfile` and the compose
+- On LXC 113: back up `/opt/stacks/caddy/conf/Caddyfile` and the compose
   (`cp … .bak-pre-trial-$TS2`). Add `admin 0.0.0.0:2019` inside the Caddyfile global
   `{ … }` options block; add `- "127.0.0.1:2019:2019"` to the `caddy` service `ports:`.
-  `cd /etc/homeedge/caddy && docker compose up -d` (recreate; ~10 s blip).
+  `cd /opt/stacks/caddy && docker compose up -d` (recreate; ~10 s blip).
 - Verify the home admin is now on LXC-loopback only: `curl 127.0.0.1:2019/config/` on the LXC → 200;
   `curl 10.0.0.13:2019/config/` from the VPS → **still refused** (must NOT be on the tailnet).
 - From the VPS: `ssh -fN -L 127.0.0.1:12019:127.0.0.1:2019 root@10.0.0.13`; verify
@@ -290,8 +290,8 @@ re-snapshots and re-verifies health, and that fresh snapshot becomes the restore
   ENFORCED, an unexpected participant, or a foreign/unknown ownership refusal).
 
 ### Step T — stand up the throwaway responder (mutating, but local + trivial) [needs GO]
-- On LXC 100: `python3 -m http.server 9999 --bind 0.0.0.0 &` (note the PID). Verify from the
-  caddy container: `pct exec 100 -- docker exec caddy wget -qO- http://10.0.0.13:9999/ | head -c 40`.
+- On LXC 113: `python3 -m http.server 9999 --bind 0.0.0.0 &` (note the PID). Verify from the
+  caddy container: `pct exec 113 -- docker exec caddy wget -qO- http://10.0.0.13:9999/ | head -c 40`.
 - **Rollback:** `kill <PID>`.
 
 ---
@@ -319,7 +319,7 @@ confirmed and the fresh backup (Step 0) verified.
 - Edge-level read-back: VPS `curl -s 127.0.0.1:2019/config/ | grep crenel-selftest` (front
   forward route present, NO `handle_response`); home (via tunnel)
   `curl -s 127.0.0.1:12019/config/` → the terminal route carries the VALID gate — a
-  `vars` `crenel_policy:authelia` marker + a `reverse_proxy` to `authelia:9080` with a
+  `vars` `crenel_policy:authelia` marker + a `reverse_proxy` to `authelia:9091` with a
   `handle_response` block (NOT a `forward_auth` handler, which Caddy would have rejected).
 - **Through-the-chain curl** (the real end-to-end proof), from anywhere public:
   `curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' https://crenel-selftest.homelab.example/`
@@ -330,7 +330,7 @@ confirmed and the fresh backup (Step 0) verified.
   - (Optional sanity: re-run the whole trial with `--auth none` to see a clean `200` from
     the responder, proving raw chain routing without auth.)
 - **Fidelity note (post TRIAL-FIX-3):** with the config above, crenel renders the CANONICAL
-  gate — a `reverse_proxy` to `authelia:9080` with the `handle_response` subrequest, the
+  gate — a `reverse_proxy` to `authelia:9091` with the `handle_response` subrequest, the
   `/api/verify?rd=https://auth.homelab.example` rewrite, and the four `Remote-*` copy-headers —
   i.e. the EXACT shape the home edge uses for its own Authelia hosts (byte-faithful to the
   live config). The verify URI + headers are *operator-declared in `auth_policies`*, not
@@ -402,12 +402,12 @@ On any STOP: do NOT issue more crenel verbs. Go straight to Recovery, restore, v
     --data-binary @/path/home-edge-config-<TS2>.json http://127.0.0.1:12019/load'
   # OR the deterministic restart analog (reverts to the pristine :ro Caddyfile — admin edits
   #   are ephemeral, home runs WITHOUT --resume):
-  ssh root@proxmox 'pct exec 100 -- docker restart caddy'   # ~10 s
+  ssh root@pve1 'pct exec 113 -- docker restart caddy'   # ~10 s
   ```
 - **R3 — VPS admin wedge** (crowdsec reload-storm, per DIAGNOSTICS): the only reliable
   recovery is `ssh vps-edge 'docker restart caddy-edge'` (~11 s; re-reads the pristine
   Caddyfile, provisions certs async). The 443 data plane stays up during a wedge.
-- **R4 — HOME admin/container issue:** `ssh root@proxmox 'pct exec 100 -- docker restart caddy'`
+- **R4 — HOME admin/container issue:** `ssh root@pve1 'pct exec 113 -- docker restart caddy'`
   (~10 s; no crowdsec, clean). Reverts any ephemeral admin-API state to the `:ro` Caddyfile.
 
 > **Wedge-avoidance note:** the trial issues at most ONE granular op per edge per verb,

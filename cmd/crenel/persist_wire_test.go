@@ -24,9 +24,9 @@ func TestDurablePersist_WiresDurableFileEdge(t *testing.T) {
 		granular: true,
 		caddyPersist: &config.PersistSettings{
 			BootPath:     "/etc/caddy/Caddyfile",
-			FileCommand:  []string{"ssh", "root@proxmox", "pct", "exec", "100", "--", "sh"},
-			FilePath:     "/etc/homeedge/caddy/Caddyfile",
-			CaddyCommand: []string{"ssh", "root@proxmox", "pct", "exec", "100", "--", "docker", "exec", "-i", "caddy", "sh"},
+			FileCommand:  []string{"ssh", "root@ml350", "pct", "exec", "113", "--", "sh"},
+			FilePath:     "/opt/stacks/caddy/conf/Caddyfile",
+			CaddyCommand: []string{"ssh", "root@ml350", "pct", "exec", "113", "--", "docker", "exec", "-i", "caddy", "sh"},
 		},
 		origins: map[string]string{},
 	}

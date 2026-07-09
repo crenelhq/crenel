@@ -87,10 +87,10 @@ func TestCore_NginxInHeterogeneousReconcile(t *testing.T) {
 	if err := os.WriteFile(vpath, []byte(""), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	vpsOrigins := map[string]string{"grafana": "100.64.0.5:3000"}
+	vpsOrigins := map[string]string{"grafana": "100.100.0.5:3000"}
 	vpsDriver := nginx.New(vpath, static.New(vpsOrigins))
 	if err := vpsDriver.Apply(ctx, model.ChangeSet{Edge: model.EdgeChange{
-		AddRoutes: []model.Route{{Host: "grafana.example.com", Upstream: model.Upstream{Address: "100.64.0.5:3000"}}},
+		AddRoutes: []model.Route{{Host: "grafana.example.com", Upstream: model.Upstream{Address: "100.100.0.5:3000"}}},
 	}}); err != nil {
 		t.Fatal(err)
 	}

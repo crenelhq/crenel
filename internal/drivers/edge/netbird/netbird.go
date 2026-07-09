@@ -3,12 +3,12 @@
 // validate the EdgeProvider port's LIMITS, not just its reach: M2 (Traefik) proved
 // the port HOLDS for a dumb data-plane edge; this driver proves a genuinely
 // different edge is handled by ERRORING LOUDLY on intents it cannot express,
-// rather than faking a leaky mapping. DESIGN.md and STRAIN.md predict exactly this.
+// rather than faking a leaky mapping. docs/internal/DESIGN.md and docs/internal/STRAIN.md predict exactly this.
 //
 // Why a mesh edge strains the port (the "collapse"): NetBird/Tailscale collapse
 // transport + identity + authz + SNI into ONE model. Exposure is an ACL GRANT to a
 // peer/group over WireGuard — not a host→backend HTTP route with edge TLS
-// termination. With the typed route Mode (model.RouteMode, STRAIN.md §2) the port
+// termination. With the typed route Mode (model.RouteMode, docs/internal/STRAIN.md §2) the port
 // now lets this edge express its NATIVE intent and refuse the rest:
 //   - READ works and is honest: a mesh is default-deny by construction (no grant =
 //     no access), and current grants are surfaced read-only (with a clearly

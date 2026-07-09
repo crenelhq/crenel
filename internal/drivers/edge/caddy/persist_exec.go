@@ -11,7 +11,7 @@ import (
 )
 
 // persist_exec.go provides the TRANSPORT-BACKED durable-persist seams the home edge
-// needs: its boot Caddyfile lives on the LXC HOST (/etc/homeedge/caddy/Caddyfile,
+// needs: its boot Caddyfile lives on the LXC HOST (/opt/stacks/caddy/conf/Caddyfile,
 // bind-mounted READ-ONLY into the container), while `caddy validate`/`reload`/`adapt`
 // must run INSIDE the container (where the caddy binary + container DNS live). So a
 // durable persist crosses TWO exec channels — a file channel to the host and a caddy
@@ -55,13 +55,13 @@ func (a OSAdapter) Adapt(ctx context.Context, configBytes []byte) ([]byte, error
 // transport uses so quoting survives an arbitrarily nested ssh→pct→docker chain.
 
 // ExecConfigStore reads/writes the boot Caddyfile over an exec chain landing a shell on
-// the host that HOLDS the file (for the home edge: `ssh root@proxmox pct exec 100 -- sh`).
+// the host that HOLDS the file (for the home edge: `ssh root@ml350 pct exec 113 -- sh`).
 // The bytes travel base64-embedded over stdin; nothing crosses a shell-parse boundary.
 type ExecConfigStore struct {
 	// Command is the exec PREFIX (argv, not shell-parsed) landing a stdin-reading POSIX
 	// shell where the file lives. The innermost element MUST be a bare `sh`.
 	Command []string
-	// Path is the boot Caddyfile path ON THAT HOST (e.g. /etc/homeedge/caddy/Caddyfile).
+	// Path is the boot Caddyfile path ON THAT HOST (e.g. /opt/stacks/caddy/conf/Caddyfile).
 	Path string
 	// Runner is the exec seam (default transport.OSRunner shells out).
 	Runner transport.Runner
@@ -131,7 +131,7 @@ func (s ExecConfigStore) Write(ctx context.Context, b []byte) error {
 }
 
 // ExecCaddyCLI runs `caddy validate`/`caddy reload` over an exec chain landing a shell
-// INSIDE the caddy container (for the home edge: `ssh root@proxmox pct exec 100 -- docker
+// INSIDE the caddy container (for the home edge: `ssh root@ml350 pct exec 113 -- docker
 // exec -i caddy sh`). It implements CaddyCLI for the transport-backed durable path.
 type ExecCaddyCLI struct {
 	Command []string // exec prefix landing a stdin-reading shell in the container

@@ -39,7 +39,7 @@ func (f *fakeRunner) Run(ctx context.Context, argv []string, stdin []byte) ([]by
 }
 
 func nestedCommand() []string {
-	return []string{"ssh", "root@proxmox", "pct", "exec", "100", "--", "docker", "exec", "-i", "caddy", "sh"}
+	return []string{"ssh", "root@ml350", "pct", "exec", "113", "--", "docker", "exec", "-i", "caddy", "sh"}
 }
 
 // TestSSHExec_GetScriptAndParse: a GET builds the expected curl script, ships it over
@@ -110,7 +110,7 @@ func TestSSHExec_AdminNon2xx(t *testing.T) {
 // TestSSHExec_Unreachable_NoMarker: no status marker => the chain never reached the
 // admin (ssh/connect failure) => ErrTransportUnreachable, enriched with stderr.
 func TestSSHExec_Unreachable_NoMarker(t *testing.T) {
-	r := &fakeRunner{stderr: "ssh: connect to host proxmox port 22: Connection refused", code: 255}
+	r := &fakeRunner{stderr: "ssh: connect to host ml350 port 22: Connection refused", code: 255}
 	s := &transport.SSHExec{Command: nestedCommand(), Runner: r}
 
 	_, _, err := s.Do(context.Background(), "GET", "/config/", "", nil)

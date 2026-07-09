@@ -29,7 +29,7 @@ const (
 
 // RouteMode is the TRANSPORT/exposure semantics an exposed route requests. It is
 // the typed intent that lets a driver express what it can and ERROR LOUDLY on what
-// it can't (instead of silently approximating). See STRAIN.md §2.
+// it can't (instead of silently approximating). See docs/internal/STRAIN.md §2.
 type RouteMode string
 
 const (
@@ -38,7 +38,7 @@ const (
 	ModeHTTPProxy RouteMode = ""
 	// ModeTCPPassthrough: the edge routes by SNI WITHOUT terminating TLS (an L4
 	// passthrough). Expressible as intent; no driver renders it yet, so every
-	// driver currently errors on it — the latent gap surfaced in STRAIN.md §2, now
+	// driver currently errors on it — the latent gap surfaced in docs/internal/STRAIN.md §2, now
 	// representable.
 	ModeTCPPassthrough RouteMode = "tcp_passthrough"
 	// ModeMeshGrant: exposure is an identity-mesh ACL grant (a WireGuard grant to a
@@ -72,14 +72,14 @@ var ErrModeUnsupported = errors.New("edge cannot express the requested route mod
 // AuthNone is the EXPLICIT "no auth policy" value. It is distinct from the empty
 // string: "" means unspecified (silently no auth — flagged when a host is public),
 // while AuthNone is a deliberate, acknowledged choice to expose without auth (the
-// loud opt-out the public-without-auth guardrail requires). See AUTH-DESIGN.md §1.
+// loud opt-out the public-without-auth guardrail requires). See docs/internal/AUTH-DESIGN.md §1.
 const AuthNone = "none"
 
 // AuthDetected is the read-back marker a driver's normalize sets on Upstream.Auth
 // when it RECOGNIZES a hand-built forward-auth directive whose policy name it
 // cannot recover (a brownfield route's auth). It signals "auth is present" to
 // status/audit without claiming a specific policy. crenel's OWN auth reference
-// round-trips the real policy name instead. See AUTH-DESIGN.md §5.
+// round-trips the real policy name instead. See docs/internal/AUTH-DESIGN.md §5.
 const AuthDetected = "(detected)"
 
 // AuthDownstream is the display marker for a host whose auth is enforced ONE HOP
@@ -87,7 +87,7 @@ const AuthDetected = "(detected)"
 // config value a driver reads from live (the front edge genuinely carries no auth
 // handler) — core OVERLAYS it on a route's Upstream.Auth for status display when
 // the route's edge is marked auth-downstream, and audit uses the same assertion to
-// suppress the (then-spurious) public_without_auth warning. See DESIGN.md
+// suppress the (then-spurious) public_without_auth warning. See docs/internal/DESIGN.md
 // "Chain topology — front edge → downstream edge".
 const AuthDownstream = "downstream"
 
@@ -142,7 +142,7 @@ type Op struct {
 	// Auth names a forward-auth POLICY to attach to the exposure (e.g. "authelia",
 	// "authentik"), provider-agnostic. "" = unspecified (no auth; flagged when the
 	// host is public), AuthNone = explicit opt-out, anything else = a named policy
-	// crenel renders a per-driver REFERENCE to. See AUTH-DESIGN.md.
+	// crenel renders a per-driver REFERENCE to. See docs/internal/AUTH-DESIGN.md.
 	Auth string
 	// To is an explicit backend override for THIS op (host:port). When set, drivers
 	// use it as the upstream address for Plan instead of asking the per-edge
@@ -205,13 +205,13 @@ type Upstream struct {
 	// driver's normalize on read-back (so verify confirms the TLS hop survived). The
 	// front-leg HTTPS gap the cross-chain live trial caught (TRIAL-FIX-4): a forward
 	// rendered as bare HTTP to a `:443` downstream gets "Client sent an HTTP request to
-	// an HTTPS server" (400). See DESIGN.md "Transport / Connection" and chain_write.go.
+	// an HTTPS server" (400). See docs/internal/DESIGN.md "Transport / Connection" and chain_write.go.
 	UpstreamTLS bool
 	// Auth is the realized forward-auth POLICY attached to this route ("" = none).
 	// Set by a driver's Plan (from the Op) and by normalize on read-back: crenel's
 	// own auth reference round-trips the policy name; a recognized hand-built auth
 	// directive surfaces as "(detected)". Read by status/audit/verify. See
-	// AUTH-DESIGN.md §2.
+	// docs/internal/AUTH-DESIGN.md §2.
 	Auth string
 }
 
@@ -289,7 +289,7 @@ type Route struct {
 	// route's backend dials the downstream edge. It carries the host's REAL backend +
 	// the auth OBSERVED at the downstream edge (when readable), or declares the
 	// destination "downstream, not observed" when it is not. See ChainLink and
-	// DESIGN.md "Chain-aware model (P4)".
+	// docs/internal/DESIGN.md "Chain-aware model (P4)".
 	Chain *ChainLink `json:"chain,omitempty"`
 }
 
@@ -300,7 +300,7 @@ type Route struct {
 // true backend + the auth actually enforced one hop down. The whole point of P4 is
 // that a forwarded host's real destination + protection are OBSERVED (when the
 // downstream is readable) rather than guessed — and DECLARED unresolved, never
-// assumed safe, when they cannot be. See DESIGN.md "Chain-aware model (P4)".
+// assumed safe, when they cannot be. See docs/internal/DESIGN.md "Chain-aware model (P4)".
 type ChainLink struct {
 	// DownstreamEdge is the topology name of the edge this route forwards to.
 	DownstreamEdge string `json:"downstream_edge"`
@@ -451,7 +451,7 @@ func (k IngressKind) External() bool {
 // change. Trusting "the admin API answered 200" and calling the write done is a
 // DURABILITY MISREAD — the change is live but EPHEMERAL. So crenel surfaces the model
 // (status/audit) and WARNS on a write to an edge whose writes do not persist. See
-// DESIGN.md "Durability — the persistence model".
+// docs/internal/DESIGN.md "Durability — the persistence model".
 type PersistenceModel string
 
 const (

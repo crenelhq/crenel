@@ -24,7 +24,7 @@ func TestEngine_AckUnackRoundTrip(t *testing.T) {
           "listen": [":443"],
           "routes": [
             {
-              "match": [{"host": ["app.example.com"], "path": ["/api/webhook"]}],
+              "match": [{"host": ["app.example.com"], "path": ["/api/hawser"]}],
               "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.9:8080"}]}]
             },
             {"handle": [{"handler": "static_response", "status_code": 403}]}
@@ -39,7 +39,7 @@ func TestEngine_AckUnackRoundTrip(t *testing.T) {
 	e := core.New(caddy.New(fake.URL(), static.New(map[string]string{"app": "10.0.0.9:8080"})), "example.com")
 	ctx := context.Background()
 
-	if err := e.Ack(ctx, "app.example.com", "webhook-tailnet-agents"); err != nil {
+	if err := e.Ack(ctx, "app.example.com", "hawser-tailnet-agents"); err != nil {
 		t.Fatalf("Ack: %v", err)
 	}
 	st, err := e.Status(ctx)

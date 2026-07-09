@@ -15,7 +15,7 @@ import (
 // domain and match their configured origin, and stamps each driver's ownership
 // marker IN-PLACE so the imperative verbs / reconcile / apply can manage them
 // afterwards. It never changes runtime behavior and never touches anything
-// outside the managed domain. See USABILITY-DESIGN.md §A.
+// outside the managed domain. See docs/internal/USABILITY-DESIGN.md §A.
 
 // AdoptCandidate is one unmanaged-but-matching route Crenel would bring under
 // management (stamp its ownership marker) without changing behavior.
@@ -88,6 +88,10 @@ func (e *Engine) DetectImport(ctx context.Context) (ImportPlan, error) {
 // down or expose anything new.
 func (e *Engine) Import(ctx context.Context, confirm ImportConfirmFunc) (ImportReport, error) {
 	var rep ImportReport
+	// Read-only posture: refuse before planning (DetectImport stays available — it reads).
+	if err := e.gateReadOnly("import"); err != nil {
+		return rep, err
+	}
 	plan, err := e.planImport(ctx)
 	if err != nil {
 		return rep, err

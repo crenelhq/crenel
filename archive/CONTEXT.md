@@ -27,7 +27,7 @@ A vendor-agnostic, **live-state-authoritative** control plane (Go CLI) for split
 - **Demo/teaser assets:** human-typing cadence (jittered keystrokes + pauses, demo-magic style), FAKE hostnames only (never the operator's real domains) — see TEASER-TIMELINE.md.
 
 ## Key infra
-- **Proving ground:** the bench host `crenel-proving` @ 10.0.0.20 (Proxmox `proxmox`) — standing real Caddy/Traefik/nginx/Authentik for live bench-testing (see PROVING-GROUND.md).
+- **Proving ground:** the bench host `crenel-proving` @ 10.0.0.20 (Proxmox `pve1`) — standing real Caddy/Traefik/nginx/Authentik for live bench-testing (see PROVING-GROUND.md).
 - **Real edges:** VPS front (Caddy admin, read-only crenel v0.3.0 installed) + home edge (10.0.0.13, Caddy; write-enabled crenel installed, durable persist on).
 
 ## Roadmap / what's next

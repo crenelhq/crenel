@@ -19,8 +19,8 @@ and [`STATE-OF-CRENEL.md`](../STATE-OF-CRENEL.md) instead.
   supersedes it.
 - **`trials/results/`** — dated write-ups of individual live trials (2026-06-27 →
   2026-06-29) against real infrastructure, each already folded into
-  `STATE-OF-CRENEL.md` and the root `TRIAL-RECORD-live-proofs-2026-06-30.md`, which
-  is the current consolidated proof record and stays at the repo root.
+  `STATE-OF-CRENEL.md` and `../docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md`, which
+  is the current consolidated proof record.
 - **`outputs/`** — a pre-launch checklist snapshot, superseded by `STATE-OF-CRENEL.md`'s
   own backlog section.
 - **`diag-artifacts/`** — raw goroutine/log captures from the 2026-06-27 incident,

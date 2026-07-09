@@ -76,17 +76,13 @@ Because everything attaches at `cmd` through `EdgeProvider` / `DNSProvider` /
 `OriginResolver` (and could attach through a future `LedgerProvider` port), an
 enterprise build is *additive wiring*, not a patch to core. The Apache core
 compiles, tests, and ships with nothing enterprise present. See
-[`DESIGN.md`](../DESIGN.md) for the full hexagonal architecture.
+[`internal/DESIGN.md`](internal/DESIGN.md) for the full hexagonal architecture.
 
 ## Licensing & contributions across the boundary
 
 - The **core** is Apache-2.0. Contributions to it are welcome and stay Apache-2.0.
-- The reason the project asks contributors to accept a **CLA** in addition to the
-  per-commit **DCO** is precisely this boundary: the CLA grants the maintainer the
-  latitude to offer the project (including building a separately-licensed
-  enterprise layer that links the Apache core) without having to re-contact every
-  past contributor. The DCO certifies provenance; the CLA grants licensing
-  latitude. See [`CLA.md`](../CLA.md) and [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+- Contributors certify provenance with a per-commit **DCO** sign-off. See
+  [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 - **No-VC by intent.** The project is built to be a sustainable, operator-first
   FOSS tool, not a growth-funded land-grab. Open-core (core free forever +
   optional enterprise for organizations) is the sustainability model, chosen so
@@ -94,6 +90,6 @@ compiles, tests, and ships with nothing enterprise present. See
 
 ## Naming & trademark note
 
-The open-core boundary, the CLA's relicensing grant, and the trademark posture
+"Crenel" is a working name. The open-core boundary and the trademark posture
 (name/wordmark reserved; nominative use fine, see [`NOTICE`](../NOTICE)) are
-documented here alongside the naming.
+independent of the final name and survive a rename.

@@ -19,7 +19,7 @@
 ## 1. What Crenel guarantees
 
 Five guarantees, each backed by a specific mechanism in the code. Full
-rationale for each lives in `DESIGN.md`; this is the auditor-facing summary of
+rationale for each lives in `../internal/DESIGN.md`; this is the auditor-facing summary of
 *what is promised*, not the design narrative.
 
 ### 1a. Live-state-authoritative: nothing to drift from
@@ -60,7 +60,7 @@ itself be a permissive catch-all Crenel didn't see. The hard invariant is
 
 **Mechanism:** `model.LiveEdgeState.{Unparsed,Coverage,FullyParsed}`;
 `core`'s ternary `DenyState()`; every driver's `normalize` emits `Unparsed`
-instead of dropping anything. Full spec: `TOPOLOGY-RISK-REGISTER.md` §4
+instead of dropping anything. Full spec: `../internal/TOPOLOGY-RISK-REGISTER.md` §4
 (authoritative).
 
 ### 1d. Preview → apply → read-back-verify, all-or-nothing
@@ -134,7 +134,7 @@ safe to touch (§1e default posture is refuse, not assume-safe).
 The first two invariants are safe **on the topologies Crenel fully models**.
 The third, detect-and-declare-unknown, is what keeps Crenel safe on
 everything else: the long tail of real-world edge configs enumerated in
-`TOPOLOGY-RISK-REGISTER.md`. An auditor evaluating "is this tool safe" should
+`../internal/TOPOLOGY-RISK-REGISTER.md`. An auditor evaluating "is this tool safe" should
 evaluate all three together. A tool that only had the first two would be
 safe on a clean greenfield edge and **dangerously overconfident** on anything
 it couldn't fully parse. The register's central claim (§4, restated in

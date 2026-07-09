@@ -21,7 +21,7 @@ import (
 // FORWARD, then FOLLOWS THROUGH — reading the downstream edge to recover the host's
 // real backend + the auth actually enforced there. When the downstream is readable
 // the destination/auth are OBSERVED; when it is not, they are DECLARED "downstream,
-// not observed" — never assumed safe. See DESIGN.md "Chain-aware model (P4)".
+// not observed" — never assumed safe. See docs/internal/DESIGN.md "Chain-aware model (P4)".
 
 // edgeRead is one edge's live read result. err is non-nil only for a CHAIN-TARGET
 // edge whose read failed: that failure is TOLERATED (the front degrades to "downstream

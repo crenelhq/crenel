@@ -12,7 +12,7 @@ byte-for-byte afterwards.
 
 Brand surface: the tech-noir terminal look (radium-green `#00FF66` on near-black,
 the crenellated `CRENEL` wordmark, the `CORE MATRIX` HUD). Palette + semantics in
-[`BRANDING.md`](BRANDING.md). Capture stack: **asciinema 3** (`--headless
+[`../brand/BRANDING.md`](../brand/BRANDING.md). Capture stack: **asciinema 3** (`--headless
 --window-size`) → **agg** (`--theme dracula`), GIF + optional MP4.
 
 ---

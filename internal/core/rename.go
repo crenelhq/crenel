@@ -28,6 +28,10 @@ import (
 // and re-expose, or rename keeps the old name). Chain-forwarded hosts (front+downstream) are
 // out of scope for this verb today — rename targets the edges that directly serve the host.
 func (e *Engine) Rename(ctx context.Context, oldHost, newHost string, confirm ConfirmFunc) (ApplyReport, error) {
+	// Read-only posture: refuse before planning (`preview rename` stays available).
+	if err := e.gateReadOnly("rename"); err != nil {
+		return ApplyReport{Op: model.Op{Verb: model.Rename, Host: strings.TrimSpace(newHost)}}, err
+	}
 	cs, err := e.PlanRename(ctx, oldHost, newHost)
 	if err != nil {
 		return ApplyReport{Op: model.Op{Verb: model.Rename, Host: strings.TrimSpace(newHost)}}, err

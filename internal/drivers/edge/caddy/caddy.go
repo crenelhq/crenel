@@ -89,7 +89,7 @@ type Driver struct {
 	// authPolicies maps a forward-auth policy NAME to its Caddy reference (a Caddyfile
 	// snippet to `import`, or a forward_auth endpoint). Empty/missing entries fall
 	// back to the default convention (snippet == policy name). Injected at cmd from
-	// config.AuthPolicies. See AUTH-DESIGN.md §2.
+	// config.AuthPolicies. See docs/internal/AUTH-DESIGN.md §2.
 	authPolicies map[string]AuthRef
 
 	// generator, when set, is an operator-DECLARED config generator that owns this
@@ -602,7 +602,7 @@ func normalizeServer(srv Server, serverKey string) (routes []model.Route, unpars
 				//     detect-and-declare-unknown rule (register §4).
 				// The in-repo fakes never caught this because JSON fixtures hand-wrote the
 				// deny as a TOP-LEVEL static_response, a shape Caddy's adapter never emits;
-				// the CT 110 proving-ground bench (a Caddyfile edge) surfaced it.
+				// the CT 120 proving-ground bench (a Caddyfile edge) surfaced it.
 				switch denyOnly, permissive := classifyHostlessSubroute(subs); {
 				case permissive:
 					permissiveCatchAll = true
@@ -1112,7 +1112,7 @@ func routeID(host string) string { return "crenel-route-" + strings.ToLower(host
 // model is preserved verbatim; it touches exactly the one route per host and
 // never the deny, TLS, or other routes. Idempotent: a host already carrying the
 // crenel @id (or with no matching unmanaged route) is skipped. Implements
-// ports.Adopter (brownfield import). See USABILITY-DESIGN.md §A.
+// ports.Adopter (brownfield import). See docs/internal/USABILITY-DESIGN.md §A.
 func (d *Driver) Adopt(ctx context.Context, hosts []string) error {
 	want := map[string]bool{}
 	for _, h := range hosts {

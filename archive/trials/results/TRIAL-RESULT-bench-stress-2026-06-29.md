@@ -3,7 +3,7 @@
 **Five operator-grade beats run live against real Caddy + Traefik + nginx, every mutating beat byte-for-byte restored, abort-on-fail.**
 
 - **When:** 2026-06-29
-- **Where:** the bench host `crenel-proving` — the standing live bench (`ssh root@proxmox 'pct exec 110 -- …'`).
+- **Where:** the bench host `crenel-proving` — the standing live bench (`ssh root@pve1 'pct exec 120 -- …'`).
   Real `caddy:2` (admin API 127.0.0.1:2019, booted from a read-only `/etc/caddy/Caddyfile`),
   real `traefik:v3.1` (file provider watching `/dynamic`, API 127.0.0.1:8080), real
   `nginx:1.27` (file driver). Throwaway hosts only; no production, no DNS, no real auth backend.

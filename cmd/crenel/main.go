@@ -68,10 +68,11 @@ type globalFlags struct {
 	hud    bool
 	banner bool
 	plain  bool
-	// width overrides the terminal width used to draw the full-width scanline banner.
-	// 0 = auto-detect (the COLUMNS env, else a default). Lets a recording pin an exact
-	// banner width deterministically.
-	width int
+	// width/height override the terminal size used to draw the full-width scanline
+	// banner. 0 = auto-detect (COLUMNS/LINES env, else the TIOCGWINSZ ioctl, else a
+	// default). Lets a recording pin an exact banner geometry deterministically.
+	width  int
+	height int
 }
 
 // showHUD reports whether the user asked for the full HUD banner (either flag).
@@ -130,7 +131,7 @@ func run(args []string) int {
 
 	// `crenel banner` is pure branding — print the hero banner with no settings/engine.
 	if verb == "banner" {
-		ui.Style{Color: color, Cols: termCols(gf), Version: version}.WriteHeroBanner(os.Stdout, termCols(gf))
+		ui.Style{Color: color, Cols: termCols(gf), Rows: termRows(gf), Version: version}.WriteHeroBanner(os.Stdout, termCols(gf))
 		return 0
 	}
 
@@ -211,8 +212,13 @@ func colorEnabled(f *os.File) bool {
 }
 
 // termCols resolves the terminal width for the full-width banner: an explicit
-// -width wins; else the COLUMNS env (exported by some shells / set by a recorder);
-// else the ui default. Kept dependency-free — no ioctl — so the ui stays portable.
+// -width wins; else the COLUMNS env (set by a recorder / some shells); else the
+// kernel's answer for the real window (TIOCGWINSZ, raw stdlib ioctl — see
+// termsize_unix.go); else the ui default. The ioctl matters: most shells do NOT
+// export COLUMNS, so without it every interactive terminal was assumed to be
+// BannerWidth cols and the mark wrapped into garbage on anything narrower. The
+// optimistic default now applies only to non-TTY output (pipes, asset
+// generation), where the reader controls the layout, not the terminal.
 func termCols(gf *globalFlags) int {
 	if gf != nil && gf.width > 0 {
 		return gf.width
@@ -222,7 +228,28 @@ func termCols(gf *globalFlags) int {
 			return n
 		}
 	}
+	if c, _, ok := ttySize(os.Stdout); ok {
+		return c
+	}
 	return ui.BannerWidth
+}
+
+// termRows resolves the terminal height the same way (-height, LINES, ioctl).
+// 0 means "unknown": the banner renders at its natural full height — the exact
+// pre-height-awareness behavior, kept for pipes and asset generation.
+func termRows(gf *globalFlags) int {
+	if gf != nil && gf.height > 0 {
+		return gf.height
+	}
+	if v := os.Getenv("LINES"); v != "" {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n > 0 {
+			return n
+		}
+	}
+	if _, r, ok := ttySize(os.Stdout); ok {
+		return r
+	}
+	return 0
 }
 
 func bindGlobals(fs *flag.FlagSet, gf *globalFlags) {
@@ -247,7 +274,8 @@ func bindGlobals(fs *flag.FlagSet, gf *globalFlags) {
 	fs.BoolVar(&gf.hud, "hud", false, "status: draw the full HUD banner (wordmark + CORE MATRIX panel)")
 	fs.BoolVar(&gf.banner, "banner", false, "status: alias for -hud")
 	fs.BoolVar(&gf.plain, "plain", false, "status: suppress the branded header/HUD (scriptable output only)")
-	fs.IntVar(&gf.width, "width", 0, "status: terminal width for the full-width scanline banner (0 = auto: COLUMNS env, else default)")
+	fs.IntVar(&gf.width, "width", 0, "status: terminal width for the full-width scanline banner (0 = auto: COLUMNS env, else the real window size, else default)")
+	fs.IntVar(&gf.height, "height", 0, "status: terminal height for the banner (0 = auto: LINES env, else the real window size; the HUD scales down to keep the crown on-screen)")
 	fs.BoolVar(&gf.showSecrets, "show-secrets", false, "show raw secret values in output (default: masked). Reveals tokens/keys/hashes — use only on a trusted terminal")
 }
 

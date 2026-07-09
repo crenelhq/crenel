@@ -74,6 +74,16 @@ type Settings struct {
 	// mode. When empty, AdminURL is used as-is.
 	FakeSeed string `json:"fake_seed,omitempty"`
 
+	// ReadOnly declares this whole topology AUDIT-ONLY ("I only ever audit this
+	// edge"): every mutating verb refuses before planning (core.ErrReadOnlyEngine)
+	// and no write capability is ever invoked. It also re-frames audit's edge-wide
+	// generator finding to ok-severity `foreign_managed_readonly` — a foreign edge
+	// is the expected posture here, not a problem to fix. Reads (status/audit/
+	// drift/preview/export) are unaffected. There is deliberately NO flag for this:
+	// audit is already read-only; the posture is a property of the CONFIG, not of
+	// an invocation. Default false.
+	ReadOnly bool `json:"read_only,omitempty"`
+
 	// GranularApply uses additive structured-admin-API operations instead of a
 	// full `POST /load` replace. REQUIRED for any rich/production edge: it never
 	// rewrites routes Crenel does not manage. Default false keeps the simple
@@ -94,13 +104,13 @@ type Settings struct {
 	// after a verified apply, crenel additively mirrors its managed routes into this
 	// mounted Caddyfile (between sentinels), validates it, and reloads — so the
 	// routes survive a `docker restart` (which otherwise reverts the in-memory
-	// admin-API config). Default off. See USABILITY-DESIGN.md §B.
+	// admin-API config). Default off. See docs/internal/USABILITY-DESIGN.md §B.
 	CaddyPersistPath string `json:"caddy_persist_path,omitempty"`
 
 	// CaddyPersist configures the DURABLE wildcard-site reconciler (the home-edge path):
 	// where the boot Caddyfile lives, over which channel to read/write it, and where the
 	// caddy binary runs for validate/reload/adapt. When set it supersedes
-	// CaddyPersistPath. See PersistSettings and DESIGN.md "Durability".
+	// CaddyPersistPath. See PersistSettings and docs/internal/DESIGN.md "Durability".
 	CaddyPersist *PersistSettings `json:"caddy_persist,omitempty"`
 
 	// CaddyGenerator DECLARES that the Caddy edge is generated/owned by the named
@@ -120,7 +130,7 @@ type Settings struct {
 	// crenel falls back to sensible default conventions (Caddy `import <name>`,
 	// Traefik `<name>@file`, nginx `auth_request /<name>`). The operator always owns
 	// the actual snippet/middleware/location; crenel only emits the reference. See
-	// AUTH-DESIGN.md §2.
+	// docs/internal/AUTH-DESIGN.md §2.
 	AuthPolicies map[string]AuthPolicy `json:"auth_policies,omitempty"`
 
 	// AuthDownstream marks the (single top-level) edge as the FRONT of an edge
@@ -129,7 +139,7 @@ type Settings struct {
 	// its hosts `auth: downstream` and `audit` suppresses the (then-spurious)
 	// public_without_auth warning. Default false (a terminal edge — the warning
 	// fires). For a multi-edge topology set it per-edge on EdgeSettings instead. See
-	// DESIGN.md "Chain topology".
+	// docs/internal/DESIGN.md "Chain topology".
 	//
 	// `auth_downstream` is the blunt ASSERTION; `downstream_edge` below is the
 	// OBSERVED chain (P4) — prefer it when the downstream edge is also configured so
@@ -144,7 +154,7 @@ type Settings struct {
 	// forwarded host's true backend + observed auth (or declaring it "downstream, not
 	// observed" when unreadable). Requires a multi-edge `edges[]` topology (the
 	// downstream must be a named, readable edge); on the single top-level edge it is
-	// inert. See DESIGN.md "Chain-aware model (P4)".
+	// inert. See docs/internal/DESIGN.md "Chain-aware model (P4)".
 	DownstreamEdge string `json:"downstream_edge,omitempty"`
 	// DownstreamAddress is the address (host or host:port) the front dials to reach
 	// the downstream edge. A front leaf whose backend HOST matches it is a chain
@@ -157,7 +167,7 @@ type Settings struct {
 	// (plain). Empty => INFER from DownstreamAddress: a `:443` dial is treated as
 	// https, anything else as http. Set it explicitly for a `:443` downstream that is
 	// NOT TLS, or a TLS downstream on a non-443 port. Only meaningful with
-	// DownstreamEdge. See DESIGN.md "Transport / Connection".
+	// DownstreamEdge. See docs/internal/DESIGN.md "Transport / Connection".
 	DownstreamScheme string `json:"downstream_scheme,omitempty"`
 
 	// IngressKind DECLARES this edge's off-edge reachability mechanism when the
@@ -186,7 +196,7 @@ type Settings struct {
 	// type "direct") = real HTTP to admin_url, exactly today's behavior. "ssh-exec"
 	// runs the admin call as a nested-exec curl against a loopback admin (no port, no
 	// tunnel); "ssh-tunnel" opens a crenel-managed local forward. For a multi-edge
-	// topology set it per-edge on EdgeSettings instead. See DESIGN.md "Transport /
+	// topology set it per-edge on EdgeSettings instead. See docs/internal/DESIGN.md "Transport /
 	// Connection".
 	Transport *TransportSettings `json:"transport,omitempty"`
 }
@@ -201,7 +211,7 @@ type TransportSettings struct {
 	// --- ssh-exec ---
 	// Command is the exec PREFIX argv (NOT shell-parsed) that lands a stdin-reading
 	// POSIX shell where the admin loopback lives, e.g.
-	//   ["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"]
+	//   ["ssh","root@ml350","pct","exec","113","--","docker","exec","-i","caddy","sh"]
 	Command []string `json:"command,omitempty"`
 	// AdminURL is the admin API base URL AS SEEN FROM the far end of the exec chain
 	// (default "http://127.0.0.1:2019"). Distinct from the edge's local admin_url.
@@ -222,7 +232,7 @@ type TransportSettings struct {
 // on-disk boot config. It captures the home edge's two-channel reality: the boot
 // Caddyfile lives on the LXC HOST (bind-mounted read-only into the container), but `caddy
 // validate/reload/adapt` must run INSIDE the container. Absent => the simple flat
-// persister over CaddyPersistPath (local FS). See DESIGN.md "Durability".
+// persister over CaddyPersistPath (local FS). See docs/internal/DESIGN.md "Durability".
 type PersistSettings struct {
 	// BootPath is the boot Caddyfile path AS caddy validate/reload/adapt see it (e.g.
 	// "/etc/caddy/Caddyfile" inside the container). It is also the persist path that
@@ -230,15 +240,15 @@ type PersistSettings struct {
 	BootPath string `json:"boot_path,omitempty"`
 	// FileCommand is the exec PREFIX (argv, NOT shell-parsed; innermost element a bare
 	// `sh`) landing a shell on the host that HOLDS the boot file — for the home edge the
-	// LXC host: ["ssh","root@proxmox","pct","exec","100","--","sh"]. Empty => the boot file
+	// LXC host: ["ssh","root@ml350","pct","exec","113","--","sh"]. Empty => the boot file
 	// is on crenel's local filesystem (read/written directly).
 	FileCommand []string `json:"file_command,omitempty"`
 	// FilePath is the boot Caddyfile path on the FileCommand host (e.g.
-	// "/etc/homeedge/caddy/Caddyfile"). Required when FileCommand is set.
+	// "/opt/stacks/caddy/conf/Caddyfile"). Required when FileCommand is set.
 	FilePath string `json:"file_path,omitempty"`
 	// CaddyCommand is the exec PREFIX landing a shell where the caddy BINARY runs — for
 	// the home edge inside the container:
-	// ["ssh","root@proxmox","pct","exec","100","--","docker","exec","-i","caddy","sh"].
+	// ["ssh","root@ml350","pct","exec","113","--","docker","exec","-i","caddy","sh"].
 	// Empty => a local `caddy` binary.
 	CaddyCommand []string `json:"caddy_command,omitempty"`
 	// Adapter is the caddy config adapter (default "caddyfile").
@@ -291,7 +301,7 @@ type AuthPolicy struct {
 	// CaddyImport names a Caddyfile snippet crenel `import`s inside the route
 	// (full-load path). Default convention: the policy name.
 	CaddyImport string `json:"caddy_import,omitempty"`
-	// CaddyForwardAuth, when set, is the authorizer endpoint (e.g. "authelia:9080")
+	// CaddyForwardAuth, when set, is the authorizer endpoint (e.g. "authelia:9091")
 	// crenel expands on the granular admin-API path into the CANONICAL forward-auth gate
 	// (a reverse_proxy + handle_response subrequest — the exact shape Caddy's
 	// `forward_auth` directive compiles to and the home edge accepts). The provider's
@@ -353,13 +363,13 @@ type EdgeSettings struct {
 	// AuthDownstream marks this edge as the FRONT of an edge CHAIN (it fronts a
 	// downstream edge that enforces forward-auth), suppressing public_without_auth
 	// for its hosts and labeling them `auth: downstream`. Default false. See
-	// DESIGN.md "Chain topology".
+	// docs/internal/DESIGN.md "Chain topology".
 	AuthDownstream bool `json:"auth_downstream,omitempty"`
 	// DownstreamEdge / DownstreamAddress: the OBSERVED chain (P4). DownstreamEdge
 	// names the edge in this topology that this front forwards to; a front leaf that
 	// dials DownstreamAddress (host match; empty => all non-mesh routes) is a chain
 	// forward whose real backend + auth crenel resolves by READING the downstream
-	// edge. See the top-level Settings fields of the same name and DESIGN.md
+	// edge. See the top-level Settings fields of the same name and docs/internal/DESIGN.md
 	// "Chain-aware model (P4)".
 	DownstreamEdge    string `json:"downstream_edge,omitempty"`
 	DownstreamAddress string `json:"downstream_address,omitempty"`
@@ -370,7 +380,7 @@ type EdgeSettings struct {
 	AdminWriteTimeoutSeconds int    `json:"admin_write_timeout_seconds,omitempty"`
 	// Transport selects HOW crenel reaches this edge's admin API (direct / ssh-exec /
 	// ssh-tunnel). Absent => direct to admin_url. See the top-level Settings field and
-	// DESIGN.md "Transport / Connection".
+	// docs/internal/DESIGN.md "Transport / Connection".
 	Transport *TransportSettings `json:"transport,omitempty"`
 }
 

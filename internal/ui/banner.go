@@ -14,7 +14,7 @@ import (
 // tube bevel so it reads dimensional WITHOUT a drop-shadow (depth from character
 // texture, not extrusion). It is the SAME mark the binary prints for `crenel banner`
 // (with crenel.sh demo hosts) and atop `status --hud` (with the LIVE exposed hosts),
-// so the terminal output and the brand stills are one source of truth. See BRANDING.md.
+// so the terminal output and the brand stills are one source of truth. See docs/brand/BRANDING.md.
 
 // BannerWidth is the default full width used when no terminal width is known —
 // sized to the hero wall's natural column span (the demo-host battlement is 121
@@ -161,11 +161,65 @@ func wordmarkScaleFor(cols int) int {
 	return 1
 }
 
+// hudRowOverhead is every `status --hud` row that is not the wordmark: the
+// battlement teeth, the parapet + three stone courses, the two blank
+// separators, the CORE MATRIX panel (6 fields + frame), its legend line — AND
+// the rows that inevitably follow the banner on the same screen: the blank
+// after it, a single-edge detail listing (header/deny/durability/exposed +
+// one host), and the shell prompt + typed command. Forgetting the follow-on
+// rows is exactly how the crown scrolled off in live testing: the banner fit,
+// the command's full output did not.
+const (
+	hudDetailHeadroom = 9 // blank + minimal edge detail + prompt/command rows
+	hudRowOverhead    = wallTeethH + 4 + 2 + 8 + 1 + hudDetailHeadroom
+	// heroRowOverhead is the standalone `crenel banner` budget: teeth, courses,
+	// blanks, the two footer lines, and the prompt — no panel, no detail listing.
+	heroRowOverhead = wallTeethH + 4 + 2 + 2 + 2
+)
+
+// heightScaleFor picks the largest wordmark scale (≤ the approved wallScale)
+// whose full surface (overhead + wordmark rows) fits in rows, so the battlement
+// crown — the first thing the banner draws — is still on-screen when the
+// command finishes printing, instead of scrolling off the top of a short
+// terminal. rows <= 0 means "unknown" (piped output, tests, asset generation):
+// no height constraint, natural size. Returns 0 when not even the scale-1
+// wordmark fits: the wall then renders crown-only, no lettering — a stock
+// 80x24 terminal keeps the castle and the panel on one screen.
+func heightScaleFor(rows, overhead int) int {
+	if rows <= 0 {
+		return wallScale
+	}
+	for s := wallScale; s >= 1; s-- {
+		if overhead+len(wallWord)*s <= rows {
+			return s
+		}
+	}
+	return 0
+}
+
 // wordmarkBevelRowsScale renders the beveled CRENEL wordmark as colored run-rows
 // at an arbitrary scale. At wallScale it is byte-identical to the approved still
 // (the R-bowl rim-wrap fix-up, whose pixel indices are scale-5-specific, applies
 // only there); smaller scales drop it gracefully for the compact narrow render.
 func wordmarkBevelRowsScale(scale int) [][]run {
+	// Below scale 4 there is no room for the bevel: its ring gradient needs ≥4-px
+	// strokes, and the ring-pairing below erodes thinner ones (broken stroke tops,
+	// washed rims — the C's top read ▀▀▀ instead of █▀▀). The LETTERFORM is the
+	// design; the bevel is texture. So small scales render the same pixel grid,
+	// nearest-neighbour scaled, in flat brand green — the approved glyphs, just
+	// smaller — and the graded bevel is reserved for scales with room for it.
+	if scale <= 1 {
+		out := make([][]run, len(wallWord))
+		for i, s := range wallWord {
+			t := 1 + i*4/len(wallWord) // same mint→deep rim-light ramp, 3 rows
+			if t > 4 {
+				t = 4
+			}
+			out[i] = []run{{tierColor(t), s}}
+		}
+		return out
+	}
+	const bevelMinScale = 4
 	// to-pixels: 2 sub-pixel rows per source row (half-block encodes which half is lit).
 	W := 0
 	for _, s := range wallWord {
@@ -201,6 +255,31 @@ func wordmarkBevelRowsScale(scale int) [][]run {
 		for x := 0; x < sw; x++ {
 			sg[y][x] = px[y/scale][x/scale]
 		}
+	}
+	// Small-scale render: the approved letterform with a VERTICAL rim-light
+	// gradient — mint at the letter tops grading to the deep bevel-mid at the
+	// baseline, the same lit-from-above language as the full bevel and the wall's
+	// stone courses. The tone is keyed to the output TERMINAL row (y/2), so both
+	// sub-pixels of a cell always share one tone and the pairing below can never
+	// erode a stroke — the failure mode that made per-pixel bevel rings unusable
+	// under 4-px strokes.
+	if scale < bevelMinScale {
+		rows := sh / 2
+		tier := make([][]int, sh)
+		for y := 0; y < sh; y++ {
+			tier[y] = make([]int, sw)
+			// ramp the 4 bevel tones (mint → g2 → green → g3) down the cell rows.
+			t := 1 + (y/2)*4/rows
+			if t > 4 {
+				t = 4
+			}
+			for x := 0; x < sw; x++ {
+				if sg[y][x] {
+					tier[y][x] = t
+				}
+			}
+		}
+		return pairTierRows(tier, sh, sw)
 	}
 	// edge distance: multi-source BFS from the background into the lit pixels, so each
 	// lit pixel knows its ring index (1 = touches background … deeper = interior).
@@ -252,9 +331,15 @@ func wordmarkBevelRowsScale(scale int) [][]run {
 			tier[8][x] = 1
 		}
 	}
-	// pair sub-pixel rows back into half-block cells, merging same-tone runs. A cell with
-	// two differently-toned sub-pixels renders `▀` (top tone over a background lower half)
-	// — this is what keeps horizontal strokes thin and the interior counters OPEN.
+	return pairTierRows(tier, sh, sw)
+}
+
+// pairTierRows pairs sub-pixel tier rows back into half-block cells, merging
+// same-tone runs. A cell with two differently-toned sub-pixels renders `▀` (top
+// tone over a background lower half) — this is what keeps horizontal strokes
+// thin and the interior counters OPEN in the beveled render; in the flat render
+// every lit pixel shares one tone, so cells always merge cleanly.
+func pairTierRows(tier [][]int, sh, sw int) [][]run {
 	var out [][]run
 	for ry := 0; ry < sh; ry += 2 {
 		var rowRuns []run
@@ -338,6 +423,31 @@ func (st Style) writeWall(w io.Writer, hosts []WallHost, cols int, footer bool) 
 		}
 	}
 
+	// Short terminal: the full-scale surface would scroll its own crown off the top
+	// before the command finished printing. Render the compact wall at the largest
+	// scale the height admits instead. The compact path stacks host labels below the
+	// wall, so those rows are charged against the budget too. Rows == 0
+	// (unknown/piped/tests) keeps the natural full render. The hero banner (footer)
+	// carries no panel or detail listing, so it gets the smaller budget.
+	overhead := hudRowOverhead
+	if footer {
+		overhead = heroRowOverhead
+	}
+	if hScale := heightScaleFor(st.Rows, overhead); hScale < wallScale {
+		stacked := 0
+		if len(hs) > 0 {
+			// blank + legend + one wall label per host, plus the one detail-listing
+			// row per host that follows the panel (the headroom only budgets one).
+			stacked = 2*len(hs) + 2
+		}
+		scale := heightScaleFor(st.Rows-stacked, overhead)
+		if ws := wordmarkScaleFor(cols); ws < scale {
+			scale = ws
+		}
+		st.writeWallCompact(w, hs, cols, footer, scale)
+		return
+	}
+
 	word := wordmarkBevelRows()
 	ww := 0
 	for _, r := range word {
@@ -392,7 +502,7 @@ func (st Style) writeWall(w io.Writer, hosts []WallHost, cols int, footer bool) 
 	// to the approved mark and is reached whenever cols admits the full width (the
 	// default BannerWidth does, so the standalone banner is unchanged).
 	if cols < canvas {
-		st.writeWallCompact(w, hs, cols, footer)
+		st.writeWallCompact(w, hs, cols, footer, wordmarkScaleFor(cols))
 		return
 	}
 
@@ -456,13 +566,19 @@ func (st Style) writeWall(w io.Writer, hosts []WallHost, cols int, footer bool) 
 	}
 }
 
-// writeWallCompact is the narrow-terminal fallback for writeWall: a SCALED battlement
+// writeWallCompact is the small-terminal fallback for writeWall: a SCALED battlement
 // whose crenels carry a single role-coloured state glyph (not the full label), the
-// wordmark shrunk to fit, then the host labels STACKED below — one clean line each.
-// Every emitted row fits within cols, so nothing wraps. Reached only when the full
-// labelled wall would overflow the terminal; the wide path stays byte-faithful.
-func (st Style) writeWallCompact(w io.Writer, hs []WallHost, cols int, footer bool) {
-	word := wordmarkBevelRowsScale(wordmarkScaleFor(cols))
+// wordmark shrunk to the given scale, then the host labels STACKED below — one clean
+// line each. Every emitted row fits within cols, so nothing wraps. Reached when the
+// full labelled wall would overflow the terminal's width OR height (the caller picks
+// the scale from whichever axis binds); the wide path stays byte-faithful.
+// scale 0 drops the wordmark entirely — crown only — for terminals too short to
+// keep even the scale-1 lettering plus the panel on one screen (a stock 80x24).
+func (st Style) writeWallCompact(w io.Writer, hs []WallHost, cols int, footer bool, scale int) {
+	var word [][]run
+	if scale >= 1 {
+		word = wordmarkBevelRowsScale(scale)
+	}
 
 	emptyWall := len(hs) == 0
 	gaps := len(hs)
@@ -515,9 +631,11 @@ func (st Style) writeWallCompact(w io.Writer, hs []WallHost, cols int, footer bo
 	st.emitRow(w, []run{{ansiG3, strings.Repeat("▓", wallW)}}, eff)    // stone course
 	st.emitRow(w, []run{{ansiG4, strings.Repeat("▒", wallW)}}, eff)    // deeper course
 	st.emitRow(w, []run{{ansiG5, strings.Repeat("░", wallW)}}, eff)    // footing
-	fmt.Fprintln(w)
-	for _, r := range word {
-		st.emitRow(w, r, eff)
+	if len(word) > 0 {
+		fmt.Fprintln(w)
+		for _, r := range word {
+			st.emitRow(w, r, eff)
+		}
 	}
 	// the labels the wide wall carries in-gap, stacked one per line so each opened
 	// host stays legible at any width (the glyph + colour key back to its crenel).

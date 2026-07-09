@@ -7,10 +7,18 @@ Licensed under the Apache License, Version 2.0 (see the LICENSE file).
 
 --------------------------------------------------------------------------------
 
+Note on the project name
+-------------------------
+"Crenel" is a WORKING NAME and is not yet final. The name appears in this NOTICE,
+in the LICENSE appendix boilerplate, in the Go module path (go.mod), and in
+internal/config/naming.go, which centralizes every other user-visible occurrence.
+A rename touches those points and is intended to be a single find/replace; the
+NOTICE attribution above should be updated to the final project name at that time.
+
 Trademarks
 ----------
 The Apache-2.0 license grants no trademark rights (see LICENSE section 6). The
-project name and any associated logo/wordmark (see assets/ and BRANDING.md) are
+project name and any associated logo/wordmark (see assets/ and docs/brand/BRANDING.md) are
 reserved by the maintainers; downstream redistributions and forks must not imply
 endorsement by, or affiliation with, the upstream project. Nominative/descriptive
 use ("compatible with Crenel", "a fork of Crenel") is fine.

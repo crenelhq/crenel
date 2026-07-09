@@ -98,6 +98,10 @@ func sortedKeys(m map[string]bool) []string {
 //   - (informational) count of exposed routes.
 func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 	var rep AuditReport
+	// Scope declaration (audit-any-edge §3.4): what this audit did NOT evaluate is
+	// DECLARED, never implied — the same move as the coverage line, converting an
+	// implicit reduction of the claim into an explicit one.
+	rep.Scope = e.auditScope()
 
 	// Read every edge's live state once.
 	type edgeLive struct {
@@ -254,12 +258,28 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		// another tool (FOREIGN), or undetermined (UNKNOWN) — is mutation-blocked. The
 		// audit surfaces it so the operator knows crenel will refuse to manage it.
 		if live.Generator != "" {
-			rep.Findings = append(rep.Findings, AuditFinding{
-				Severity: "warning",
-				Code:     "ownership_unconfirmed",
-				Message: fmt.Sprintf("%sedge is generated/owned by %s — crenel will NOT mutate it (an edit would be reverted on the next regeneration); manage it at the source",
-					label, live.Generator),
-			})
+			// Read-only posture RE-FRAME (audit-any-edge §3.3): on a ReadOnly engine the
+			// same fact — a generator owns this edge — is not surprising; it is the
+			// contract. Suppression-with-a-reason in the auth_downstream style: the
+			// information ALWAYS prints; only the severity (and therefore OK()/exit code)
+			// changes. Keyed STRICTLY on Engine.ReadOnly (risk A.7) so a writable engine's
+			// warning — the gate's mirror — never blunts. Per-route findings below stay
+			// warnings; deny/coverage/auth findings are untouched.
+			if e.ReadOnly {
+				rep.Findings = append(rep.Findings, AuditFinding{
+					Severity: "ok",
+					Code:     "foreign_managed_readonly",
+					Message: fmt.Sprintf("%sedge is generated/owned by %s — audited read-only; crenel refuses writes here by design (manage routes at the %s source)",
+						label, live.Generator, live.Generator),
+				})
+			} else {
+				rep.Findings = append(rep.Findings, AuditFinding{
+					Severity: "warning",
+					Code:     "ownership_unconfirmed",
+					Message: fmt.Sprintf("%sedge is generated/owned by %s — crenel will NOT mutate it (an edit would be reverted on the next regeneration); manage it at the source",
+						label, live.Generator),
+				})
+			}
 		} else if hosts := unconfirmedOwnershipHosts(live.Routes); len(hosts) > 0 {
 			rep.Findings = append(rep.Findings, AuditFinding{
 				Severity: "warning",
@@ -763,6 +783,22 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		Message:  fmt.Sprintf("%d host(s) exposed across %d edge(s)", len(exposed), len(e.Edges)),
 	})
 	return rep, nil
+}
+
+// auditScope derives this engine's AuditScope from its topology: which whole
+// check families the audit below can even run. DNSEvaluated is a wiring fact
+// (providers configured), ChainDepth the deepest configured chain follow-through
+// (0 = no chain — downstream edges not followed). TargetMode/Evidence stay zero
+// until the zero-config target bootstrap (M-A2+) synthesizes the engine and the
+// drivers report a read-evidence kind.
+func (e *Engine) auditScope() AuditScope {
+	depth := 0
+	for _, d := range e.chainDepth() {
+		if d > depth {
+			depth = d
+		}
+	}
+	return AuditScope{DNSEvaluated: len(e.DNS) > 0, ChainDepth: depth}
 }
 
 // splitAcknowledged partitions an edge's Unparsed entries into real unknowns

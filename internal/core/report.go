@@ -90,8 +90,36 @@ type AuditFinding struct {
 	Message  string
 }
 
+// AuditScope is the audit's first-class "what was NOT evaluated" declaration
+// (audit-any-edge §3.4). Several checks silently change meaning with the wiring —
+// no DNS providers means public-ness falls back to the conservative "edge route ⇒
+// public" boundary default, and parity/dangling-DNS checks don't run; no chain
+// topology means downstream edges are not followed. Declaring the reduction is the
+// same honesty move as the coverage line. Rendered as the `Scope:` header lines in
+// the text report and carried in --json.
+type AuditScope struct {
+	// TargetMode: a zero-config positional-target audit (one synthesized edge, no
+	// settings topology). Always false until the target bootstrap ships (M-A2+).
+	TargetMode bool
+	// DNSEvaluated: DNS providers were configured and consulted. false ⇒ public-ness
+	// used the conservative edge-boundary default; split-horizon/dangling/parity
+	// checks were NOT evaluated.
+	DNSEvaluated bool
+	// ChainDepth is the deepest configured chain follow-through (0 ⇒ no downstream
+	// edge was followed).
+	ChainDepth int
+	// Evidence declares, per edge, WHAT the read observed (running process vs a
+	// file on disk vs an operator assertion). Populated when drivers report a
+	// read-evidence kind (M-A2+); empty means unclassified, never claimed RUNTIME.
+	Evidence map[string]model.EvidenceKind
+}
+
 // AuditReport is the result of a live-only audit.
 type AuditReport struct {
+	// Scope declares what this audit could and could not evaluate — it carries no
+	// severity and never affects OK()/exit codes; it bounds the claim the findings
+	// make.
+	Scope    AuditScope
 	Findings []AuditFinding
 }
 
@@ -193,7 +221,7 @@ type txnOutcome struct {
 	// edge's Persist returned an error AFTER a verified apply). The running state is
 	// already correct and verified; only its durability across a restart is in
 	// question, so a persist failure is a WARNING, not a rollback. See
-	// USABILITY-DESIGN.md §B.
+	// docs/internal/USABILITY-DESIGN.md §B.
 	PersistWarnings []string
 }
 

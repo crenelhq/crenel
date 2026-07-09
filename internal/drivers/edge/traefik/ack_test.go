@@ -18,13 +18,13 @@ func TestNormalize_AckedRouterReclassified(t *testing.T) {
       "http": {
         "routers": {
           "crenel-grafana.example.com": {"rule": "Host(` + "`grafana.example.com`" + `)", "service": "svc-grafana"},
-          "app-webhook": {"rule": "Host(` + "`app.example.com`" + `) && PathPrefix(` + "`/api/webhook`" + `)", "service": "svc-app-webhook", "crenelAck": "crenel-ack:webhook-tailnet-agents"},
+          "app-hawser": {"rule": "Host(` + "`app.example.com`" + `) && PathPrefix(` + "`/api/hawser`" + `)", "service": "svc-app-hawser", "crenelAck": "crenel-ack:hawser-tailnet-agents"},
           "api-ro":   {"rule": "Host(` + "`api.example.com`" + `) && Method(` + "`GET`" + `)", "service": "svc-api"},
           "crenel-deny": {"rule": "HostRegexp(` + "`^.+$`" + `)", "service": "crenel-deny", "priority": 1}
         },
         "services": {
           "svc-grafana":     {"loadBalancer": {"servers": [{"url": "http://10.0.0.5:3000"}]}},
-          "svc-app-webhook":  {"loadBalancer": {"servers": [{"url": "http://10.0.0.9:8080"}]}},
+          "svc-app-hawser":  {"loadBalancer": {"servers": [{"url": "http://10.0.0.9:8080"}]}},
           "svc-api":         {"loadBalancer": {"servers": [{"url": "http://10.0.0.10:9000"}]}},
           "crenel-deny":     {"loadBalancer": {}}
         }
@@ -48,7 +48,7 @@ func TestNormalize_AckedRouterReclassified(t *testing.T) {
 	if len(acked) != 1 {
 		t.Fatalf("expected exactly 1 acknowledged_unknown entry, got %d: %+v", len(acked), live.Unparsed)
 	}
-	if !strings.Contains(acked[0].Reason, "webhook-tailnet-agents") {
+	if !strings.Contains(acked[0].Reason, "hawser-tailnet-agents") {
 		t.Errorf("acked entry's Reason should carry the operator's reason slug, got %q", acked[0].Reason)
 	}
 	if len(stillUnknown) != 1 {
@@ -70,12 +70,12 @@ func TestNormalize_FullyAckedRoutersCertifyEnforced(t *testing.T) {
       "http": {
         "routers": {
           "crenel-grafana.example.com": {"rule": "Host(` + "`grafana.example.com`" + `)", "service": "svc-grafana"},
-          "app-webhook": {"rule": "Host(` + "`app.example.com`" + `) && PathPrefix(` + "`/api/webhook`" + `)", "service": "svc-app-webhook", "crenelAck": "crenel-ack:webhook-tailnet-agents"},
+          "app-hawser": {"rule": "Host(` + "`app.example.com`" + `) && PathPrefix(` + "`/api/hawser`" + `)", "service": "svc-app-hawser", "crenelAck": "crenel-ack:hawser-tailnet-agents"},
           "crenel-deny": {"rule": "HostRegexp(` + "`^.+$`" + `)", "service": "crenel-deny", "priority": 1}
         },
         "services": {
           "svc-grafana":    {"loadBalancer": {"servers": [{"url": "http://10.0.0.5:3000"}]}},
-          "svc-app-webhook": {"loadBalancer": {"servers": [{"url": "http://10.0.0.9:8080"}]}},
+          "svc-app-hawser": {"loadBalancer": {"servers": [{"url": "http://10.0.0.9:8080"}]}},
           "crenel-deny":    {"loadBalancer": {}}
         }
       }

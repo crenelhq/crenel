@@ -9,7 +9,7 @@ import (
 )
 
 // benchYAML mirrors the SHAPE of a real Traefik file-provider dynamic config (anchored
-// on the CT 110 bench operator.yml): block mappings, quoted Host(`...`) rules, flow
+// on the CT 120 bench operator.yml): block mappings, quoted Host(`...`) rules, flow
 // sequences, a block sequence of server mappings, a nested tls block, and an
 // http.middlewares section crenel does not model (must be skipped, not error on).
 const benchYAML = `# operator-owned dynamic config

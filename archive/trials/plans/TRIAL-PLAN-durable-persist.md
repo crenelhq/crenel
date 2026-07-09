@@ -26,7 +26,7 @@ terminal — the simplest durable write, deliberately.
 
 - Home Caddy boots: `caddy run --config /etc/caddy/Caddyfile --adapter caddyfile` — **no
   `--resume`** (verified via `docker inspect caddy`). ⟹ admin-API writes are EPHEMERAL.
-- The Caddyfile is at **`/etc/homeedge/caddy/Caddyfile` on the home-edge host** (the LXC host),
+- The Caddyfile is at **`/opt/stacks/caddy/conf/Caddyfile` on the home-edge host** (the LXC host),
   **bind-mounted READ-ONLY** into the container at `/etc/caddy/Caddyfile` (verified via
   `docker inspect` mounts: `bind … rw=false`). ⟹ crenel cannot write it from inside the
   container; it must write the host path and run `caddy` in the container.
@@ -43,7 +43,7 @@ write warns it will not survive a restart — the read-time half is live-correct
 
 1. **Full backup** (gitignored `live-backup/durable-persist-<TS>/`):
    - `GET /config/` (live admin JSON, both edges), sha256-anchored.
-   - `cp /etc/homeedge/caddy/Caddyfile` → `Caddyfile.bak-crenel-trial-<TS>` on the home-edge host
+   - `cp /opt/stacks/caddy/conf/Caddyfile` → `Caddyfile.bak-crenel-trial-<TS>` on the home-edge host
      (operator's own backup idiom) AND pulled into `live-backup/`.
    - `caddy adapt --config /etc/caddy/Caddyfile` baseline JSON (the re-adaptation anchor).
 2. **Pick a SAFE trial host** — a NEW host the operator's Caddyfile does NOT already
@@ -53,7 +53,7 @@ write warns it will not survive a restart — the read-time half is live-correct
 3. **Config**: `examples/settings-durable-home.json` (ssh-exec admin + the two
    `caddy_persist` channels). `verify_adapt: true`.
 4. **Dry-run the channels read-only**: `crenel status` (admin via ssh-exec) + a manual
-   `ExecConfigStore.Read` equivalent (`ssh … pct exec 100 -- sh -c "cat /opt/.../Caddyfile"`)
+   `ExecConfigStore.Read` equivalent (`ssh … pct exec 113 -- sh -c "cat /opt/.../Caddyfile"`)
    and a `caddy adapt` in-container — confirm all three channels work and the adapt
    baseline matches live for the existing hosts. Still zero mutation.
 

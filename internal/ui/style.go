@@ -3,7 +3,7 @@
 // core's view types (never the reverse) and performs no I/O beyond writing to an
 // io.Writer, so rendering is deterministic and unit-testable.
 //
-// Color is SEMANTIC here (see BRANDING.md), never decoration:
+// Color is SEMANTIC here (see docs/brand/BRANDING.md), never decoration:
 //
 //	green  = safe / private / verified
 //	amber  = about to go public / drift detected
@@ -61,6 +61,10 @@ type Style struct {
 	// Cols is the terminal width used to draw the full-width scanline banner. 0 means
 	// "unknown" — the banner falls back to BannerWidth. Other surfaces ignore it.
 	Cols int
+	// Rows is the terminal height. 0 means "unknown" — the banner renders at its
+	// natural full height. When known, the wall picks a wordmark scale that keeps
+	// the battlement crown on-screen (see heightScaleFor). Other surfaces ignore it.
+	Rows int
 	// Version is the build version (ldflags / git-describe derived) shown in the
 	// standalone `crenel banner` status line. Empty falls back to "dev".
 	Version string

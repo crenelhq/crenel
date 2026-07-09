@@ -83,7 +83,7 @@ someone trying to break it.
 
 The claims that matter ran against real production edges, recorded
 byte-for-byte and reverted. Write-ups live in `archive/trials/results/` and
-`TRIAL-RECORD-live-proofs-2026-06-30.md`, with hostnames anonymized and
+`../internal/TRIAL-RECORD-live-proofs-2026-06-30.md`, with hostnames anonymized and
 everything else verbatim:
 
 - A durable expose written into an existing wildcard site that **survived a
@@ -130,9 +130,9 @@ Start with the read-only verbs against your real setup. `status`, `audit`,
 and `drift` only read, and where Crenel is unsure it says UNKNOWN.
 
 Docs: [`docs/WHAT-CRENEL-DOES.md`](../WHAT-CRENEL-DOES.md) (plain English) ·
-[`DESIGN.md`](../../DESIGN.md) (architecture) · [`SECURITY.md`](../../SECURITY.md)
+[`../internal/DESIGN.md`](../internal/DESIGN.md) (architecture) · [`SECURITY.md`](../../SECURITY.md)
 (threat model + disclosure: `security@crenel.sh`) ·
-[`CONTRIBUTING.md`](../../CONTRIBUTING.md) (DCO + CLA, the faithful-fake bar).
+[`CONTRIBUTING.md`](../../CONTRIBUTING.md) (DCO, the faithful-fake bar).
 
 ---
 

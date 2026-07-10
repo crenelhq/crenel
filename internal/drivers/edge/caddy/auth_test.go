@@ -153,6 +153,39 @@ func TestAuth_GranularSnippetOnlyRefused(t *testing.T) {
 	}
 }
 
+// TestAuth_ForwardAuthWithoutVerifyURIRefused proves the TRIAL-FIX-502 guard: a
+// forward-auth policy that sets an authorizer endpoint (caddy_forward_auth) but NO verify
+// URI is REFUSED at Plan with a SPECIFIC error — not the generic "no renderable reference"
+// (which would misleadingly tell an operator who DID set caddy_forward_auth to set it). The
+// under-configured gate is exactly what produced the live 502 (authorizer receives the app
+// path, not its verify endpoint). This is fail-CLOSED: an incomplete policy never applies.
+func TestAuth_ForwardAuthWithoutVerifyURIRefused(t *testing.T) {
+	fake := caddyfake.New()
+	defer fake.Close()
+	if err := fake.SeedJSON(authSeed); err != nil {
+		t.Fatal(err)
+	}
+	// The live trial's exact policy: authorizer set, verify URI + copy-headers absent.
+	d := caddy.New(fake.URL(), resolver(), caddy.WithGranularApply(),
+		caddy.WithAuthPolicies(map[string]caddy.AuthRef{"authelia": {ForwardAuth: "authelia:9091"}}))
+	op := model.Op{Verb: model.Expose, Service: "grafana", Host: "grafana.example.com", Auth: "authelia"}
+	live, _ := d.ReadLiveState(context.Background())
+	_, err := d.Plan(op, live)
+	if err == nil {
+		t.Fatal("forward-auth policy with no verify URI must refuse, not render a footgun gate")
+	}
+	// Specific guidance: names the verify-URI key and the escape hatch, NOT the generic
+	// "no renderable reference" phrasing.
+	for _, must := range []string{"caddy_forward_auth_verify_uri", "verify endpoint", "caddy_handler_json"} {
+		if !strings.Contains(err.Error(), must) {
+			t.Errorf("refusal must be specific (missing %q): %v", must, err)
+		}
+	}
+	if strings.Contains(err.Error(), "no renderable Caddy reference") {
+		t.Errorf("must not fall back to the generic snippet-only error: %v", err)
+	}
+}
+
 // TestAuth_RequiresGranular proves crenel refuses to attach a policy on the
 // full-load path (which cannot carry the operator's auth snippet) — loud, not a
 // silent drop. Mirrors the layer4 capability gate.

@@ -42,7 +42,7 @@ func TestAuth_Brownfield_AdoptPreservesAuth_NewExposeReferencesPolicy(t *testing
 		Name: "caddy",
 		Provider: caddy.New(fake.URL(), static.New(origins),
 			caddy.WithGranularApply(),
-			caddy.WithAuthPolicies(map[string]caddy.AuthRef{"authelia": {ForwardAuth: "authelia:9080"}})),
+			caddy.WithAuthPolicies(map[string]caddy.AuthRef{"authelia": {ForwardAuth: "authelia:9080", VerifyURI: "/api/verify?rd=https://auth.example.com"}})),
 		Fronts: frontsFor(origins),
 	}
 	e := core.NewMulti([]core.EdgeBinding{edge}, "example.com")

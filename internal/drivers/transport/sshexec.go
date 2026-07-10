@@ -85,6 +85,37 @@ func (s *SSHExec) runner() Runner {
 	return s.Runner
 }
 
+// ExecCommand exposes the exec PREFIX that lands a stdin-reading shell where the admin
+// loopback lives (typically INSIDE the caddy container). The durable-persist path reuses
+// it so `caddy validate`/`reload`/`adapt` run over the SAME channel as the admin writes —
+// in the container where the caddy binary, the mounted boot file, and the admin API all
+// live — instead of shelling a LOCAL `caddy` on crenel's host (the live durability bug:
+// the host `caddy reload` adapted the file but the admin API was container-only, so it
+// failed `connection refused` on every persist). Nil/empty => not an exec transport.
+func (s *SSHExec) ExecCommand() []string { return s.Command }
+
+// ExecAdminAddress returns the far-end admin host:port (scheme + path stripped from the
+// AdminURL as seen INSIDE the exec chain, default 127.0.0.1:2019). The durable persist
+// pins `caddy reload --address` to it so the in-container reload targets the exact admin
+// endpoint the admin writes already use, never the CLI's bare `localhost` default (which
+// can resolve to ::1 and miss an IPv4-only listener — the TRIAL-FIX-DURABLE-3 lesson).
+// ExecRunner exposes the exec seam (the same Runner admin calls use) so the durable
+// persist's caddy validate/reload/adapt ride the identical channel — one seam to fake in
+// tests, one real OSRunner in production. Each caddy invocation is its own exec of the
+// chain, exactly as each admin call is.
+func (s *SSHExec) ExecRunner() Runner { return s.runner() }
+
+func (s *SSHExec) ExecAdminAddress() string {
+	u := s.adminURL()
+	if i := strings.Index(u, "://"); i >= 0 {
+		u = u[i+3:]
+	}
+	if i := strings.IndexByte(u, '/'); i >= 0 {
+		u = u[:i]
+	}
+	return u
+}
+
 // Do builds the far-end HTTP-client script, feeds it to the exec chain over stdin,
 // and classifies the result into the three transport classes (see
 // ErrTransportUnreachable). It honors ctx: on a deadline it returns an error

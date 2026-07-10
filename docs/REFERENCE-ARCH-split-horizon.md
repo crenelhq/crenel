@@ -128,6 +128,40 @@ the tunnel vantage.
 
 ---
 
+## 2.5 The Crenel host must reach every control plane it manages
+
+Crenel is live-state-authoritative: every verb reads live, applies, and re-reads. That only works
+if the host running Crenel has **first-class network reachability to every edge admin API and
+every DNS control plane in its config** — before writing a provider block, prove each endpoint
+with a plain `curl` from that host.
+
+The trap in a multi-node overlay setup (found dogfooding this exact architecture): the Crenel host
+usually sits on the LAN, but the overlay-vantage resolver sits on the overlay network — and the
+LAN's default gateway knows nothing about the overlay's address space (Tailscale/headscale CGNAT
+`100.64.0.0/10`, a WireGuard subnet, …). Symptom: the overlay resolver answers from your laptop
+(an overlay client) but times out from the Crenel host.
+
+You do **not** need to enroll the Crenel host in the overlay or run a tunnel shim. If any LAN
+machine is already an overlay **subnet router** (advertising the LAN into the overlay), the return
+path already exists; the only missing piece is the Crenel host's outbound route:
+
+```sh
+# on the Crenel host: send overlay-bound traffic via the LAN's subnet router
+ip route add 100.64.0.0/10 via <subnet-router-lan-ip>
+# prove it (an overlay-hosted AdGuard admin answers its login redirect):
+curl -s -o /dev/null -w '%{http_code}\n' -m5 http://<overlay-resolver>:3000/   # expect 302
+# persist it across reboots / managed-interface regeneration:
+printf '#!/bin/sh\nip route replace 100.64.0.0/10 via <subnet-router-lan-ip>\n' \
+  > /etc/network/if-up.d/overlay-route && chmod +x /etc/network/if-up.d/overlay-route
+```
+
+Alternatively add the same static route on the LAN gateway itself — every LAN host gains overlay
+reachability, nothing per-host to remember; a network-wide policy call rather than a host-local
+one. Either way, **reachability is a topology property, not Crenel's job**: an unreachable
+provider is reported honestly, never guessed around.
+
+---
+
 ## 3. Crenel as the source of truth
 
 A single `crenel expose <host>` (or a declarative `apply`) coordinates the whole chain:

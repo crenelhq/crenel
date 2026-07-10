@@ -415,19 +415,38 @@ func durablePersistOpts(spec edgeSpec) []caddy.Option {
 		opts = append(opts, caddy.WithConfigStore(caddy.ExecConfigStore{Command: p.FileCommand, Path: p.FilePath}))
 	}
 
-	// CADDY channel: validate/reload (+ adapt) where the binary runs.
-	if len(p.CaddyCommand) > 0 {
+	// CADDY channel: validate/reload (+ adapt) where the binary runs. Precedence:
+	//  1. an explicit CaddyCommand pins the caddy channel (may differ from the admin one);
+	//  2. else the fake-seed demo records the reload it WOULD run (no real binary);
+	//  3. else, when the ADMIN transport is ssh-exec, leave the CLI + adapter UNSET so the
+	//     driver defaults BOTH onto that same exec chain (in the container) — the honest
+	//     fix for the live bug where an ssh-exec edge with no caddy_command silently shelled
+	//     a LOCAL `caddy reload` that adapted the host file but could not reach the
+	//     container-only admin API (`connection refused`);
+	//  4. else (a Direct/on-box edge) validate/reload with a local caddy and adapt locally.
+	switch {
+	case len(p.CaddyCommand) > 0:
 		opts = append(opts, caddy.WithCaddyCLI(caddy.ExecCaddyCLI{Command: p.CaddyCommand, Adapter: p.Adapter}))
 		if verifyAdapt(p) {
 			opts = append(opts, caddy.WithAdapter(caddy.ExecAdapter{Command: p.CaddyCommand, Adapter: p.Adapter}))
 		}
-	} else if spec.fakeSeed != "" {
+	case spec.fakeSeed != "":
 		// No-infra demo: no real caddy binary — record the reload, skip the adapt check.
 		opts = append(opts, caddy.WithCaddyCLI(caddy.LogCaddyCLI{W: os.Stderr}))
-	} else if verifyAdapt(p) {
+	case isExecTransport(spec.transport):
+		// Reuse the admin transport's exec chain (driver-defaulted). Nothing to wire: the
+		// driver builds a transport-backed ExecCaddyCLI + ExecAdapter over d.xport.
+	case verifyAdapt(p):
 		opts = append(opts, caddy.WithAdapter(caddy.OSAdapter{Adapter: p.Adapter}))
 	}
 	return opts
+}
+
+// isExecTransport reports whether an edge's admin transport is an ssh-exec chain — the
+// signal that the durable persist can reuse it to run caddy validate/reload/adapt inside
+// the container (via the driver's transport-backed defaults) rather than a local caddy.
+func isExecTransport(ts *config.TransportSettings) bool {
+	return ts != nil && ts.Type == "ssh-exec" && len(ts.Command) > 0
 }
 
 // verifyAdapt reports whether the re-adaptation read-back is enabled (default true).

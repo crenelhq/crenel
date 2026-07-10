@@ -241,10 +241,8 @@ func (d *Driver) selfCheckRegions(candidate string, byZone map[string][]model.Ro
 // then commit (write the boot path) and reload ONCE. A failure at any step leaves the
 // live boot file UNTOUCHED.
 func (d *Driver) validateAdaptWriteReload(ctx context.Context, candidate string, managed []model.Route, liveHosts []string) error {
-	cli := d.caddyCLI
-	if cli == nil {
-		cli = OSCaddyCLI{}
-	}
+	cli := d.persistCaddyCLI()
+	adapter := d.persistAdapter()
 	store := d.configStoreOrDefault()
 	to := d.writeTimeout
 	if to <= 0 {
@@ -269,10 +267,10 @@ func (d *Driver) validateAdaptWriteReload(ctx context.Context, candidate string,
 	// Adapt cross-check: prove the candidate re-adapts to the live managed state, so a
 	// restart reproduces it. Skipped only when no Adapter is wired (durability is then
 	// self-checked + validated, but not adapt-verified — an honest, lesser guarantee).
-	if d.adapter != nil {
+	if adapter != nil {
 		actx, acancel := context.WithTimeout(ctx, to)
 		defer acancel()
-		jsonBytes, err := d.adapter.Adapt(actx, []byte(candidate))
+		jsonBytes, err := adapter.Adapt(actx, []byte(candidate))
 		if err != nil {
 			return fmt.Errorf("persist: adapt candidate: %w", err)
 		}

@@ -289,7 +289,7 @@ func TestReconcile_RollsBackOnFailure(t *testing.T) {
 // the re-added host public-and-unprotected (a MISREAD-↓ by mutation).
 func TestReconcile_ReAddsRouteWithAuth(t *testing.T) {
 	ctx := context.Background()
-	policies := map[string]caddy.AuthRef{"authelia": {ForwardAuth: "authelia:9080"}}
+	policies := map[string]caddy.AuthRef{"authelia": {ForwardAuth: "authelia:9080", VerifyURI: "/api/verify?rd=https://auth.example.com"}}
 
 	// home (caddy, granular): grafana already crenel-managed BEHIND a forward_auth
 	// reference (policy=authelia).

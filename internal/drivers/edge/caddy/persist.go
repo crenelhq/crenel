@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/crenelhq/crenel/internal/drivers/transport"
 	"github.com/crenelhq/crenel/internal/model"
 )
 
@@ -46,6 +47,18 @@ type CaddyCLI interface {
 type OSCaddyCLI struct {
 	// Adapter is the config adapter passed to `caddy validate` (default "caddyfile").
 	Adapter string
+	// Address is the admin API address (host:port, e.g. "127.0.0.1:2019") passed to
+	// `caddy reload --address`. TRIAL-FIX-DURABLE-3: the `caddy reload` CLI defaults
+	// its admin target to `localhost:2019`, and on a host where `localhost` resolves
+	// to `::1` FIRST while Caddy's admin API listens only on IPv4 `127.0.0.1:2019`,
+	// the reload dials `[::1]:2019` and fails `connection refused` — the admin-API
+	// writes still succeed (crenel's HTTP client uses the configured admin_url), so
+	// running state is correct but the on-disk mirror's reload silently regresses,
+	// defeating durability across a container restart. Passing the address explicitly
+	// (derived from the driver's admin_url) removes all reliance on `localhost`
+	// resolution. Empty => omit the flag (fall back to caddy's default) for callers
+	// that construct OSCaddyCLI directly without an admin address.
+	Address string
 }
 
 func (c OSCaddyCLI) adapter() string {
@@ -64,14 +77,28 @@ func (c OSCaddyCLI) Validate(ctx context.Context, configPath string) error {
 	return nil
 }
 
-// Reload runs `caddy reload --config <path>` — the correct, non-wedging
-// invocation diagnosed on the live edge (NEVER a bare `caddy reload`).
+// Reload runs `caddy reload --config <path> [--address <admin-addr>]` — the correct,
+// non-wedging invocation diagnosed on the live edge (NEVER a bare `caddy reload`).
+// The --address flag pins the admin API target to the driver's IPv4 admin_url so the
+// CLI never falls back to `localhost` (which can resolve to ::1 and miss an IPv4-only
+// admin listener). See OSCaddyCLI.Address (TRIAL-FIX-DURABLE-3).
 func (c OSCaddyCLI) Reload(ctx context.Context, configPath string) error {
-	out, err := exec.CommandContext(ctx, "caddy", "reload", "--config", configPath).CombinedOutput()
+	out, err := exec.CommandContext(ctx, "caddy", c.reloadArgs(configPath)...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("caddy reload failed: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
+}
+
+// reloadArgs builds the `caddy reload` argv (sans the "caddy" argv[0]), appending
+// `--address <addr>` only when Address is set. Factored out so the exact argv is
+// hermetically assertable in tests without execing a real caddy binary.
+func (c OSCaddyCLI) reloadArgs(configPath string) []string {
+	args := []string{"reload", "--config", configPath}
+	if c.Address != "" {
+		args = append(args, "--address", c.Address)
+	}
+	return args
 }
 
 // LogCaddyCLI is a no-exec CaddyCLI for the safe, no-infra demo path (used with a
@@ -83,6 +110,78 @@ func (c LogCaddyCLI) Validate(ctx context.Context, configPath string) error { re
 func (c LogCaddyCLI) Reload(ctx context.Context, configPath string) error {
 	if c.W != nil {
 		fmt.Fprintf(c.W, "[persist] would run: caddy reload --config %s\n", configPath)
+	}
+	return nil
+}
+
+// adminAddress derives the admin API address (host:port) from the driver's admin_url
+// by stripping the scheme and any path — e.g. "http://127.0.0.1:2019" => "127.0.0.1:2019".
+// It is threaded into the default OSCaddyCLI so `caddy reload --address` targets the exact
+// IPv4 admin endpoint the driver's HTTP writes already use, never bare `localhost` (which
+// can resolve to ::1 and miss an IPv4-only admin listener). Empty admin_url => "" (the
+// reload then falls back to caddy's own default). See OSCaddyCLI.Address.
+func (d *Driver) adminAddress() string {
+	s := d.adminURL
+	if i := strings.Index(s, "://"); i >= 0 {
+		s = s[i+3:]
+	}
+	if i := strings.IndexByte(s, '/'); i >= 0 {
+		s = s[:i]
+	}
+	return s
+}
+
+// execTransport is implemented by a transport that reaches the admin API by running a
+// command over an EXEC CHAIN (ssh-exec: `ssh … pct exec … docker exec -i caddy sh`). When
+// the driver's transport is one of these, the durable persist runs `caddy
+// validate`/`reload`/`adapt` over the SAME chain — inside the container where the boot
+// file (bind-mounted), the caddy binary, and the admin API all live — instead of shelling
+// a LOCAL `caddy` on crenel's host. That local fallback is the live durability bug: the
+// host `caddy reload` FOUND and adapted the on-disk file but the admin API listened only
+// inside the container, so every persist failed `dial 127.0.0.1:2019: connection refused`.
+// *transport.SSHExec satisfies this; the Direct transport does NOT (so an on-box edge keeps
+// the local OSCaddyCLI/OSAdapter).
+type execTransport interface {
+	// ExecCommand is the exec prefix landing a stdin-reading shell where caddy runs.
+	ExecCommand() []string
+	// ExecAdminAddress is the far-end admin host:port for `caddy reload --address`.
+	ExecAdminAddress() string
+	// ExecRunner is the exec seam the caddy CLI rides — the SAME one admin calls use, so a
+	// test fakes one seam and production shares one OSRunner.
+	ExecRunner() transport.Runner
+}
+
+// persistCaddyCLI selects the validate/reload seam for a Persist: an explicitly injected
+// CaddyCLI (WithCaddyCLI) always wins; otherwise, when the admin transport is an exec chain,
+// the reload runs THROUGH that chain (ExecCaddyCLI) so it executes in the container — never
+// a local host caddy. Falls back to the local OSCaddyCLI (with the derived admin address)
+// for a Direct/on-box edge. This is the honest default: the reload really happens where the
+// file, the binary, and the admin API are.
+func (d *Driver) persistCaddyCLI() CaddyCLI {
+	if d.caddyCLI != nil {
+		return d.caddyCLI
+	}
+	if xt, ok := d.xport.(execTransport); ok {
+		if cmd := xt.ExecCommand(); len(cmd) > 0 {
+			return ExecCaddyCLI{Command: cmd, Address: xt.ExecAdminAddress(), Runner: xt.ExecRunner()}
+		}
+	}
+	return OSCaddyCLI{Address: d.adminAddress()}
+}
+
+// persistAdapter selects the `caddy adapt` cross-check seam: an injected Adapter (WithAdapter)
+// wins; otherwise, when the admin transport is an exec chain, the adapt read-back runs THROUGH
+// it (ExecAdapter, in the container) so it proves re-adaptation with the SAME caddy the reload
+// uses. nil (skip the read-back) only for a Direct edge with no adapter wired — an honest,
+// lesser guarantee (self-check + validate, but not adapt-verified).
+func (d *Driver) persistAdapter() Adapter {
+	if d.adapter != nil {
+		return d.adapter
+	}
+	if xt, ok := d.xport.(execTransport); ok {
+		if cmd := xt.ExecCommand(); len(cmd) > 0 {
+			return ExecAdapter{Command: cmd, Runner: xt.ExecRunner()}
+		}
 	}
 	return nil
 }
@@ -162,10 +261,7 @@ func (d *Driver) Persist(ctx context.Context) error {
 
 	// Write a candidate next to the target, validate it, and only on success replace
 	// the target atomically + reload. A bad candidate never touches the live file.
-	cli := d.caddyCLI
-	if cli == nil {
-		cli = OSCaddyCLI{}
-	}
+	cli := d.persistCaddyCLI()
 	tmp := filepath.Join(filepath.Dir(d.persistPath), ".crenel-caddyfile.tmp")
 	if err := os.WriteFile(tmp, []byte(merged), 0o644); err != nil {
 		return fmt.Errorf("persist: write candidate: %w", err)

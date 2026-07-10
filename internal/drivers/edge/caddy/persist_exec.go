@@ -136,6 +136,12 @@ func (s ExecConfigStore) Write(ctx context.Context, b []byte) error {
 type ExecCaddyCLI struct {
 	Command []string // exec prefix landing a stdin-reading shell in the container
 	Adapter string   // --adapter (default caddyfile)
+	// Address is the admin API host:port passed to `caddy reload --address` — the admin
+	// endpoint AS SEEN INSIDE the container (default 127.0.0.1:2019). Pinning it means the
+	// in-container reload never falls back to the CLI's bare `localhost` default (which can
+	// resolve to ::1 first and miss an IPv4-only admin listener). This mirrors OSCaddyCLI's
+	// TRIAL-FIX-DURABLE-3 fix for the transport-backed path.
+	Address string
 	Runner  transport.Runner
 }
 
@@ -152,6 +158,16 @@ func (c ExecCaddyCLI) adapter() string {
 	return c.Adapter
 }
 
+// reloadAddress returns the admin address pinned onto `caddy reload --address`, defaulting
+// to the container loopback the admin listens on. Always non-empty: the in-container reload
+// ALWAYS carries an explicit --address (never relies on `localhost` resolution).
+func (c ExecCaddyCLI) reloadAddress() string {
+	if c.Address == "" {
+		return "127.0.0.1:2019"
+	}
+	return c.Address
+}
+
 // Validate runs `caddy validate --config 'path' --adapter <adapter>` in the container.
 func (c ExecCaddyCLI) Validate(ctx context.Context, path string) error {
 	script := fmt.Sprintf("caddy validate --config '%s' --adapter '%s'", path, c.adapter())
@@ -162,15 +178,24 @@ func (c ExecCaddyCLI) Validate(ctx context.Context, path string) error {
 	return nil
 }
 
-// Reload runs `caddy reload --config 'path'` in the container (the correct, non-wedging
-// invocation diagnosed on the live edge — NEVER a bare `caddy reload`).
+// Reload runs `caddy reload --config 'path' --address '<addr>'` in the container (the
+// correct, non-wedging invocation diagnosed on the live edge — NEVER a bare `caddy
+// reload`). It runs THROUGH the exec chain, so it executes where the boot file, the caddy
+// binary, and the admin API all live; --address pins the in-container admin endpoint (see
+// reloadAddress) so it never relies on `localhost` resolution.
 func (c ExecCaddyCLI) Reload(ctx context.Context, path string) error {
-	script := fmt.Sprintf("caddy reload --config '%s'", path)
+	script := c.reloadScript(path)
 	out, errb, code, err := c.runner().Run(ctx, c.Command, []byte(script))
 	if err != nil || code != 0 {
 		return fmt.Errorf("caddy reload failed (exit %d): %v: %s", code, err, diagBytes(out, errb))
 	}
 	return nil
+}
+
+// reloadScript builds the exact in-container reload command. Factored out so the argv is
+// hermetically assertable in tests without spawning a real caddy binary.
+func (c ExecCaddyCLI) reloadScript(path string) string {
+	return fmt.Sprintf("caddy reload --config '%s' --address '%s'", path, c.reloadAddress())
 }
 
 // ExecAdapter runs `caddy adapt` over an exec chain in the container, returning the JSON

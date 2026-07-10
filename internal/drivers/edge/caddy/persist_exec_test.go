@@ -95,8 +95,20 @@ func TestExecCaddyCLI_ValidateReload(t *testing.T) {
 	if err := cli.Reload(context.Background(), "/etc/caddy/Caddyfile"); err != nil {
 		t.Fatalf("reload: %v", err)
 	}
-	if r.gotStdin != "caddy reload --config '/etc/caddy/Caddyfile'" {
+	// The in-container reload ALWAYS pins --address (default container loopback) so it never
+	// relies on `localhost` resolution — the transport-backed twin of the OSCaddyCLI fix.
+	if r.gotStdin != "caddy reload --config '/etc/caddy/Caddyfile' --address '127.0.0.1:2019'" {
 		t.Fatalf("reload script: %q", r.gotStdin)
+	}
+
+	// An explicit Address (the far-end admin host:port derived from the transport) is honored.
+	r2 := &recRunner{}
+	cli2 := ExecCaddyCLI{Command: homeCaddyCmd, Address: "10.0.0.9:2019", Runner: r2}
+	if err := cli2.Reload(context.Background(), "/etc/caddy/Caddyfile"); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if r2.gotStdin != "caddy reload --config '/etc/caddy/Caddyfile' --address '10.0.0.9:2019'" {
+		t.Fatalf("reload script (explicit address): %q", r2.gotStdin)
 	}
 }
 

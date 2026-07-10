@@ -182,9 +182,37 @@ func (d *Driver) authGate(policy string) (map[string]any, bool) {
 		}
 	}
 	if ref.ForwardAuth != "" {
+		// TRIAL-FIX-502: a canonical forward-auth expansion with an authorizer endpoint but
+		// NO verify URI is a footgun, not a valid gate — the auth subrequest keeps the app's
+		// path instead of hitting the authorizer's verify endpoint, so the authorizer 502s
+		// (or, worse, 2xx's the app path and the gate fails OPEN). Refuse to render it (the
+		// operator sets the verify URI, or drops to caddy_handler_json for a raw authorizer
+		// handler — the "I know what I'm doing" escape hatch, handled above). See authGateError.
+		if ref.VerifyURI == "" {
+			return nil, false
+		}
 		return canonicalForwardAuth(ref), true
 	}
 	return nil, false
+}
+
+// authGateError returns the SPECIFIC operator-facing error for a policy whose gate is not
+// renderable, so both the pre-flight validation (Plan) and the defensive render guard
+// (insertRoute) emit a precise message rather than the generic "no renderable reference"
+// (which would misleadingly tell an operator who DID set caddy_forward_auth to set it).
+// It distinguishes the forward-auth-without-verify-URI footgun from the snippet-only case.
+func (d *Driver) authGateError(policy string) error {
+	ref := d.authRef(policy)
+	if ref.ForwardAuth != "" && ref.VerifyURI == "" && len(ref.Handler) == 0 {
+		return fmt.Errorf("caddy auth: forward-auth policy %q sets an authorizer (caddy_forward_auth) but no verify URI "+
+			"(caddy_forward_auth_verify_uri / VerifyURI) — without it the authorizer receives the app's path, not its verify "+
+			"endpoint, and the gate fails; set the verify URI, or use caddy_handler_json for a raw authorizer handler", policy)
+	}
+	return fmt.Errorf("caddy auth: granular forward-auth for policy %q has no renderable Caddy reference — set "+
+		"auth_policies.%s.caddy_handler_json (an operator-provided handler blob, the purest by-reference) or "+
+		"auth_policies.%s.caddy_forward_auth (an authorizer endpoint crenel expands to the canonical "+
+		"reverse_proxy+handle_response gate); the snippet `import` form renders only on the on-disk persistence path",
+		policy, policy, policy)
 }
 
 // canonicalForwardAuth renders the reverse_proxy+handle_response shape Caddy's
@@ -944,11 +972,7 @@ func (d *Driver) Plan(op model.Op, live model.LiveEdgeState) (model.ChangeSet, e
 	// (caddy_forward_auth) crenel expands to the canonical gate.
 	if op.HasAuthPolicy() && d.granular {
 		if _, ok := d.authGate(op.Auth); !ok {
-			return cs, fmt.Errorf("caddy auth: granular forward-auth for policy %q has no renderable Caddy reference — set "+
-				"auth_policies.%s.caddy_handler_json (an operator-provided handler blob, the purest by-reference) or "+
-				"auth_policies.%s.caddy_forward_auth (an authorizer endpoint crenel expands to the canonical "+
-				"reverse_proxy+handle_response gate); the snippet `import` form renders only on the on-disk persistence path",
-				op.Auth, op.Auth, op.Auth)
+			return cs, d.authGateError(op.Auth)
 		}
 	}
 
@@ -1413,9 +1437,9 @@ func (d *Driver) insertRoute(ctx context.Context, r model.Route) error {
 		gate, ok := d.authGate(policy)
 		if !ok {
 			// Plan refuses this case up front; defensive guard so a misrouted call can
-			// never emit a handler Caddy would reject.
-			return fmt.Errorf("caddy auth: no renderable forward-auth gate for policy %q "+
-				"(set auth_policies.%s.caddy_handler_json or caddy_forward_auth)", policy, policy)
+			// never emit a handler Caddy would reject. Reuse the precise pre-flight error
+			// (distinguishes the forward-auth-without-verify-URI footgun from snippet-only).
+			return d.authGateError(policy)
 		}
 		handlers = append(handlers, authMarker(policy), gate)
 	}

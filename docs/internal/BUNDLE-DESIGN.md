@@ -194,7 +194,7 @@ must **never** claim multi-vendor breadth that the drivers haven't earned on the
 | Claim | Allowed in the bundle? |
 |---|---|
 | "v0 gives you a working default-deny **Caddy** edge, durable, read-back-verified" | **Yes** — live-proven (STATE §5b/§5d/§5g, real `302`). |
-| "Swap to **Traefik/nginx** with one config change" | **Yes, as a swap-in** — *and only after* each is live-validated on the proving ground (see archive/PROVING-GROUND.md). Until then the doc/README says "Caddy is the proven default; Traefik/nginx drivers are built and pass faithful-fake suites, live-validation in progress." |
+| "Swap to **Traefik/nginx** with one config change" | **Yes, as a swap-in** — *and only after* each is live-validated on the proving ground (see archive/PROVING-GROUND.md, private repo). Until then the doc/README says "Caddy is the proven default; Traefik/nginx drivers are built and pass faithful-fake suites, live-validation in progress." |
 | "Crenel coordinates **across** Caddy + Traefik + nginx atomically" | **Yes as the architectural claim** (it's the design + tested against faithful fakes), **but** the *bundle's* turnkey promise stays Caddy-first until the file drivers clear the bench. |
 | "Bundled DNS / overlay split-horizon works turnkey" | **Not until v1/v2/v3** ship with their providers validated. Roadmap, not v0 claim. |
 

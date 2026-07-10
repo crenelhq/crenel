@@ -1,0 +1,59 @@
+Pi-hole v6 API contract capture — the source of truth for piholefake.
+Captured 2026-07-10 against the official pihole/pihole:latest Docker image:
+  core v6.4.3, web v6.6, FTL v6.7, docker tag 2026.07.2
+(see version.json). Values sanitized to homelab.example / RFC1918.
+
+The fake may only accept what this real API accepts; every status code and
+body shape below was observed live, not inferred from docs.
+
+--- Auth (session-based; NO Basic auth in v6) --------------------------------
+
+POST /api/auth  {"password":"<pw>"}
+  correct  -> 200, body auth-success.json
+              session.sid is the token; also Set-Cookie sid=...; validity 1800s.
+              A csrf token is issued but only required for COOKIE-auth clients;
+              the sid HEADER path (what the driver uses) needs no csrf.
+  wrong    -> 401, body auth-wrong-password.json (session.valid=false, sid null)
+
+Authenticated requests carry the header:  sid: <sid>
+  missing/bad/expired sid -> 401, body error-unauthorized.json
+
+DELETE /api/auth (with sid header) -> 204 No Content, session destroyed
+  (the same sid afterwards -> 401 error-unauthorized.json)
+
+--- Local DNS records ("Local DNS" / dns.hosts) ------------------------------
+
+Entries are flat "IP host" strings — dnsmasq host lines. The VALUE MUST be an
+IPv4/IPv6 address; there is no metadata/comment slot on an entry.
+
+GET /api/config/dns/hosts
+  -> 200, body hosts-list.json  ({"config":{"dns":{"hosts":[...]}}, "took":...})
+
+PUT /api/config/dns/hosts/<url-encoded "IP host">   (add one entry)
+  new entry            -> 201 Created, body put-created.json ({"took":...})
+  exact duplicate      -> 400, body put-duplicate.json
+                          ("Item already present" / "Uniqueness of items is enforced")
+  value not an IP      -> 400, body put-invalid-ip.json
+                          (hint: dns.hosts[N]: neither a valid IPv4 nor IPv6 address)
+  wildcard hostname    -> 400, body put-wildcard-rejected.json
+                          (hint: dns.hosts[N]: invalid hostname ("*.homelab.example"))
+  SAME host, DIFFERENT IP -> 201 (accepted; both entries coexist — Pi-hole does
+                          not dedupe by name, only by exact string)
+
+DELETE /api/config/dns/hosts/<url-encoded "IP host">
+  entry present -> 204 No Content
+  entry absent  -> 404, body delete-nonexistent.json ({"took":...})
+
+--- Wildcards ----------------------------------------------------------------
+
+dns.hosts REJECTS wildcard hostnames outright (400 "invalid hostname", verified
+above). Wildcard answers in Pi-hole live in custom dnsmasq conf files
+(address=/.../...) OUTSIDE this API — so the driver refuses wildcard hosts
+loudly instead of pretending the endpoint could carry them.
+
+--- CNAMEs --------------------------------------------------------------------
+
+GET /api/config/dns/cnameRecords -> 200, {"config":{"dns":{"cnameRecords":[]}},...}
+Separate endpoint, "cname,target[,ttl]" strings. NOT used by this driver:
+crenel's Pi-hole surface is a single IP EdgeAddr via dns.hosts (a non-IP
+EdgeAddr is refused at DesiredRecords).

@@ -357,6 +357,20 @@ func (e *Engine) planReconcile(ctx context.Context) (ReconcilePlan, canonicalSta
 		desiredSet := map[string]bool{}
 		for _, key := range sortedStrKeys(canon.host) {
 			host := canon.host[key]
+			// Zone routing (multi-zone): a canonical host outside this provider's
+			// declared zone is NOT missing here — the provider is forbidden to hold
+			// it (its guard would refuse the corrective Add and wedge the whole
+			// reconcile transaction). Its records live on the zone's own providers.
+			if !dnsCoversHost(dp, host) {
+				continue
+			}
+			// Residency note: reconcile builds the DEFAULT-class desired value (an op's
+			// residency is transient and never persisted, so reconcile cannot know a
+			// host's class). That stays safe: a residency host's record is PRESENT by
+			// key, so the missing-record check below never "corrects" it, and the
+			// value re-assert is gated on ownsAll (public, class-invariant). What
+			// reconcile will NOT do is recreate a deleted residency record's divergent
+			// value — re-run the expose with --residency for that.
 			desired, err := dp.DesiredRecords(model.Op{Verb: model.Expose, Service: e.serviceOf(host), Host: host})
 			if err != nil {
 				return ReconcilePlan{}, canon, fmt.Errorf("dns %s desired records: %w", dp.Name(), err)

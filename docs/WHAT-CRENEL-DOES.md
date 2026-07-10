@@ -125,7 +125,7 @@ Crenel is a set of commands ("verbs"). The ones that *look* never touch anything
 | Command | What it does, plainly |
 |---|---|
 | `crenel status` | **"What's exposed right now?"** Reads your live edge(s) and DNS and shows every reachable host, whether the default-deny wall is intact, whether anything has drifted, and whether anything is reachable that it *couldn't fully understand*. On a terminal it draws a colored dashboard; piped into a script it prints plain text. |
-| `crenel audit` | **"Is anything dangerous or inconsistent?"** Runs safety checks: a public host with no auth gate, the two DNS resolvers disagreeing, a DNS name with no matching edge route (or vice-versa), writes that won't survive a restart. Exits non-zero on a critical finding, so it drops into cron. |
+| `crenel audit` | **"Is anything dangerous or inconsistent?"** Runs safety checks: a public host with no auth gate, the two DNS resolvers disagreeing, a DNS name with no matching edge route (or vice-versa), writes that won't survive a restart. Exits non-zero on a critical finding, so it drops into cron. It also works with **no settings file at all**: `crenel audit ./Caddyfile --assume-public-boundary` (or an admin URL, a Traefik API URL, an Nginx Proxy Manager directory) audits an edge Crenel doesn't manage, read-only. |
 | `crenel drift` | **"Has reality wandered from what's intended?"** Reports any divergence between the live state and the exposed set. Read-only; exits non-zero if there's drift, so `crenel drift \|\| alert-me` just works. |
 | `crenel preview` | **"Show me the change you *would* make, but don't do it."** The first half of an `expose`/`unexpose`/`rename`: prints the exact diff, loudly flagging anything **about to go public**, then stops. |
 | `crenel export` | Writes a snapshot of the live state to a file (`--redacted` strips secrets so it's safe to share). |
@@ -262,8 +262,10 @@ byte-for-byte in a `TRIAL-RESULT-*.md` and reverted so production was left exact
   through expose and unexpose, then restored.
 - **It drives internal AdGuard resolvers.** AdGuard rewrites proven live on a disposable host (restored
   byte-for-byte), and the dual-resolver parity check exercised across both production AdGuards,
-  restored byte-for-byte and catching a real divergence between them.
-- **The tests are adversarial and catch real bugs.** 498 test functions, race-clean, built on a
+  restored byte-for-byte and catching a real divergence between them. The Pi-hole v6 driver ran
+  the same full expose→verify→drift→unexpose cycle live against a real throwaway Pi-hole
+  (2026-07-10).
+- **The tests are adversarial and catch real bugs.** 715 test functions, race-clean, built on a
   strict rule: *a fake may only accept what the real edge accepts, and must reject what it
   rejects.* A multi-agent adversarial review even caught a real prefix-collision bug in the
   Cloudflare ownership check and fixed it RED→GREEN before the live trial.
@@ -311,14 +313,15 @@ work here is just *repetition*, making it a day-to-day habit, not a missing capa
 
 **2. Two known structural limits, each bounded and visible (accept, or extend later):**
 
-- **Marker-less AdGuard value-ownership.** Crenel's Cloudflare records carry a `managed-by:crenel`
-  marker, so it can always tell its own records from yours. **AdGuard rewrites have no such marker
-  field**; they're just `name → answer`. So Crenel can't tell a stale Crenel rewrite from one you
-  set by hand, and it therefore *deliberately doesn't* run value-drift detection on AdGuard (doing
-  so would cry wolf on your own intentional rewrites). It still guards AdGuard by zone-confinement
-  and by refusing to clobber a differing foreign value. It just can't do full value-drift there.
-  Closing this would need either an upstream AdGuard change or a stored manifest (which would
-  contradict the no-stored-state design that makes everything else trustworthy).
+- **Marker-less AdGuard/Pi-hole value-ownership.** Crenel's Cloudflare records carry a
+  `managed-by:crenel` marker, so it can always tell its own records from yours. **AdGuard rewrites
+  and Pi-hole host entries have no such marker field**; they're just `name → answer`. So Crenel
+  can't tell a stale Crenel entry from one you set by hand, and it therefore *deliberately doesn't*
+  run value-drift detection on those resolvers (doing so would cry wolf on your own intentional
+  entries). It still guards them by zone-confinement and by refusing to clobber a differing foreign
+  value. It just can't do full value-drift there. Closing this would need an upstream change or a
+  stored manifest (which would contradict the no-stored-state design that makes everything else
+  trustworthy).
 - **Path-granular routing: detected, not yet writable.** A route scoped by something other than
   the hostname (a Caddy `path`/`method`/`header` matcher, a Traefik `PathPrefix`, multiple nginx
   `location` blocks) is **noticed and declared** (so it's never misread as a plain host route),

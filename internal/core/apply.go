@@ -495,6 +495,18 @@ func (e *Engine) verify(ctx context.Context, op model.Op, cs model.ChangeSet) []
 	// and public read-backs are distinguishable.
 	for _, dp := range e.DNS {
 		name := dp.Name() + "/" + string(dp.Scope())
+		// Mirror of Plan's two skip predicates — verify must gate on EXACTLY what
+		// Plan used to skip a provider, or a deliberate skip would fail read-back.
+		// Each skip is declared, never silent: the result says why it passed.
+		if !scopeSelected(op.Scopes, dp.Scope()) {
+			out = append(out, VerifyResult{Provider: name, OK: true, Detail: "scope not appointed — unchanged"})
+			continue
+		}
+		if !dnsCoversHost(dp, op.Host) {
+			out = append(out, VerifyResult{Provider: name, OK: true,
+				Detail: "host outside this provider's managed zone — no records expected"})
+			continue
+		}
 		recs, err := dp.LiveRecords(ctx)
 		if err != nil {
 			out = append(out, VerifyResult{Provider: name, OK: false, Detail: reReadFailedDetail(err)})

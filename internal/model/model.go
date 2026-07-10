@@ -152,6 +152,38 @@ type Op struct {
 	// apply), so `status`/`audit`/`drift`/`reconcile` stay coherent on later runs.
 	// Empty = resolver path (the pre-declared-origins default).
 	To string
+	// Edges restricts this op to the named edge(s): only edges whose topology name
+	// is listed (AND that front the service) participate. Empty = every fronting
+	// edge (today's default). This is the imperative twin of Exposure.Edges and is
+	// honored through the SAME selection predicate (core.edgeSelected) — the
+	// `expose <svc> --edges home` shape appointing a route to specific edges without
+	// a declarative apply file. Transient, never persisted.
+	Edges []string
+	// Scopes restricts this op's DNS records to the named scope(s): a DNS provider
+	// whose Scope() is not listed contributes NO record (an empty, alignment-
+	// preserving change). Empty = every configured scope. The imperative twin of
+	// Exposure.Scopes, honored through the SAME predicate (core.scopeSelected) — the
+	// `expose <svc> --scope internal` shape that creates the internal record and
+	// suppresses the public one (so nothing "goes public"). Transient, never persisted.
+	Scopes []Scope
+	// Residency is the host's OPERATOR-DECLARED residency class (the residency
+	// selector; docs/REFERENCE-ARCH-split-horizon.md §2 "the target rule"). It names
+	// WHERE the service actually lives so each INTERNAL DNS provider can answer with
+	// its own vantage-correct target for THIS host — e.g. a "vps" (edge-resident) host
+	// must resolve to the PUBLIC edge from the non-tunnel LAN vantage but tunnel-direct
+	// from the tunnel vantage, while a home-resident host resolves to the home edge
+	// everywhere internal. "" = the default home-resident class: every provider answers
+	// its configured edge_addr, byte-identical to pre-residency behavior.
+	//
+	// Like Auth it is DECLARED, never inferred: the `expose --residency <class>` flag
+	// or an apply file's `residency:` key sets it, each internal provider resolves the
+	// class against its own `targets` map (ports.ResidencyTargeter), and a provider
+	// asked for a class it has no target for refuses LOUDLY at plan time — a target is
+	// never guessed. PUBLIC providers deliberately ignore it: the public answer is the
+	// public edge for every class (the §2 table's Cloudflare column is constant).
+	// Transient, never persisted (an unexpose of a non-default host must re-declare it
+	// so each instance removes its OWN vantage value).
+	Residency string
 }
 
 // HasAuthPolicy reports whether the op attaches a REAL forward-auth policy (not
@@ -364,27 +396,48 @@ const (
 // a different reason" from "not ack'd at all").
 const AckMarkerPrefix = "crenel-ack:"
 
-// ackMarkerRE extracts the reason slug from a crenel-ack:<slug> marker wherever
-// it appears — a Caddy @id (exact match), a driver-specific field, or a
-// substring inside a raw comment/config blob (nginx). [a-z0-9-]+ mirrors the
-// slug shape docs/design/ack-marker.md specifies.
-var ackMarkerRE = regexp.MustCompile(AckMarkerPrefix + `([a-z0-9-]+)`)
+// ackMarkerRE extracts the reason slug from a crenel-ack marker wherever it
+// appears — a Caddy @id (exact match), a driver-specific field, or a substring
+// inside a raw comment/config blob (nginx). Two accepted shapes:
+//
+//	crenel-ack:<reason>          (legacy, still live on real edges)
+//	crenel-ack:<host>:<reason>   (host-qualified, stamped since the @id-collision fix)
+//
+// The host qualifier exists because Caddy requires @id values to be GLOBALLY
+// unique: two hosts ack'd with the same reason used to collide on the bare
+// form. The optional first group is the host (hostnames carry dots, which the
+// reason slug's [a-z0-9-]+ never does, and only the host segment is followed
+// by a second colon — so the two forms are unambiguous). The reason slug shape
+// [a-z0-9-]+ mirrors docs/design/ack-marker.md §7.7.
+var ackMarkerRE = regexp.MustCompile(AckMarkerPrefix + `(?:([a-z0-9.*-]+):)?([a-z0-9-]+)`)
 
 // ParseAckMarker scans s (an @id, a driver-specific marker field, or a raw
-// comment/config excerpt) for the crenel-ack:<slug> marker an operator writes
-// to acknowledge an intentionally-unmodeled route, and returns the reason slug.
-// See docs/design/ack-marker.md.
+// comment/config excerpt) for the crenel-ack marker an operator writes to
+// acknowledge an intentionally-unmodeled route, and returns the reason slug.
+// Recognizes BOTH the legacy bare form (crenel-ack:<reason>) and the
+// host-qualified form (crenel-ack:<host>:<reason>) — read-side compatibility
+// with markers already live in the wild. See docs/design/ack-marker.md.
 func ParseAckMarker(s string) (reason string, ok bool) {
 	m := ackMarkerRE.FindStringSubmatch(s)
 	if m == nil {
 		return "", false
 	}
-	return m[1], true
+	return m[2], true
 }
 
-// AckMarker formats the crenel-ack marker for a given reason slug — the
-// inverse of ParseAckMarker, used when stamping the marker on write.
+// AckMarker formats the LEGACY bare-form crenel-ack marker for a reason slug.
+// Kept for read-side symmetry with ParseAckMarker and for existing manual
+// markers; new write-side stamping uses AckMarkerFor (host-qualified) so two
+// hosts ack'd with the same reason never collide on Caddy's global @id index.
 func AckMarker(reason string) string { return AckMarkerPrefix + reason }
+
+// AckMarkerFor formats the host-qualified crenel-ack marker
+// (crenel-ack:<host>:<reason>) — the form stamped on write since the
+// @id-collision fix. Host is lowercased to match the marker grammar; the
+// reason slug is the operator's assertion exactly as with the bare form.
+func AckMarkerFor(host, reason string) string {
+	return AckMarkerPrefix + strings.ToLower(host) + ":" + reason
+}
 
 // Unparsed is one thing crenel SAW in the live config but did not fully understand.
 // It is first-class output: counted into Coverage, listed by status, surfaced by

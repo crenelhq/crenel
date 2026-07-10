@@ -66,6 +66,11 @@ type Config struct {
 	DedicatedZone bool
 	// WorkDir is where dnsconfig.js is written. Defaults to a temp dir per call.
 	WorkDir string
+	// ZoneInName, when set, appends "/<zone>" to Name() — set by wiring ONLY when
+	// this instance came from a multi-entry `zones:` list, so per-zone siblings
+	// stay distinguishable in every label. Single-zone instances keep the exact
+	// pre-zones-list name (byte-identical output).
+	ZoneInName bool
 }
 
 // Driver implements ports.DNSProvider via dnscontrol.
@@ -86,8 +91,20 @@ func New(cfg Config) *Driver {
 	return &Driver{cfg: cfg, shell: sh}
 }
 
-func (d *Driver) Name() string       { return "dnscontrol" }
+func (d *Driver) Name() string {
+	// A `zones:`-list sibling carries its zone in the label — otherwise a
+	// two-zone expansion would print two indistinguishable "dnscontrol" lines.
+	if d.cfg.ZoneInName {
+		return "dnscontrol/" + d.cfg.ZoneName
+	}
+	return "dnscontrol"
+}
 func (d *Driver) Scope() model.Scope { return d.cfg.Scope }
+
+// ManagedZone implements ports.ZoneReporter: the zone this provider instance is
+// confined to. core uses it to route each host to only the providers whose zone
+// covers it (multi-zone topologies) and to group audit coverage-parity by zone.
+func (d *Driver) ManagedZone() string { return d.cfg.ZoneName }
 
 // DesiredRecords returns the record(s) the op concerns for this scope: a single
 // A record mapping the op's host to the edge address.

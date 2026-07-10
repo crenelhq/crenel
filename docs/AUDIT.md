@@ -63,8 +63,8 @@ here, cited where relevant):
 - Every DNS driver (`internal/drivers/dns/{dnscontrol,adguard,cloudflare}`).
 - The transport layer (`internal/drivers/transport`): `direct`/`ssh-exec`/`ssh-tunnel`.
 - The secret redaction layer (`internal/redact`).
-- The read-only MCP server (`cmd/crenel/mcp.go`, **on branch `feat/crenel-mcp`,
-  not yet merged to `develop`**; see §6 for how to get it).
+- The MCP server (`cmd/crenel/mcp.go`): read-only by default, opt-in two-phase
+  gated writes via `--write` (see §6).
 - The CLI surface (`cmd/crenel`) and its flag/guardrail handling.
 
 **Out of scope:**
@@ -159,20 +159,18 @@ triaged in it slots directly into the existing risk register.
 
 ---
 
-## 6. Getting the MCP server (not on `develop` yet)
+## 6. The MCP server
 
-The read-only MCP server (`cmd/crenel/mcp.go`) lives on branch
-`feat/crenel-mcp`, rebased onto a recent `develop` but not yet merged. To
-review it:
-
-```sh
-git fetch origin feat/crenel-mcp
-git checkout feat/crenel-mcp
-make check
-```
-
-Its claim (see `CLAIMS-TO-VERIFY.md` §I) is that it is read-only **by
-construction**: the server type only ever holds a narrow interface exposing
-`Status`/`Audit`/`DetectDrift`, so no mutating method is reachable through it
-even in principle. That is exactly the kind of claim this package wants
-adversarially tested.
+The MCP server (`cmd/crenel/mcp.go`) is on `develop`. Its claim (see
+`CLAIMS-TO-VERIFY.md` §I) is that the default mode is read-only **by
+construction**: the server holds the engine only through the exported
+`core.ReadOnlyEngine` interface (`Status`/`Audit`/`DetectDrift` — the same
+narrow surface the `serve` dashboard and the audit-target mode hold), so no
+mutating method is reachable through it even in principle. The opt-in
+`--write` mode adds a two-phase gated write pair (`crenel_plan` computes a
+diff + content-hash `plan_id`; `crenel_apply` refuses unless the id re-derives
+against current live state), and composes with the engine-level read-only
+posture: an engine constructed read-only refuses `crenel_apply` with
+`core.ErrReadOnlyEngine` before any planning. That is exactly the kind of
+claim this package wants adversarially tested; `cmd/crenel/mcp_test.go` and
+`cmd/crenel/mcp_write_test.go` anchor it.

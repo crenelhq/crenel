@@ -57,7 +57,24 @@ type globalFlags struct {
 	// legit case where the backend is known-correct but not up yet (e.g. a
 	// container that will start after the proxy). See guardToReachable.
 	noValidate bool
-	params     kvFlag
+	// scope / dns / edges appoint an expose/unexpose/set inline to specific DNS
+	// scopes and edges — the imperative twin of an apply file's `dns`/`edges` (see
+	// docs/design/expose-scope-flags.md). scope is sugar over dns (internal|public|
+	// both); dns restricts the DNS records touched; edges (comma list) restricts the
+	// edge routes touched. Empty = today's default (every fronting edge, every scope).
+	scope string
+	dns   string
+	edges string
+	// residency is the host's operator-declared residency class for expose/unexpose
+	// (the residency selector, docs/REFERENCE-ARCH-split-horizon.md §2): "" = the
+	// home-resident default (every internal resolver answers its edge_addr), else a
+	// class (e.g. "vps") each internal DNS provider resolves against its own
+	// `targets` map to a vantage-correct answer — refusing loudly at plan time when
+	// it has no target for the class. Unexposing a non-default host requires the
+	// SAME class so each instance removes its own vantage value. Transient, like
+	// every op field — the durable declaration lives in an apply file's `residency:`.
+	residency string
+	params    kvFlag
 	// showSecrets disables Crenel's default secret redaction in OUTPUT (status/audit
 	// JSON, error echoes, declared-unknown excerpts, redacted export). Off by default
 	// so a stray status/error never leaks a Cloudflare token or auth hash; the
@@ -292,6 +309,10 @@ func bindGlobals(fs *flag.FlagSet, gf *globalFlags) {
 	fs.StringVar(&gf.to, "to", "", "expose: explicit backend address for this service (host:port); persists into the settings-file origins map on apply")
 	fs.StringVar(&gf.to, "upstream", "", "alias for --to")
 	fs.BoolVar(&gf.noValidate, "no-validate", false, "expose: skip the pre-flight TCP probe of --to (use when the backend is not up yet but the address is known-correct)")
+	fs.StringVar(&gf.scope, "scope", "", "expose/unexpose/set: appoint DNS reachability — internal (internal DNS only, no public record, no forced auth) | public (public chain + auth required) | both (default). Sugar over --dns")
+	fs.StringVar(&gf.dns, "dns", "", "expose/unexpose/set: restrict DNS records to scope internal|public|both (granular half of --scope; mutually exclusive with it)")
+	fs.StringVar(&gf.edges, "edges", "", "expose/unexpose/set: comma-separated edge names to appoint the route to (default: every edge that fronts the service)")
+	fs.StringVar(&gf.residency, "residency", "", "expose/unexpose: the host's residency class (e.g. vps) — each internal DNS provider answers its own configured targets[<class>] instead of edge_addr; unset = home-resident default")
 	fs.Var(&gf.params, "param", "mode-specific intent as key=value (repeatable), e.g. -param group=admins")
 	fs.BoolVar(&gf.hud, "hud", false, "status: draw the full HUD banner (wordmark + CORE MATRIX panel)")
 	fs.BoolVar(&gf.banner, "banner", false, "status: alias for -hud")
@@ -362,13 +383,22 @@ func absorbPostVerbFlags(gf *globalFlags, args []string) ([]string, error) {
 			gf.params = append(gf.params, val)
 		case "reason":
 			gf.reason = val
+		case "scope":
+			gf.scope = val
+		case "dns":
+			gf.dns = val
+		case "edges":
+			gf.edges = val
+		case "residency":
+			gf.residency = val
 		default:
 			return false
 		}
 		return true
 	}
 	isValueFlag := func(name string) bool {
-		return name == "mode" || name == "auth" || name == "param" || name == "to" || name == "upstream" || name == "reason"
+		return name == "mode" || name == "auth" || name == "param" || name == "to" || name == "upstream" || name == "reason" ||
+			name == "scope" || name == "dns" || name == "edges" || name == "residency"
 	}
 
 	var out []string
@@ -473,13 +503,22 @@ Read-only commands:
                          Run the READ-ONLY status dashboard: live 'status' as the
                          branded HUD over HTTP, auto-refreshing. Never mutates —
                          all writes stay on the CLI (alias: dashboard)
+  mcp [--write]          Run the MCP server over stdio (JSON-RPC 2.0) for an LLM
+                         agent. Default is READ-ONLY (crenel_status / crenel_audit /
+                         crenel_drift) — no mutating tool exists, safe to hand to
+                         agents. --write ADDS a two-phase gated write pair
+                         (crenel_plan -> crenel_apply, confirm-by-plan-id; never
+                         bypasses default-deny / public-auth / verify). See
+                         docs/MCP.md + docs/mcp/SKILL.md
 
 Mutating commands (preview -> confirm -> apply -> read-back-verify):
-  expose <svc> [--to host:port]
+  expose <svc> [--to host:port] [--scope internal|public|both] [--edges a,b]
                          Expose a service through the edge. Pass --to to name
                          the backend inline (persisted into origins on apply)
-                         instead of pre-declaring it in config
-  unexpose <svc>         Remove a service's exposure
+                         instead of pre-declaring it in config. --scope internal
+                         keeps it off public DNS (internal-only, no forced auth);
+                         --edges appoints it to specific edges (see Global flags)
+  unexpose <svc>         Remove a service's exposure (honors --scope/--dns/--edges)
   rename <old-host> <new-host>
                          Move a service to a new hostname as ONE atomic, durable
                          transaction (add new + remove old), copying the source
@@ -528,6 +567,21 @@ Global flags:
                      probe validates the address before any write; pass
                      -no-validate to skip when the backend is not up yet.
   -no-validate       expose: skip the pre-flight TCP probe of -to
+  -scope <s>         expose/unexpose/set: DNS reachability posture —
+                     internal (internal DNS only; no public record, no forced
+                     auth) | public (public chain + auth required) | both
+                     (default). Sugar over -dns
+  -dns <s>           expose/unexpose/set: restrict DNS records to internal|public|
+                     both (granular half of -scope; mutually exclusive with it)
+  -residency <class> expose/unexpose: the host's residency class (e.g. vps) —
+                     each internal DNS provider answers its own configured
+                     targets[<class>] instead of edge_addr (vantage-divergent
+                     answers for an edge-resident host); a provider with no
+                     target for the class refuses at plan time. Unset =
+                     home-resident default. Re-declare it on unexpose so each
+                     instance removes its own value
+  -edges a,b         expose/unexpose/set: comma-separated edge names to appoint
+                     the route to (default: every edge that fronts the service)
   -param key=value   mode-specific intent (repeatable), e.g. -param group=admins
   -yes               skip confirmation for mutating commands
   -json              JSON output where supported

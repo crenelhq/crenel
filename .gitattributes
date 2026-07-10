@@ -1,0 +1,26 @@
+# Public-snapshot curation: paths marked export-ignore stay in the private repo
+# but are omitted by `git archive` — the mechanism the snapshot flow uses
+# (docs/LAUNCH-PLAN-github.md §1), so the cut happens automatically.
+#
+# Kept exportable on purpose: archive/README.md and archive/trials/** (the root
+# README's "Proven, not promised" table links three trials/results files).
+# gitattributes has no export-ignore negation, so archive/ is pruned entry by
+# entry rather than wholesale.
+
+archive/BUILD_LOG.md            export-ignore
+archive/CONTEXT.md              export-ignore
+archive/PROVING-GROUND.md       export-ignore
+archive/outputs                 export-ignore
+archive/outputs/**              export-ignore
+archive/diag-artifacts          export-ignore
+archive/diag-artifacts/**       export-ignore
+archive/incident-2026-06-27     export-ignore
+archive/incident-2026-06-27/**  export-ignore
+
+docs/internal/TEASER-TIMELINE.md  export-ignore
+docs/internal/DEMO-RECORDING.md   export-ignore
+docs/internal/DEPLOY-VPS.md       export-ignore
+
+docs/launch                     export-ignore
+docs/launch/**                  export-ignore
+docs/LAUNCH-PLAN-github.md      export-ignore

@@ -107,3 +107,30 @@ func TestOp_HasAuthPolicy(t *testing.T) {
 		t.Error("a named policy is a policy")
 	}
 }
+
+// TestParseAckMarker_BothForms locks the two accepted marker shapes: the
+// LEGACY bare crenel-ack:<reason> (live on real edges — must never stop
+// parsing) and the host-qualified crenel-ack:<host>:<reason> stamped since the
+// @id-collision fix. Both yield the reason slug; AckMarkerFor round-trips.
+func TestParseAckMarker_BothForms(t *testing.T) {
+	cases := []struct {
+		in, wantReason string
+		wantOK         bool
+	}{
+		{"crenel-ack:api-path-auth-bypass", "api-path-auth-bypass", true},                         // legacy bare
+		{"crenel-ack:agent-vault.example.com:api-path-auth-bypass", "api-path-auth-bypass", true}, // host-qualified
+		{model.AckMarkerFor("Agent-Vault.Example.com", "slug-1"), "slug-1", true},                 // builder round-trip (host lowercased)
+		{"# crenel-ack:wildcard.example:carve-out trailing", "carve-out", true},                   // embedded in a comment blob
+		{"crenel-route-vault.example.com", "", false},                                             // ownership marker is NOT an ack
+		{"", "", false},
+	}
+	for _, c := range cases {
+		got, ok := model.ParseAckMarker(c.in)
+		if ok != c.wantOK || got != c.wantReason {
+			t.Errorf("model.ParseAckMarker(%q) = (%q, %v), want (%q, %v)", c.in, got, ok, c.wantReason, c.wantOK)
+		}
+	}
+	if got := model.AckMarkerFor("app.example.com", "r1"); got != "crenel-ack:app.example.com:r1" {
+		t.Errorf("AckMarkerFor = %q", got)
+	}
+}

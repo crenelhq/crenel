@@ -32,6 +32,19 @@ type Config struct {
 	EdgeAddr string      // the address rewrites point at (the INTERNAL edge, e.g. home Caddy)
 	Doer     Doer        // injected control-API channel; defaults to a real OSDoer
 
+	// Targets maps a host's RESIDENCY class (model.Op.Residency — operator-declared,
+	// e.g. "vps" for an edge-resident host) to the address THIS instance answers for
+	// hosts of that class: the per-HOST half of the reference architecture's
+	// `target(class, vantage)` rule (docs/REFERENCE-ARCH-split-horizon.md §2). The
+	// instance IS the vantage (home instance = non-tunnel clients, vps instance =
+	// tunnel clients), so each instance carries its own map — e.g. the home resolver
+	// maps "vps" to the PUBLIC edge IP (LAN clients must route via the internet edge)
+	// while the vps resolver maps "vps" to the tunnel-direct address. EdgeAddr remains
+	// the home-resident DEFAULT (class ""), so a config without targets behaves
+	// byte-identically to before. A class with no entry here is REFUSED loudly
+	// (ResidencyTarget) — a vantage target is never guessed.
+	Targets map[string]string
+
 	// Instance is an OPTIONAL stable label distinguishing THIS AdGuard instance from
 	// another managed in the same scope+zone — e.g. "home" and "vps" for a dual-resolver
 	// split-horizon where one resolver answers tunnel clients and the other answers
@@ -49,6 +62,13 @@ type Config struct {
 	// evaluated independently against THIS instance's endpoint; Instance only makes that
 	// per-instance attribution legible. It is not a marker stored on the instance.
 	Instance string
+
+	// ZoneInName, when set, appends "/<zone>" to Name() — set by wiring ONLY when
+	// this instance came from a multi-entry `zones:` list, so the otherwise
+	// identical per-zone siblings (same type, same instance label) stay
+	// distinguishable in every plan/apply/verify/audit label. Single-zone
+	// instances keep their exact pre-zones-list name (byte-identical output).
+	ZoneInName bool
 }
 
 // Driver implements ports.DNSProvider against the AdGuard Home control API.
@@ -74,12 +94,23 @@ func New(cfg Config) *Driver {
 // providers (a dual-resolver split-horizon) are distinguishable everywhere a provider
 // label is built — "adguard[home]" vs "adguard[vps]" rather than a colliding "adguard".
 func (d *Driver) Name() string {
+	name := "adguard"
 	if d.cfg.Instance != "" {
-		return "adguard[" + d.cfg.Instance + "]"
+		name = "adguard[" + d.cfg.Instance + "]"
 	}
-	return "adguard"
+	// A `zones:`-list sibling carries its zone in the label — otherwise a
+	// two-zone expansion would print two indistinguishable "adguard[home]" lines.
+	if d.cfg.ZoneInName {
+		name += "/" + d.cfg.Zone
+	}
+	return name
 }
 func (d *Driver) Scope() model.Scope { return d.cfg.Scope }
+
+// ManagedZone implements ports.ZoneReporter: the zone this instance is confined to.
+// core uses it to route each host to only the providers whose zone covers it (the
+// multi-zone edge case) — the read-side twin of the guard() write confinement below.
+func (d *Driver) ManagedZone() string { return d.cfg.Zone }
 
 // rewrite is the AdGuard control-API rewrite shape (GET list / POST add / POST delete).
 type rewrite struct {
@@ -87,16 +118,39 @@ type rewrite struct {
 	Answer string `json:"answer"`
 }
 
+// ResidencyTarget implements ports.ResidencyTargeter: it resolves an operator-
+// declared residency class to THIS instance's vantage-correct answer. "" (the
+// home-resident default) is the configured EdgeAddr — unchanged, back-compat. A
+// non-default class must have an explicit entry in Targets; a missing one is a LOUD,
+// instance-naming refusal (surfaced by core at plan time, before any write) because
+// answering the default EdgeAddr for an edge-resident host would misdirect this
+// whole vantage — the exact silent-wrong-target failure crenel exists to prevent.
+func (d *Driver) ResidencyTarget(class string) (string, error) {
+	if class == "" {
+		return d.cfg.EdgeAddr, nil
+	}
+	if addr, ok := d.cfg.Targets[class]; ok && addr != "" {
+		return addr, nil
+	}
+	return "", fmt.Errorf("%s: no target configured for residency class %q — add targets: {%s: <address>} to this provider (a vantage target is never guessed)",
+		d.Name(), class, class)
+}
+
 // DesiredRecords returns the single internal record the op concerns: the op's host
-// rewritten to the internal edge address.
+// rewritten to this instance's residency-resolved target — EdgeAddr for the
+// home-resident default, the instance's Targets[class] for a declared class.
 func (d *Driver) DesiredRecords(op model.Op) ([]model.Record, error) {
 	if op.Host == "" {
 		return nil, fmt.Errorf("adguard: op has no host")
 	}
+	target, err := d.ResidencyTarget(op.Residency)
+	if err != nil {
+		return nil, err
+	}
 	return []model.Record{{
 		Name:  op.Host,
-		Type:  recordType(d.cfg.EdgeAddr),
-		Value: d.cfg.EdgeAddr,
+		Type:  recordType(target),
+		Value: target,
 		Scope: d.cfg.Scope,
 	}}, nil
 }

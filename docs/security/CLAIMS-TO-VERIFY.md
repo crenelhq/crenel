@@ -254,10 +254,10 @@ has explicitly set `dedicated_zone: true`.
 
 ---
 
-## I. Read-only MCP server (branch `feat/crenel-mcp`)
+## I. Read-only MCP server (`crenel mcp`)
 
 **Claim:** the MCP server is read-only **by construction**, not merely by
-runtime refusal. Its Go type only ever holds a narrow `readOnlyEngine`
+runtime refusal. Its Go type only ever holds the narrow `core.ReadOnlyEngine`
 interface exposing `Status`/`Audit`/`DetectDrift`, so no mutating `core.Engine`
 method is reachable through the server's held reference, regardless of what a
 malicious or malformed `tools/call` request contains.
@@ -269,19 +269,19 @@ malicious or malformed `tools/call` request contains.
 - Attempt to smuggle a mutating request through malformed/unexpected JSON-RPC
   params. Confirm it errors rather than being loosely parsed into something
   that reaches a wider interface.
-- Check whether `readOnlyEngine` can be **widened** by a caller of `newMCPServer`
+- Check whether `core.ReadOnlyEngine` can be **widened** by a caller of `newMCPServer`
   passing something other than what the CLI wires up. In other words, is the
   read-only property actually enforced by the *type* (compile-time), or does
   it just happen to be true of the one call site today? (The claim is
   compile-time. Confirm it, don't just spot-check the current wiring.)
 
-**Mechanism / where to look:** `cmd/crenel/mcp.go`: the `readOnlyEngine`
-interface, the `mcpServer` struct, the
-`var _ readOnlyEngine = (*core.Engine)(nil)` assertion.
-This is on branch `feat/crenel-mcp` (not yet on `develop`; see AUDIT.md §6 for
-how to get it). No dedicated test file existed as of this writing beyond the
-compile-time assertion, so writing an adversarial test here (fuzz `tools/call`
-params) is itself a useful contribution, not just a check.
+**Mechanism / where to look:** `cmd/crenel/mcp.go`: the `mcpServer` struct
+holding `core.ReadOnlyEngine` (defined in `internal/core/readonly.go`, with the
+`var _ ReadOnlyEngine = (*Engine)(nil)` assertion). Anchoring tests:
+`cmd/crenel/mcp_test.go` (handshake, catalog, no mutating tool advertised or
+callable) and `cmd/crenel/mcp_write_test.go` (two-phase gate, plan-id mismatch,
+public-without-auth refusal). Fuzzing `tools/call` params further is still a
+useful contribution.
 
 ---
 

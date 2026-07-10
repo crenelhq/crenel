@@ -224,6 +224,65 @@ func (e *Engine) BuildOp(verb model.Verb, service string) model.Op {
 	return model.Op{Verb: verb, Service: service, Host: host}
 }
 
+// ResolveOp is the MULTI-ZONE-aware front door for op construction (the CLI and
+// the MCP write tools come through here). A full FQDN always works, verbatim.
+// A BARE name resolves against the MANAGED zones (top-level Zone + every
+// provider-declared zone):
+//
+//   - the top-level zone stays the DEFAULT derivation (decision: no behavior
+//     change for any existing config) — a bare name with no contrary evidence
+//     derives to "<service>.<Zone>" exactly as BuildOp always has;
+//   - evidence that the name lives in a SPECIFIC zone is an edge with an
+//     explicit origins map fronting either the bare name (⇒ the default zone —
+//     bare keys have always meant "<service>.<Zone>") or the per-zone FQDN
+//     "<service>.<z>" (the only way a non-default-zone service could be keyed
+//     before zones-list);
+//   - evidence for exactly ONE non-default zone (and none for the default)
+//     redirects the bare name there — Service AND Host become the FQDN, so the
+//     Fronts/origins lookups hit the key that actually exists;
+//   - evidence under 2+ zones is REFUSED loudly, listing every candidate FQDN:
+//     a bare name that exists in several zones must be said out loud.
+//
+// Engines whose every edge fronts-everything (nil predicate) carry no keying
+// evidence at all and always take the default derivation — unchanged.
+func (e *Engine) ResolveOp(verb model.Verb, service string) (model.Op, error) {
+	service = strings.TrimSpace(service)
+	if strings.Contains(service, ".") {
+		// FQDN: verbatim, exactly like BuildOp. (It may still be a bare
+		// multi-label service name; the zone routing treats it as a host either
+		// way, which is the pre-zones contract.)
+		return e.BuildOp(verb, service), nil
+	}
+	// Candidate zones with EVIDENCE, in stable managed-zone order (default first).
+	var cands []string // the candidate HOSTS, one per evidenced zone
+	defaultEvidence := e.Zone != "" && (e.explicitlyFronts(service) || e.explicitlyFronts(service+"."+e.Zone))
+	if defaultEvidence {
+		cands = append(cands, service+"."+e.Zone)
+	}
+	var nonDefault []string
+	for _, z := range e.providerZones() {
+		if strings.EqualFold(z, e.Zone) {
+			continue
+		}
+		if e.explicitlyFronts(service + "." + z) {
+			nonDefault = append(nonDefault, service+"."+z)
+		}
+	}
+	cands = append(cands, nonDefault...)
+	switch {
+	case len(cands) >= 2:
+		return model.Op{}, fmt.Errorf("bare service %q is ambiguous across managed zones — say the host out loud: %s", service, strings.Join(cands, " | "))
+	case len(cands) == 1 && !defaultEvidence:
+		// Uniquely known under one NON-default zone: resolve to that FQDN for
+		// both Service and Host so the origins/Fronts key that exists is the
+		// one every downstream lookup uses.
+		return model.Op{Verb: verb, Service: cands[0], Host: cands[0]}, nil
+	default:
+		// Default-zone evidence, or no evidence anywhere: the classic derivation.
+		return e.BuildOp(verb, service), nil
+	}
+}
+
 // Plan computes the unified ChangeSet (every participating edge + DNS) for an op
 // against live state. It FANS OUT across the edge topology (M4): for each edge
 // that fronts the op's service it reads that edge's live state and plans against
@@ -247,6 +306,11 @@ func (e *Engine) Plan(ctx context.Context, op model.Op) (model.ChangeSet, error)
 	cs := model.ChangeSet{Op: op}
 	participating := 0
 	for _, b := range e.Edges {
+		// Edge appointment (Op.Edges): restrict the fan-out to the named edge(s),
+		// through the same predicate the declarative path uses for Exposure.Edges.
+		if !edgeSelected(op.Edges, b.Name) {
+			continue
+		}
 		role := e.roleFor(b, op.Service)
 		if role == roleNone {
 			continue
@@ -282,11 +346,41 @@ func (e *Engine) Plan(ctx context.Context, op model.Op) (model.ChangeSet, error)
 		})
 	}
 	if op.Verb == model.Expose && participating == 0 {
+		if len(op.Edges) > 0 {
+			return model.ChangeSet{}, fmt.Errorf("no configured edge in %v fronts service %q", op.Edges, op.Service)
+		}
 		return model.ChangeSet{}, fmt.Errorf("no configured edge fronts service %q", op.Service)
 	}
 
 	// Aggregate every DNS provider into the same ChangeSet, one per provider.
+	// cs.DNS stays POSITIONALLY ALIGNED with e.DNS (see the doc comment): a DNS
+	// scope NOT appointed by Op.Scopes contributes an EMPTY change in its slot
+	// rather than being dropped — so `--scope internal` writes the internal record
+	// and simply omits the public one (nothing "goes public"), without misaligning
+	// the DNS slices Apply/verify index by position.
 	for _, dp := range e.DNS {
+		// Two independent skip predicates, composed (either leaves the positionally
+		// aligned EMPTY change in this provider's slot):
+		//  - scope appointment (Op.Scopes): `--scope internal` deliberately leaves
+		//    the public provider alone;
+		//  - zone routing (multi-zone): a provider whose declared zone does not
+		//    cover the op's host is not asked for records at all — a zone-confined
+		//    driver would refuse the out-of-zone write (its guard), and that refusal
+		//    is the CORRECT posture in a two-zone topology, not an error.
+		if !scopeSelected(op.Scopes, dp.Scope()) || !dnsCoversHost(dp, op.Host) {
+			cs.DNS = append(cs.DNS, model.DNSChange{Scope: dp.Scope()})
+			continue
+		}
+		// Residency gate (the residency selector, REFERENCE-ARCH §2): a non-default
+		// residency class asks each INTERNAL provider for its own vantage-correct
+		// target, so a participating internal provider that cannot resolve classes at
+		// all must refuse LOUDLY here — silently writing its default edge_addr would
+		// misdirect an entire vantage. Providers that DO resolve (ResidencyTargeter)
+		// refuse an unknown class themselves inside DesiredRecords below; public
+		// providers ignore residency by design (the public answer is class-invariant).
+		if err := residencySupported(dp, op.Residency); err != nil {
+			return model.ChangeSet{}, err
+		}
 		desired, err := dp.DesiredRecords(op)
 		if err != nil {
 			return model.ChangeSet{}, fmt.Errorf("dns %s desired records: %w", dp.Name(), err)

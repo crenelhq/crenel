@@ -35,11 +35,11 @@ func TestOSCaddyCLI_ReloadArgs_ExplicitAddress(t *testing.T) {
 // reload targets the exact IPv4 endpoint crenel's HTTP writes already use.
 func TestDriver_AdminAddress(t *testing.T) {
 	cases := map[string]string{
-		"http://127.0.0.1:2019":      "127.0.0.1:2019",
-		"http://127.0.0.1:2019/":     "127.0.0.1:2019",
+		"http://127.0.0.1:2019":    "127.0.0.1:2019",
+		"http://127.0.0.1:2019/":   "127.0.0.1:2019",
 		"https://10.0.0.13:2019/x": "10.0.0.13:2019",
-		"127.0.0.1:2019":             "127.0.0.1:2019",
-		"":                           "",
+		"127.0.0.1:2019":           "127.0.0.1:2019",
+		"":                         "",
 	}
 	for in, want := range cases {
 		d := &Driver{adminURL: in}

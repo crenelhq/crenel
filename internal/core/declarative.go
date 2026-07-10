@@ -29,6 +29,14 @@ type Exposure struct {
 	Auth   string        `json:"auth,omitempty"`
 	Edges  []string      `json:"edges,omitempty"`
 	Scopes []model.Scope `json:"dns,omitempty"`
+	// Residency is the host's operator-declared residency class (the residency
+	// selector — model.Op.Residency's declarative twin): "" = home-resident (every
+	// internal resolver answers its default edge_addr — today's behavior), else a
+	// class (e.g. "vps") each internal provider resolves against its OWN `targets`
+	// map to a vantage-correct answer. A class some participating provider has no
+	// target for refuses the whole apply at plan time — never guessed. See
+	// docs/REFERENCE-ARCH-split-horizon.md §2.
+	Residency string `json:"residency,omitempty"`
 }
 
 // DeclarativeOptions tunes apply. Adopt brings matching present-but-unmanaged
@@ -346,7 +354,19 @@ func (e *Engine) planDeclarative(ctx context.Context, exposures []Exposure, opts
 				continue
 			}
 			host := e.exposureHost(ex)
-			desired, err := dp.DesiredRecords(model.Op{Verb: model.Expose, Service: ex.Service, Host: host})
+			// Zone routing (multi-zone): only providers whose zone covers the host
+			// hold records for it; a zone-confined driver is FORBIDDEN the rest.
+			if !dnsCoversHost(dp, host) {
+				continue
+			}
+			// Residency gate + resolution (mirror of engine.Plan): the exposure's class
+			// rides the op, so each internal provider resolves ITS OWN vantage-correct
+			// target — or refuses loudly (no capability / no target for the class)
+			// BEFORE anything is written.
+			if err := residencySupported(dp, ex.Residency); err != nil {
+				return plan, fmt.Errorf("apply: exposure %s: %w", host, err)
+			}
+			desired, err := dp.DesiredRecords(model.Op{Verb: model.Expose, Service: ex.Service, Host: host, Residency: ex.Residency})
 			if err != nil {
 				return plan, fmt.Errorf("dns %s desired records: %w", dp.Name(), err)
 			}
@@ -414,13 +434,9 @@ func (e *Engine) exposureHost(ex Exposure) string {
 // targetEdges returns the bindings an exposure lands on: the named subset that
 // also fronts the service, or (when no edges are named) every binding that fronts it.
 func (e *Engine) targetEdges(ex Exposure) []EdgeBinding {
-	named := map[string]bool{}
-	for _, n := range ex.Edges {
-		named[n] = true
-	}
 	var out []EdgeBinding
 	for _, b := range e.Edges {
-		if len(named) > 0 && !named[b.Name] {
+		if !edgeSelected(ex.Edges, b.Name) {
 			continue
 		}
 		if !b.fronts(ex.Service) {
@@ -431,18 +447,43 @@ func (e *Engine) targetEdges(ex Exposure) []EdgeBinding {
 	return out
 }
 
-// scopeWanted reports whether an exposure includes the given DNS scope (empty
-// Scopes means every configured scope).
-func scopeWanted(ex Exposure, scope model.Scope) bool {
-	if len(ex.Scopes) == 0 {
+// edgeSelected reports whether an edge named `name` is appointed by `names` — the
+// caller's named-edge subset (empty subset ⇒ every edge). It is the ONE
+// edge-selection rule shared by the declarative path (Exposure.Edges, via
+// targetEdges) and the imperative op path (Op.Edges, in engine.Plan), so both
+// appoint routes to edges identically.
+func edgeSelected(names []string, name string) bool {
+	if len(names) == 0 {
 		return true
 	}
-	for _, s := range ex.Scopes {
+	for _, n := range names {
+		if n == name {
+			return true
+		}
+	}
+	return false
+}
+
+// scopeSelected reports whether `scope` is appointed by `scopes` — the caller's
+// requested DNS-scope subset (empty ⇒ every configured scope). It is the ONE
+// scope-selection rule shared by the declarative path (Exposure.Scopes, via
+// scopeWanted) and the imperative op path (Op.Scopes, in engine.Plan/verify).
+func scopeSelected(scopes []model.Scope, scope model.Scope) bool {
+	if len(scopes) == 0 {
+		return true
+	}
+	for _, s := range scopes {
 		if s == scope {
 			return true
 		}
 	}
 	return false
+}
+
+// scopeWanted reports whether an exposure includes the given DNS scope (empty
+// Scopes means every configured scope).
+func scopeWanted(ex Exposure, scope model.Scope) bool {
+	return scopeSelected(ex.Scopes, scope)
 }
 
 // declarativeNewPublic computes which hosts this apply makes newly public: those
@@ -551,11 +592,24 @@ func (e *Engine) verifyDeclarative(ctx context.Context, plan DeclarativePlan) []
 			continue
 		}
 		liveSet := recKeySet(recs)
+		// Value-AWARE add verification (residency parity with apply.go verifyDNS):
+		// present-by-name is not enough when instances legitimately hold DIVERGENT
+		// values for the same name — each provider must read back ITS OWN resolved
+		// target, so a write that landed the wrong vantage value can never verify green.
+		liveByKey := make(map[string]model.Record, len(recs))
+		for _, r := range recs {
+			liveByKey[r.Key()] = r
+		}
 		ok, detail := true, "records consistent"
 		if i < len(plan.Change.DNS) {
 			for _, add := range plan.Change.DNS[i].Add {
-				if !liveSet[add.Key()] {
+				cur, present := liveByKey[add.Key()]
+				if !present {
 					ok, detail = false, fmt.Sprintf("record %s expected present but missing", add.Key())
+					break
+				}
+				if !strings.EqualFold(strings.TrimSpace(cur.Value), strings.TrimSpace(add.Value)) {
+					ok, detail = false, fmt.Sprintf("record %s present but value %q != expected %q", add.Key(), cur.Value, add.Value)
 					break
 				}
 			}

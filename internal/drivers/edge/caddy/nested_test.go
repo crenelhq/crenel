@@ -63,11 +63,11 @@ func TestReadLiveState_NestedSubrouteEnumeratesLeaves(t *testing.T) {
 
 	// Each real per-host service is enumerated with its real leaf dial.
 	want := map[string]string{
-		"jelly.homelab.example":    "100.100.0.13:8096", // managed flat top-level route
-		"vault.homelab.example":    "100.100.0.10:8200", // wildcard → subroute → per-host → subroute → leaf
-		"git.homelab.example":      "100.100.0.11:3000", // adopted nested (carries crenel @id)
-		"photos.homelab.example":   "100.100.0.12:2342", // nested with an auth handler
-		"cloud.homelab.example":    "100.100.0.99:9999", // nested, per-host route forwards directly
+		"jelly.homelab.example":   "100.100.0.13:8096", // managed flat top-level route
+		"vault.homelab.example":   "100.100.0.10:8200", // wildcard → subroute → per-host → subroute → leaf
+		"git.homelab.example":     "100.100.0.11:3000", // adopted nested (carries crenel @id)
+		"photos.homelab.example":  "100.100.0.12:2342", // nested with an auth handler
+		"cloud.homelab.example":   "100.100.0.99:9999", // nested, per-host route forwards directly
 		"status.smallbiz.example": "100.100.0.20:3001", // second wildcard zone
 	}
 	for host, dial := range want {
@@ -203,8 +203,8 @@ func TestAdopt_NestedPerHostRoute(t *testing.T) {
 		"crenel-route-git.homelab.example",   // pre-existing nested @id survives
 		"crenel-route-jelly.homelab.example", // top-level @id survives
 		"100.100.0.99:9999",                  // cloud leaf untouched
-		"status.smallbiz.example",           // other zone untouched
-		`"http_basic"`,                      // photos' hand-built auth handler preserved
+		"status.smallbiz.example",            // other zone untouched
+		`"http_basic"`,                       // photos' hand-built auth handler preserved
 	} {
 		if !strings.Contains(raw, must) {
 			t.Errorf("adopt lost/omitted %q:\n%s", must, raw)

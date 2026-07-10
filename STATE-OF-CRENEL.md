@@ -10,14 +10,36 @@
 > Companions: **docs/internal/DESIGN.md** (architecture + invariants), **docs/internal/TOPOLOGY-RISK-REGISTER.md**
 > (the long-tail safety spec — authoritative for §4 / the backlog), **docs/internal/STRAIN.md**
 > (where the port strains), **docs/internal/AUTH-DESIGN.md** / **docs/internal/USABILITY-DESIGN.md** (feature
-> semantics), **archive/BUILD_LOG.md** (per-increment narrative).
+> semantics), **archive/BUILD_LOG.md** (per-increment narrative; private repo).
 >
 > **Anonymized for publication:** the maintainer's hostnames/zones/addresses appear
 > throughout as consistent pseudonyms (`homelab.example`, `smallbiz.example`,
 > RFC 5737/1918 ranges, generic host labels).
 >
-> _Last updated 2026-07-04 (public launch + independent audit follow-through: F5/F3/F2/
-> ack-marker batch). Verified against `develop` HEAD `fd577e7`._
+> _Last updated 2026-07-10 (adaptive HUD; audit-any-edge M-A1–M-A6; dual-AdGuard
+> write-path test gate; MCP server (read-only + `--write` two-phase gated); Pi-hole
+> v6 provider; multi-zone internal DNS; seven live dogfood fixes). Verified against
+> `develop` HEAD `a2def5c`. Public GitHub snapshot mirror is at `v0.4.5` (see below —
+> no corresponding tag exists on `develop`; the snapshot is a separately-maintained
+> scrubbed mirror per `docs/internal/README.md`'s snapshot-flow convention)._
+>
+> **2026-07-10 pass (adaptive HUD → audit-any-edge → MCP → Pi-hole → multi-zone DNS →
+> seven dogfood fixes).** Six feature branches plus one dogfood-fix branch merged to
+> `develop` this week (`a2def5c`, from `c0932eb`, the relaunch-repositioning point).
+> Headline: the audit posture goes **read-only by construction** at the engine level
+> (`core.ReadOnlyEngine`) and that construction is now shared by three surfaces (`serve`
+> dashboard, the new zero-config `audit <target>` mode, and the new MCP server) — plus a
+> genuinely new capability, **auditing an edge Crenel doesn't manage** (M-A1–M-A6,
+> `docs/internal/AUDIT-ANYEDGE-DESIGN.md`). See §1 (M-A1–M-A6 row), §5j (adaptive HUD),
+> §5k (audit-any-edge), §5l (MCP server), §0a (Pi-hole provider + dual-AdGuard write
+> gate), §0b (multi-zone DNS), and §5m (the week's live-dogfood fixes) for the detail.
+> **Nothing in this pass is a new live production trial** beyond what §6.z A0 already
+> records (2026-06-28→06-30); the dual-AdGuard write path gained hermetic test coverage
+> (`737475b`, fakes only), not a new live multi-site cutover — see §0a for exactly what
+> is and isn't proven. The public GitHub snapshot's `v0.4.5` release notes describe this
+> work as "proven against a real production two-site edge" — **that claim is not backed
+> by a trial record in this repo** (no `TRIAL-RECORD-*2026-07*` exists) and should be
+> read skeptically; §0a states the actually-verified status.
 >
 > **Correctness milestone (this pass).** The offline-provable silently-wrong gaps the
 > roadmap had identified are closed: surgical record-level Cloudflare apply for shared
@@ -136,6 +158,82 @@ all restored byte-for-byte (operator-record — see **docs/internal/TRIAL-RECORD
 
 See **docs/DNS-DESIGN.md** (§5.2a-i/ii, §8.6/§9). `make check` green + race-clean.
 
+**Pi-hole v6 — third internal-DNS provider (this pass, `feat/pihole-provider`).** A
+second native internal-resolver driver alongside AdGuard, `internal/drivers/dns/pihole`,
+speaking the **Pi-hole v6 REST API** (`GET/PUT/DELETE /api/config/dns/hosts`) over the
+same injectable `Doer` seam AdGuard uses. Contract captured live against a real
+`pihole/pihole` container (core v6.4.3 / FTL v6.7); fixtures + transcript checked in
+under `internal/drivers/dns/pihole/testdata/`. Session-based auth (`POST /api/auth`
+→ `sid`, reused across calls, one re-auth-and-retry on 401). Honest divergences from
+AdGuard, each refused loudly rather than silently mismodeled: **IP-only targets** (a
+`dns.hosts` entry is a dnsmasq `IP host` line; a CNAME-shaped target is refused at plan
+time, not bounced off the API); **wildcards refused** (Pi-hole 400s a wildcard hostname
+— its wildcard answers live in dnsmasq conf files outside the API); **same-name
+duplicates are the trap, not an error** (Pi-hole allows two entries for one host with
+different IPs — Crenel's own conflict check refuses that ambiguity). Zone-confined,
+per-instance labeled (`pihole[vps]`), scope always `internal`, and — like AdGuard —
+does **not** implement `ports.OwnedRecordReporter` (a bare `IP host` string carries no
+ownership marker; a value-drift check would cry-wolf on the operator's own entries). A
+mixed `adguard[home]` + `pihole[vps]` split-horizon parity/drift behaves identically to
+a dual-AdGuard pair (`core.dns_parity_test`). **BUILT, fake-tested (real driver over a
+faithful `piholefake`) + unit; no live Pi-hole trial run.** See docs/DNS-DESIGN.md §3c.
+
+**Dual-AdGuard write-path gate (this pass, `feat/dual-adguard`, `737475b`).** The
+runbook's two-`scope:internal`-AdGuard-instance shape (`docs/REFERENCE-ARCH-split-
+horizon.md`) was believed expressible in existing config but had **no write-path test
+coverage** — this pass adds it: hermetic tests (the real `adguard` driver, one
+`adguardfake` per instance, no code change needed) prove one `expose` fans out to
+**both** instances (coinciding and vantage-divergent targets alike), read-back
+verification reads each instance through its own labeled endpoint
+(`adguard[home]`/`adguard[vps]`), a mid-transaction failure on the second instance
+rolls back the first's rewrite AND the edge route via independent compensators (naming
+the failing instance), unexpose removes each instance's own value without touching
+unrelated rewrites, a conflicting rewrite on one instance aborts the plan naming that
+instance, and `dns_coverage_parity` stays quiet after a divergent-target expose
+(parity compares coverage, never values). **Not built:** a per-HOST target within one
+provider (`adguard.Config` carries a single `EdgeAddr`; divergence is per-PROVIDER
+only — deliberately out of the runbook's first-build scope). **Status: BUILT, proven
+by hermetic tests against fakes only — this is NOT a new live trial.** The existing
+live dual-resolver proof from 2026-06-30 (§6.z A0) already covers a real dual-AdGuard
+*read* trial (`dns_coverage_parity` caught a real divergence live); this pass proves
+the *write* path works, against fakes. No new production cutover happened this week —
+see the headline note above re: the public snapshot's `v0.4.5` release-note overclaim.
+
+---
+
+## 0b. Multi-zone internal DNS (this pass, `feat/multizone-dns`, `cb03c0a`)
+
+One edge can serve hosts under several apex zones — the live shape driving this:
+one Caddy fronting both `*.homelab.example` and `*.smallbiz.example`. Config could
+already **express** a zone-confined provider (per-provider `zone`, since M3), but core
+routed every host to every internal-DNS provider regardless of zone, so a two-zone
+config either hard-errored (the AdGuard/Pi-hole zone guard refusing the out-of-zone
+write on every plan/reconcile) or cried wolf permanently (`edge_route_without_dns` on
+every host of the provider-less zone; coverage parity comparing resolvers of different
+zones as if they were peers).
+
+- **`ports.ZoneReporter`** — a new optional `DNSProvider` capability declaring the zone
+  a provider is confined to (`""` = unconfined, the back-compat default). Implemented
+  by AdGuard, Pi-hole, Cloudflare, and the dnscontrol adapter.
+- **Zone-aware routing** (`internal/core/dns_zone.go`) — plan / apply-verify /
+  declarative / reconcile consult each provider's declared zone and route a host only
+  to providers confined to (or unconfined for) its zone; a skipped provider keeps
+  `cs.DNS` positionally aligned as an empty change, and the apply read-back declares
+  "host outside this provider's managed zone" rather than silently no-op-ing.
+- **Zone-grouped coverage parity** — `dns_coverage_parity` now groups internal
+  resolvers **by zone**; cross-zone pairs hold disjoint host sets by construction and
+  are never compared (no more false "missing" across unrelated zones); within-zone
+  drift still fires unchanged.
+- **`edge_route_outside_managed_zones`** — a new, honest, quieter (ok-severity,
+  aggregated) audit finding for a host outside *every* managed zone — "no provider is
+  configured for this host's zone" — replacing the standing `edge_route_without_dns`
+  cry-wolf that finding used to trip; a host inside a managed zone but genuinely
+  missing its record still warns via `edge_route_without_dns` as before.
+
+Hermetic tests mirror the production shape (2 zones × 2 AdGuard instances internal +
+1 public single-zone) through the real AdGuard driver. **BUILT, fake-tested; no live
+multi-zone trial run.**
+
 ---
 
 ## 0. Headline
@@ -153,12 +251,13 @@ truth is what the edge reports live. Three load-bearing invariants:
    default-deny is reported ENFORCED only when fully parsed; Crenel **refuses to
    manage** a route/edge it doesn't own.
 
-**Verification status (current — develop `fd577e7`, post public-launch/audit-
-follow-through/ack-marker):** `go build ./... && go vet ./... && go test -race -count=1
-./...` all green — **17 test packages with tests, 545 test functions**, race-clean.
-~21.9k LOC of non-test Go. (Each PR in the correctness phase landed RED→GREEN with an
-adversarial-neuter RED proof; see §5i and §6. The 525-function count in the
-2026-07-03 independent audit predates this session's F2/F3/ack-marker tests.)
+**Verification status (current — develop `a2def5c`, post adaptive-HUD/audit-any-edge/
+MCP/Pi-hole/multi-zone-DNS/dogfood-fixes):** `go build ./... && go vet ./... && go
+test -race -count=1 ./...` all green — **18 test-package directories, 693 test
+functions**, race-clean. ~27k LOC of non-test Go. (Each PR in the correctness phase
+landed RED→GREEN with an adversarial-neuter RED proof; see §5i and §6. The 545-function
+count as of 2026-07-04 predates this week's M-A1–M-A6/MCP/dual-AdGuard/pihole/
+multi-zone/dogfood-fix tests.)
 
 **KNOWN-RISK BURNDOWN (latest):** four read/verify-side correctness items moved from
 known-risk → correct, each RED-before/GREEN-after with a live-faithful fake, no live infra.
@@ -218,7 +317,7 @@ structural refusal.
 
 ## 1. Milestone / capability map (what's built)
 
-Historical build order (all **BUILT** unless noted). Narrative in archive/BUILD_LOG.md.
+Historical build order (all **BUILT** unless noted). Narrative in archive/BUILD_LOG.md (private repo).
 
 | Track | What it delivered |
 |---|---|
@@ -248,17 +347,29 @@ Historical build order (all **BUILT** unless noted). Narrative in archive/BUILD_
 | **TRANSPORT** | **Pluggable connection axis** (`ports.Transport`): the Caddy admin driver makes the SAME calls through a transport — `direct` (default; zero behavior change), `ssh-exec` (nested-exec curl against a loopback admin — no port, no tunnel), `ssh-tunnel` (crenel-managed local forward). Per-edge `transport` config; never-hang + wedge classification preserved above the seam. LIVE read-only-verified against the home edge over ssh-exec. See §5e. |
 | **DURABLE-PERSIST** | **Persistence model as a detect-and-declare property + the durable home-edge Caddyfile reconciler.** `model.PersistenceModel` per edge (durable-config/durable-file/resume/ephemeral-admin/unknown) surfaced by status/audit + a write-path ephemeral warning (`ports.DurabilityReporter`); the wildcard-site reconciler makes an admin-API write SURVIVE a restart by reconciling it into the on-disk boot Caddyfile, **proven to re-adapt to live before commit** (no second SOT), over the home edge's two exec channels. Read-only-verified the boot model live; durable WRITE **PROVEN LIVE** (expose + restart-survival + unexpose, byte-for-byte; TRIAL-RESULT-durable-persist-2026-06-28.md). See §5g. |
 | **SECURITY** | **Threat model (SECURITY.md) + field-level secret redaction.** SECURITY.md formalizes the sensitive-data inventory, the loopback-first transport trust model (network-exposing the plaintext/unauthenticated admin API is THE anti-pattern), per-boundary adversary analysis, and operator guidance. `internal/redact` masks secret-bearing fields (key patterns + PEM/bcrypt/JWT/Bearer value heuristics) in OUTPUT only — `status --json` excerpts, admin-body error echoes, rollback prints, `export --redacted` — gated by `--show-secrets`; exports are `0600`. Apply/verify/preserve keep REAL values. See §5f. |
+| **HUD-ADAPTIVE** | **The status HUD sizes to the real terminal.** `ttySize` (raw `TIOCGWINSZ` via stdlib syscall, zero-deps preserved) resolves real columns/rows instead of assuming 121×36; `heightScaleFor` picks the largest wordmark scale whose full HUD fits, down to a **crown-only** render (scale 0, lettering dropped) for terminals too short even for scale-1; small-scale letterforms (2–3) render flat brand-green instead of the eroded bevel gradient; scale ≥4 keeps the graded rim-light bevel. See §5j. |
+| **M-A1–M-A6** | **Audit-any-edge: a read-only engine posture + zero-config audit targets.** `Engine.ReadOnly` (config `read_only: true`) refuses every mutating verb before any driver `Plan`/`Apply` is reached, exported as the narrow `core.ReadOnlyEngine` interface shared by `serve`, `audit <target>`, and the MCP server. New zero-config `audit <target>` positional modes: a Caddy admin URL or Caddyfile path (M-A2), an NPM tree directory (M-A3), a Traefik API URL incl. Pangolin (M-A4), a caddy-docker-proxy `Caddyfile.autosave` directory (M-A5), plus a forced `--assume-public-boundary`/`--internal` boundary declaration and an opt-in `--probe` (M-A6). See §5k. |
+| **MCP** | **`crenel mcp` — an MCP server over stdio for an LLM agent.** Default read-only (`crenel_status`/`crenel_audit`/`crenel_drift`, compiler-enforced via `core.ReadOnlyEngine` — a mutating call is unrepresentable, not merely refused); `crenel mcp --write` adds `crenel_plan`/`crenel_apply`, a two-phase gated write (plan returns a content-hash `plan_id`; apply commits only if `confirm_plan_id` re-derives against *current* live state, then runs the normal preview→apply→read-back-verify). See §5l. |
+| **DUAL-ADGUARD** | **Write-path test gate for two same-scope internal DNS providers.** Hermetic tests prove one `expose` fans out to both AdGuard instances (coinciding + vantage-divergent targets), per-instance labeled read-back/rollback/conflict handling. Fakes only — no new live trial this week. See §0a. |
+| **PIHOLE** | **Pi-hole v6 — third internal-DNS provider.** Native `internal/drivers/dns/pihole` driver over the Pi-hole v6 REST API (session auth), IP-only targets, wildcards refused, same-name-duplicate conflict guard. Fake-tested against a real-fixture-captured `piholefake`; no live Pi-hole trial. See §0a. |
+| **MULTIZONE-DNS** | **Zone-aware internal DNS provider routing.** `ports.ZoneReporter` confines a provider to a declared zone; core routes each host only to its zone's providers; `dns_coverage_parity` groups resolvers by zone; a new `edge_route_outside_managed_zones` finding replaces the cross-zone `edge_route_without_dns` cry-wolf. Fake-tested; no live multi-zone trial. See §0b. |
 
 ### CLI surface (verified against `crenel help` + dispatch)
 
-Read-only: `status` (`--hud`/`--banner`/`--plain`/`--json`), `audit`, `preview
+Read-only: `status` (`--hud`/`--banner`/`--plain`/`--json`), `audit [target]` (M-A2–M-A6:
+a positional Caddy admin URL/Caddyfile path, NPM tree dir, Traefik API URL, or cdp
+autosave dir; `--assume-public-boundary`/`--internal`/`--probe` — see §5k), `preview
 <expose|unexpose> <svc>` / `preview rename <old-host> <new-host>`, `drift`, `export <file>
-[--redacted]`. Mutating (preview → confirm → apply → read-back-verify):
+[--redacted]`, `serve` (`dashboard`) — the read-only web HUD, `mcp [--write]` — the
+MCP server over stdio (§5l). Mutating (preview → confirm → apply → read-back-verify):
 `expose`/`unexpose`/`set <svc> <on|off>`, **`rename <old-host> <new-host>`** (the one-command
 atomic move: add new copying the source backend/auth/mode + remove old, make-before-break,
-durable, rolled back as a unit — `feat/rename-verb`), `resume`, `reconcile`,
-`import [--dry-run]`, `apply <file> [--adopt|--prune|--dry-run]`. Scaffold: `init [dir]`. Plus
-`version`/`help`.
+durable, rolled back as a unit — `feat/rename-verb`), `resume`, `reconcile`, `ack`/`unack`
+<host> [reason] (operator acknowledgment of an intentionally-unmodeled route — see the
+2026-07-04 headline and this pass's §5m ack fixes), `import [--dry-run]`, `apply <file>
+[--adopt|--prune|--dry-run]`. Scaffold: `init [dir]`. Plus `version`/`help`. **All**
+mutating verbs refuse before any driver `Plan`/`Apply` when `Engine.ReadOnly` is set
+(config `read_only: true` — M-A1, §5k).
 
 Global flags: `-config -admin-url -zone -fake-seed -yes -force -json -show-secrets
 -granular -layer4 -caddy-persist -mode -auth -param`. As of this pass, the post-settings-load
@@ -291,8 +402,12 @@ loudly · — n/a.
 
 DNS (v0.3.1, EXPERIMENTAL/opt-in — see §0a): **dnscontrol** adapter for **Cloudflare**
 (public, `CLOUDFLAREAPI` via real `OSShell`) + a native **AdGuard Home** control-API driver
-(internal rewrites); split-horizon **internal** + **public** scopes; off by default, mock
-when unconfigured (the test seam — no real provider in any test). Adoption is by
+(internal rewrites) + a native **Pi-hole v6** control-API driver (internal `dns.hosts`
+entries, IP-only, session auth — see §0a); split-horizon **internal** + **public** scopes;
+off by default, mock when unconfigured (the test seam — no real provider in any test).
+Multiple same-scope internal providers (dual-AdGuard, mixed AdGuard+Pi-hole) are
+per-instance labeled and write-path tested (§0a); multi-zone edges route each host only
+to its zone's provider(s) via `ports.ZoneReporter` (§0b). Adoption is by
 **recognition** (no marker — deliberately, to avoid reintroducing stored state); the
 whole-zone Cloudflare push requires `dedicated_zone: true` (ownership default-deny). Origin
 resolution: **static** map driver, per-edge.
@@ -790,6 +905,139 @@ world failure shape, so each fix is rigorously verified offline.
 closed. The detect-and-declare invariant still holds for everything past this line —
 items in §6.z buckets B/C read as declared unknowns, not confident wrong answers.
 
+### 5j. HUD-ADAPTIVE — the status HUD sizes to the real terminal (this pass, `feat/hud-adaptive-size` + `fix/hud-height-budget`)
+
+The flagship first-run surface (`crenel status --hud`) only rendered correctly at
+122×36 or larger. Width resolution was `-width` → `COLUMNS` env → an optimistic
+121-column assumption (no ioctl, and most shells don't export `COLUMNS`), so a stock
+80-column terminal wrapped the half-block wordmark into garbage; the full HUD is ~33
+rows, so anything shorter scrolled the battlement crown off the top before the
+command finished printing.
+
+- **`ttySize`** (`cmd/crenel/termsize_unix.go`) — raw `TIOCGWINSZ` via the stdlib
+  `syscall` package (no new dependency; build-tagged `linux|darwin`, no-op fallback
+  elsewhere). `termCols` now falls back to the ioctl before the 121-column default,
+  which applies only to non-TTY output (pipes/asset generation stay byte-identical).
+  New `termRows` (`LINES` env, then ioctl; `0` = unknown) + a `-height` flag.
+- **`ui.Style.Rows` / `heightScaleFor`** — picks the largest wordmark scale whose full
+  HUD (banner + legend + the edge-detail listing + the shell prompt row that follows
+  on the same screen — `hudDetailHeadroom`, added in the `fix/hud-height-budget`
+  follow-up after live testing at a real 100×30 pty showed the first cut stopped
+  short by ~5 rows) fits the terminal. `Rows=0` renders byte-identical to the
+  height-unaware path.
+- **Crown-only mode is real** (scale 0): for terminals too short even for scale-1
+  lettering, the wall renders the crenellated crown with no wordmark lettering at
+  all — a stock 80×24 now shows castle + panel + detail without scrolling.
+  (`internal/ui/banner_test.go`: `TestWall_CrownOnlyAtStockTerminal`,
+  `TestWall_ShortTerminalKeepsCrownOnScreen`.)
+- **Flat letterforms at small scale** (`fix(ui): flat letterform at small wordmark
+  scales`, `83d0d60`) — the bevel's ring gradient needs ≥4px strokes; scales 2–3
+  broke stroke tops and washed the rims under the graded pipeline, reading as a
+  redesign rather than the approved mark shrunk. Scales below 4 now render the same
+  letterform pixel grid nearest-neighbour-scaled in flat brand green; the graded
+  rim-light bevel (`edbb1e3`, `feat(ui): rim-light gradient on small-scale
+  letterforms`) is reserved for scales with room for it.
+
+**Net:** 80×24 gets a compact crowned wall + glyph-notched gaps + stacked host
+labels; ≥122×33 still gets the approved full-scale mark with the graded bevel.
+**BUILT + unit-tested** (hermetic; no ioctl live-terminal trial beyond the
+maintainer's own dev sessions during the fix). See `internal/ui/banner.go`,
+`internal/ui/banner_test.go`.
+
+### 5k. Audit-any-edge — M-A1 through M-A6 (this pass, `docs/internal/AUDIT-ANYEDGE-DESIGN.md`)
+
+The design's own §0 correction reframes the whole feature: `audit <target>` is not a
+new verb, it's the *existing* `audit` extended with an optional positional TARGET, so
+"the day-0 verb is the day-100 verb." Milestones, in build order:
+
+| # | Commit | What |
+|---|---|---|
+| **M-A1** | `b3433d4` | **Read-only engine posture.** `Engine.ReadOnly` (config `read_only: true`): every mutating verb (`expose`/`unexpose`/`apply`/`reconcile`/`import`/`rename`/`resume`/`ack`/`unack`) refuses with `ErrReadOnlyEngine` **before** any driver `Plan`/`Apply` is reached. The exported `core.ReadOnlyEngine` narrow interface (`Status`/`Audit`/`DetectDrift`, `internal/core/readonly.go`) mirrors this for any consumer that only reads. Audit re-frames the edge-wide generator warning to ok-severity `foreign_managed_readonly` **only** when `Engine.ReadOnly` (suppression-with-a-reason, in the `auth_downstream` style); per-route ownership findings stay warnings. New `AuditScope` declares what was NOT evaluated. |
+| **M-A2** | `c84f4d5` | **Zero-config audit target: Caddy.** A positional target that is a Caddy admin URL or a Caddyfile path. |
+| **M-A3** | `c264513` | **NPM tree read** — zero-config audit of an `docker-compose`-generated Nginx Proxy Manager directory target. |
+| **M-A4** | `3aa38ba` | **Traefik API read mode** for URL targets, including **Pangolin** (Traefik under the hood) and docker-labels-driven Traefik. |
+| **M-A5** | `6c6dcbc` (half) | **caddy-docker-proxy directory target.** A new positive directory signature (`caddy.SniffCDPDir` on `Caddyfile.autosave`); a directory carrying BOTH the NPM and cdp signatures is refused as genuinely ambiguous — never ranked into a "best fit." Fixture captured from a real `lucaslorentz/caddy-docker-proxy` container on CT120 (three labeled whoami containers, one with forward-auth labels), checked in anonymized. Admin-URL-only targets now DECLARE the reduction ("generator detection unavailable over the Caddy admin API"). |
+| **M-A6** | `6c6dcbc` (half) | **Forced boundary declaration + opt-in `--probe`.** A zero-config target audit REFUSES (exit 2, before any socket) until the operator says the boundary out loud: `--assume-public-boundary` (keeps the conservative edge-boundary default) or `--internal` (declares the edge not internet-facing; downgrades the assumption-derived `public_without_auth` to ok-severity `exposure_unscoped` — an OBSERVED public host, tunnel-published or public-DNS-covered, is never downgraded; refused as a contradiction if a public DNS provider is configured). `--probe` (the only socket beyond the pasted target, flag-gated) upgrades evidence CONFIG→RUNTIME on a Caddyfile/cdp target by `GET`-ing `/config/` at the admin address the config itself declares; NPM trees honestly declare no runtime API exists to probe. |
+
+**Maintainer decisions locked in `docs/internal/AUDIT-ANYEDGE-DESIGN.md` §9
+(2026-07-09):** no `scout` alias (`audit <target>` is the one verb); exit 0 on an
+otherwise-clean foreign edge (`foreign_managed_readonly` stays ok-severity — cronning
+an NPM-box audit must not page nightly for the box being an NPM box); pasting a URL
+is consent to `GET` it, everything beyond stays behind `--probe`; the readers stay
+core/Apache-licensed (the open-core seam is the compliance/audit ledger, not audit
+ability); `--internal` is a forced explicit choice, `--auth none`-style; zero-config
+stops at plain reachability (a loopback-bound/authed Traefik API — Pangolin — is
+where the user writes a settings file, no `--ssh` flag in target mode); fixture
+capture on CT120 approved, checked in anonymized per existing fixture discipline.
+
+**Status: BUILT + unit/fixture-tested** (real captured fixtures for cdp; NPM/Traefik/
+Caddy targets tested against faithful fakes and the design's own fixtures). **No live
+`--probe` trial against a real running admin API beyond fixture capture is recorded.**
+
+### 5l. MCP server — read-only by default, `--write` two-phase gated (this pass, `feat/mcp-server`, `d2b4502`/`b8f579b`/`fad3777`/`cf7f887`)
+
+`crenel mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server
+over stdio for an LLM agent — the agent-facing analog of `crenel serve` (the
+read-only web HUD).
+
+- **Read-only mode (default).** Exactly three tools: `crenel_status`,
+  `crenel_audit`, `crenel_drift`. The server holds the engine only as
+  `core.ReadOnlyEngine` (the same M-A1 narrow interface `serve` and `audit <target>`
+  use), so a mutating call is not merely refused at runtime — it is
+  **unrepresentable** (would not compile). Secrets in not-understood config excerpts
+  are redacted in tool output; no `--show-secrets` escape hatch exists on this
+  server.
+- **`crenel mcp --write` — two-phase gated writes.** Adds `crenel_plan` (phase 1:
+  computes, does not apply, the exact change for a write verb against live state;
+  returns the diff + a content-hash `plan_id`, plus `goes_public`/`auth_required`)
+  and `crenel_apply` (phase 2: applies **only if** `confirm_plan_id` re-derives to
+  the same id against *current* live state, then runs the full
+  preview→apply→read-back-verify, rolled back on any failure). An agent cannot
+  short-circuit straight to apply.
+- **Composition proven** (`fad3777`, `TestMCP_WriteComposesWithEngineReadOnly`): an
+  engine constructed with `Engine.ReadOnly` refuses `crenel_apply` at the **engine**
+  layer (`ErrReadOnlyEngine`, before any driver Plan/Apply) even under `mcp --write`;
+  `crenel_plan` stays available (planning is a pure read, like CLI `preview`). The
+  refactor also dropped a private duplicate `readOnlyEngine` interface in
+  `cmd/crenel/mcp.go` in favor of holding `core.ReadOnlyEngine` directly, so `serve`,
+  `audit <target>`, and `mcp` now share one definition of the narrow read surface.
+- Docs: `docs/MCP.md` (user-facing), `docs/mcp/SKILL.md` (drop-in agent skill),
+  `docs/mcp/mcp.json` (ready `mcpServers` snippet).
+
+**Status: BUILT + unit-tested** (hermetic MCP protocol tests). **No live trial of an
+actual LLM agent driving the server against a real edge is recorded** — the
+composition proof and the tool-catalog/redaction guarantees are tested at the Go
+level, not exercised end-to-end by a real MCP client.
+
+### 5m. Seven live dogfood fixes (this pass — the maintainer's own multi-site/multi-zone build)
+
+Building out the maintainer's real two-site (`homelab.example` / `smallbiz.example`),
+dual-AdGuard, durable-persist, containerized-edge setup surfaced seven distinct live
+findings this week, each fixed same-day. None required a rollback of production
+state (each is a normalize/render/CLI-surface fix, not a live-state mutation bug),
+and none of them is a new "production cutover" — they are correctness fixes found
+*while* dogfooding, the same pattern as the 2026-06-28→06-30 trial fixes already
+recorded in §5c/§5d/§5g.
+
+| # | Commit | What was wrong → the fix |
+|---|---|---|
+| 1 | `3b2c1d4` (TRIAL-FIX-DURABLE-3) | The on-disk persist path shells `caddy reload`, which defaults its admin target to `localhost:2019`; on a dual-stack host `localhost` resolved to `::1` first while Caddy's admin listens IPv4-only `127.0.0.1:2019` — reload failed `connection refused`, silently regressing the on-disk mirror (writes stopped surviving a restart) even though the live admin-API write itself succeeded. Fix: `OSCaddyCLI.Address`, derived from `admin_url`, threaded so `caddy reload --address <host:port>` targets the exact IPv4 endpoint, never bare `localhost`. |
+| 2 | `9ec9d13` (TRIAL-FIX-DURABLE-4) | TRIAL-FIX-DURABLE-3 was necessary but insufficient: the durable-persist reload defaulted to `OSCaddyCLI` shelling `caddy` on Crenel's **local** host via `os/exec`, not through the edge's admin transport — on the containerized home/prod edge (ssh-exec → `docker exec -i caddy sh`), the boot Caddyfile/binary/admin API all live **inside** the container, so the host-side reload adapted the on-disk file but then couldn't reach the container-only admin API. Fix: persist `validate`/`reload`/`adapt` now default onto the **same exec chain** the admin calls use whenever the transport is `ssh-exec` (`ExecCaddyCLI`/`ExecAdapter` over the transport's `Runner`); a Direct/on-box edge keeps the local `OSCaddyCLI` unchanged. |
+| 3 | `891b79e` (TRIAL-FIX-502) | A live trial's 502 traced to an under-configured forward-auth policy (`caddy_forward_auth` set, `caddy_forward_auth_verify_uri` empty) which the renderer accepted silently — without a verify URI the auth subrequest keeps the app's path instead of hitting the authorizer's verify endpoint, so the authorizer either 502s or (worse) 2xx's the app path and the gate fails **open**. Fix: `authGate` now fails **closed** — refuses a `ForwardAuth` policy with an empty `VerifyURI` at both the pre-flight `Plan` site and the defensive `insertRoute` render site, with a specific error naming `caddy_forward_auth_verify_uri` and the `caddy_handler_json` verbatim-blob escape hatch. |
+| 4 | `ba5ba55` | Caddy requires `@id` values globally unique; the ack marker was the bare `crenel-ack:<reason>`, so acking a second host with a reason slug already used elsewhere collided and was rejected by the admin API — found live: two hosts, one reason slug, the second ack silently dead. Fix: newly stamped markers are host-qualified, `crenel-ack:<host>:<reason>` (`model.AckMarkerFor`); `ParseAckMarker` still recognizes the bare legacy form so already-live markers keep classifying correctly. |
+| 5 | `41bd6ec` | `ackUnackOnEdges` discarded every per-edge error, so a failed ack fell back to a generic "no participating edge could ack" message — the live duplicate-`@id` rejection (finding 4, above) was completely invisible and read as if the host/route didn't exist. Fix: returns the edge-labeled failure list; when nothing succeeds, callers append every edge's actual error under the summary line. |
+| 6 | `d021abd` | `docs/design/ack-marker.md` §4b sketches `ack <host>[/<path>]`, but the implementation is host-only first-match, so a path-suffixed target (`ack secrets.example/api`) silently failed to match any route and died with the generic no-edge error. Fix: `cmdAck` detects a `/` in the target and refuses with a specific message pointing at §4b (path-scoped ack targeting is not implemented — ack the bare host); the doc gained a "current implementation" note so doc and code agree. |
+| 7 | `391c7b7` | Building the live multi-site shape: the SOT host sat on the LAN, the overlay-vantage AdGuard sat on the overlay network, and the default gateway dropped CGNAT-bound traffic — the Crenel host couldn't reach every control plane it needed to manage. Fix: one static route via the existing subnet router (no overlay enrollment, no tunnel shim); documented as `docs/REFERENCE-ARCH-split-horizon.md` §2.5 with the probe and persistence commands. |
+
+**Net:** durable-persist reload is now transport-true on a containerized edge (was
+silently broken there); forward-auth fails closed on a missing verify URI instead of
+risking fail-open; the ack marker no longer collides across hosts and its failures
+are now visible and diagnosable; and the reference architecture documents the one
+routing prerequisite the live build needed. All seven are **fixes found by actually
+running Crenel against the maintainer's real infrastructure this week** — they are
+not, individually or together, evidence of a new full production cutover (see §0a
+for why the dual-AdGuard *write* path specifically is BUILT-not-live this week).
+
 ## 6. Prioritized remaining backlog
 
 Pulled from the register's roadmap (§5) + what this pass surfaced. Ordered by
@@ -829,10 +1077,30 @@ Pulled from the register's roadmap (§5) + what this pass surfaced. Ordered by
    item is now purely the MODELING follow-on (representing + writing per-path routes), not a
    safety gap. (This is the one item whose eventual WRITE support would warrant a gated live
    trial; the read-side detect-and-declare needs none.)
-7. **P6 — long tail:** multi-zone edge (`zones []`), HA/VIP, TLS-terminated-
+7. **P6 — long tail:** ~~multi-zone edge (`zones []`)~~ **DONE for internal DNS
+   provider routing (§0b, `ports.ZoneReporter`)** — still open for edge-driver-level
+   zone concepts and public/Cloudflare-multi-zone; HA/VIP, TLS-terminated-
    downstream, Traefik KV provider, k8s ingress (likely a separate driver / explicit
    decline), ~~DNS record *value* drift~~ **DETECTED for crenel-OWNED records (`dns_value_drift`
    audit finding) — see below**, nginx managed-block full-fidelity re-render (F6).
+8. ~~**Audit an edge Crenel doesn't manage (audit-any-edge, M-A1–M-A6).**~~ **DONE
+   (§5k).** Read-only engine posture (`Engine.ReadOnly`/`core.ReadOnlyEngine`) +
+   zero-config `audit <target>` for a Caddy admin URL/Caddyfile, an NPM tree, a
+   Traefik API (incl. Pangolin), and a caddy-docker-proxy autosave dir, plus forced
+   boundary declaration and opt-in `--probe`. Unit/fixture-tested; no live `--probe`
+   trial against a real running admin API recorded.
+9. **MCP server for agent-driven use.** **BUILT (§5l)** — read-only by default
+   (compiler-enforced via `core.ReadOnlyEngine`), `--write` adds two-phase gated
+   `crenel_plan`/`crenel_apply`. **Remaining:** an actual live trial of an LLM
+   client driving it end-to-end against a real edge.
+10. **Second/third internal-DNS provider + multi-instance/multi-zone write path.**
+    **BUILT (§0a/§0b)** — Pi-hole v6 driver, dual-same-scope-provider write gate,
+    zone-aware routing, all fake/fixture-tested. **Remaining:** a live trial of any
+    of the three (real Pi-hole instance, real dual-instance write, real multi-zone
+    edge).
+11. **Terminal-adaptive HUD.** **DONE (§5j)** — sizes to the real terminal via
+    `TIOCGWINSZ`, height-budgeted down to a crown-only render; flat letterforms
+    below scale 4. No safety-relevant remainder.
 
 **DNS target-value drift — DONE for owned records (audit `dns_value_drift`).** The audit's
 cross-provider checks were host-NAME-only: a crenel-owned record whose live *value* drifted
@@ -943,19 +1211,42 @@ open are closed. Each was run against real infrastructure and reverted (or left 
 - **Durable-persist write on the home edge (2026-06-28).** Durable expose + restart-survival +
   unexpose, byte-for-byte by Crenel (TRIAL-RESULT-durable-persist-2026-06-28.md).
 
+**New live trials 2026-07-09/10** (operator-record —
+docs/internal/TRIAL-RECORD-live-proofs-2026-07-10.md):
+- **Coordinated dual-AdGuard expose/unexpose, PROVEN LIVE (3 cycles).** Four legs
+  (edge + `adguard[home]` + `adguard[vps]` + surgical public) applied atomically,
+  read-back-verified per instance, vantage-verified from three viewpoints
+  externally, and reversed to a captured baseline each cycle.
+- **Durable persist on a containerized edge, PROVEN LIVE.** The final cycle
+  completed with no persist warning after the §5m transport fixes + two-channel
+  `caddy_persist`; the route was verified simultaneously in the host boot file,
+  the container's view of it, and the running config.
+- **PRODUCTION CUTOVER.** Crenel was promoted to the production SOT (dual-instance
+  config + current binary); after operator `ack` of the three path-scoped
+  carve-outs, the live edge reads `Default-deny catch-all: ENFORCED` at full
+  coverage.
+The seven live-dogfooding fixes in §5m were found *during* these trials. Still
+BUILT-only (no live trial): audit-any-edge M-A1–M-A6, MCP server, Pi-hole,
+multi-zone DNS, adaptive HUD — see §5j–§5m and §0a/§0b, and the trial record's
+own "does NOT claim" list.
+
 **A. Live-only — still remaining (need a real edge / creds / a real node — no faithful fake gets there).**
 - Tailscale serve.json WRITE support (the read-side is now per-host wildcard-aware; a write path would need a `tailscale serve` exec or local-API integration tested against a real Tailscale node).
 - Repeat/scale-hardening of the full-chain expose as the routine daily-driver path (adoption, not a missing capability).
+- A real end-to-end MCP-agent trial (an actual LLM client driving `crenel mcp --write` against a live edge) — the protocol/composition layer is unit-tested only (§5l).
+- A live Pi-hole v6 trial and a live multi-zone-provider trial (§0a, §0b) — both are fake/fixture-tested only; no real Pi-hole instance or real two-zone edge has been driven yet.
 
 **B. Structural / model-extension (offline-doable but they are NEW MODEL surface, not correctness on existing surface — explicitly NOT silent-wrong gaps).**
-- **Marker-less AdGuard value-drift.** AdGuard rewrites are `{domain, answer}` with no per-record metadata field, so Crenel cannot stamp a record-level marker the way the surgical Cloudflare driver does. `dns_value_drift` and `DriftValueDNS` therefore deliberately do NOT run on AdGuard — closing this gap would require either an AdGuard schema extension upstream or a side-channel manifest persisted by Crenel (a stored-desired-state shape that explicitly contradicts the live-state-authoritative invariant). Documented limit, not a fix.
+- **Marker-less AdGuard/Pi-hole value-drift.** Both AdGuard rewrites and Pi-hole host entries carry no per-record metadata field, so Crenel cannot stamp a record-level marker the way the surgical Cloudflare driver does. `dns_value_drift` and `DriftValueDNS` therefore deliberately do NOT run on either — closing this gap would require either an upstream schema extension or a side-channel manifest persisted by Crenel (a stored-desired-state shape that explicitly contradicts the live-state-authoritative invariant). Documented limit, not a fix.
 - **Tailnet-scope axis for Tailscale `Web` entries.** A `Web` key without `AllowFunnel` is identity-enforced by the tailnet ACL. PR #17 stops the cry-wolf (it is no longer claimed public) but does NOT introduce a `mesh-scope` route mode for it. Adding one would be a model extension orthogonal to `ModeHTTPProxy`/`ModeTCPPassthrough`/`ModeMeshGrant`.
 - **Path-granular route WRITE support** (P5 modeling follow-on). The read side already DETECTS+declares `matcher_conditional` (no silent misread). Representing + writing per-path backend+auth is a model + per-driver render surface, not a safety gap.
-- **P6 long tail.** Multi-zone edge (`zones []`), HA/VIP, TLS-terminated-downstream, Traefik KV provider, k8s ingress (likely a separate driver or explicit decline), nginx managed-block full-fidelity re-render (F6). Each is a coverage extension, each currently reads as a declared unknown.
+- ~~**Multi-zone internal DNS provider routing** (`zones []`, one edge / several apex zones)~~ **DONE for internal DNS (§0b, `ports.ZoneReporter` + `dns_zone.go`).** Still open: an equivalent zone-confinement concept for public/Cloudflare-multi-zone and for edge-driver routing tables themselves (an edge serving hosts under several apex zones is handled at the DNS-routing layer only; the edge drivers have no zone concept of their own).
+- **P6 long tail (remaining).** HA/VIP pairs, TLS-terminated-downstream, Traefik KV provider, k8s ingress (likely a separate driver or explicit decline), nginx managed-block full-fidelity re-render (F6). Each is a coverage extension, each currently reads as a declared unknown.
 - **chain `Adopt` of a pre-existing forward** + **`auth: app`** annotation for in-app auth. Both are P4-write follow-ons (modeling, not safety).
+- **A `feat/residency-selector` branch exists locally but carries no commits distinct from `develop`** (`git log develop..feat/residency-selector` is empty) — no in-progress residency-selector work could be verified in this repo as of this pass; if this item is being worked, it has not yet been pushed as commits.
 
 **C. Doc / launch-readiness — CLOSED (public launch has shipped).**
-- ~~`crenelhq` GitHub org status~~ **DONE** — `github.com/crenelhq/crenel` is public and live: `v0.4.0` shipped, an independent audit (2026-07-03) found one MEDIUM (nginx false-ENFORCED, F1 — see §0/CHANGELOG), fixed on `develop` and shipped as `v0.4.1`. CI now runs `go build/vet/test -race` + `gitleaks` on every push/PR.
+- ~~`crenelhq` GitHub org status~~ **DONE** — `github.com/crenelhq/crenel` is public and live: `v0.4.0` shipped, an independent audit (2026-07-03) found one MEDIUM (nginx false-ENFORCED, F1 — see §0/CHANGELOG), fixed on `develop` and shipped as `v0.4.1`. CI now runs `go build/vet/test -race` + `gitleaks` on every push/PR. **The mirror has since advanced to `v0.4.5`** (`v0.4.2`: CI/F2-verify-honesty/ack-marker/file-lock-F3; `v0.4.3`: adaptive HUD, recorded demo, read-only audit posture, docs relaunch; `v0.4.4`: audit-any-edge, zero-config; `v0.4.5`: dual-instance internal DNS, transport-true durability, fail-closed auth guard) — these are commits on the `github` remote's `main` branch (the scrubbed public snapshot per the repo's snapshot-flow convention), **not tags on `develop`**; `git tag` on this repo shows only `v0.1.0`–`v0.3.1`. Treat "v0.4.x" as snapshot-mirror labels, not `develop` releases. The `v0.4.5` snapshot's own release notes claim the release was "proven against a real production two-site edge" — **not corroborated by any `TRIAL-RECORD-*` in this repo for this window**; see §0a.
 - ~~`LICENSE` (Apache-2.0) + `NOTICE` + `CONTRIBUTING.md`/DCO~~ **DONE** — all present at repo root.
 - ~~`CODE_OF_CONDUCT.md`~~ **DONE** — Contributor Covenant, added alongside this pass.
 - ~~the open-core boundary~~ **DONE** — `docs/OPEN-CORE.md`.

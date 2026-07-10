@@ -5,7 +5,7 @@
 > behind the **Transport** axis (docs/internal/DESIGN.md "Transport / Connection") and the
 > **secret-redaction** hardening (this pass). Companions: **docs/internal/DESIGN.md** (architecture
 > + the two load-bearing invariants), **docs/internal/TOPOLOGY-RISK-REGISTER.md** (the long-tail
-> *correctness* safety net, a different axis from *secrecy*), **docs/internal/DEPLOY-VPS.md** (the
+> *correctness* safety net, a different axis from *secrecy*), **docs/internal/DEPLOY-VPS.md** (private repo; the
 > safe loopback-admin deployment runbook), **docs/internal/AUTH-DESIGN.md** (the auth-by-reference
 > posture).
 >

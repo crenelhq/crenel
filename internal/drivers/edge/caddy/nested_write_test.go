@@ -27,7 +27,7 @@ func parseZones(t *testing.T, fake *caddyfake.Fake) zoneRoutes {
 			HTTP struct {
 				Servers map[string]struct {
 					Routes []struct {
-						Match  []struct {
+						Match []struct {
 							Host []string `json:"host"`
 						} `json:"match"`
 						Handle []struct {

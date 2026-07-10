@@ -8,6 +8,8 @@ import (
 	"github.com/crenelhq/crenel/internal/core"
 	"github.com/crenelhq/crenel/internal/drivers/dns/adguard"
 	"github.com/crenelhq/crenel/internal/drivers/dns/adguard/adguardfake"
+	"github.com/crenelhq/crenel/internal/drivers/dns/pihole"
+	"github.com/crenelhq/crenel/internal/drivers/dns/pihole/piholefake"
 	"github.com/crenelhq/crenel/internal/drivers/edge/caddy"
 	"github.com/crenelhq/crenel/internal/drivers/edge/caddy/caddyfake"
 	"github.com/crenelhq/crenel/internal/drivers/origin/static"
@@ -191,7 +193,7 @@ func TestAudit_DNSCoverageParity_WildcardValueMismatchStillDrift(t *testing.T) {
 		{Name: "*.example.com", Type: "A", Value: "10.0.0.13", Scope: model.ScopeInternal},
 	}}
 	vps := &stubDNS{name: "adguard[vps]", scope: model.ScopeInternal, live: []model.Record{
-		{Name: "grafana.example.com", Type: "A", Value: "10.0.0.13", Scope: model.ScopeInternal}, // matches wildcard value
+		{Name: "grafana.example.com", Type: "A", Value: "10.0.0.13", Scope: model.ScopeInternal},   // matches wildcard value
 		{Name: "adguard.example.com", Type: "A", Value: "203.0.113.9", Scope: model.ScopeInternal}, // mismatched value
 	}}
 	e := auditEngine(t, seedGrafana, home, vps)
@@ -272,5 +274,73 @@ func TestAudit_DNSCoverageParity_OutOfZoneWildcardDoesNotCover(t *testing.T) {
 	}
 	if !strings.Contains(f.Message, "adguard.example.com") {
 		t.Errorf("parity message should name the still-missing host, got %q", f.Message)
+	}
+}
+
+// TestAudit_DNSCoverageParity_MixedAdguardPihole proves coverage parity is
+// PROVIDER-AGNOSTIC: the cross-instance check compares internal resolvers by their
+// LiveRecords, not by driver type, so an adguard[home] + pihole[vps] pair (a mixed
+// split-horizon — different resolver software per vantage) drifts and clears exactly
+// as a dual-adguard pair does. Both real drivers run over their faithful fakes; the
+// pihole side also proves its zone-scoped LiveRecords and instance-qualified Name()
+// compose with the engine the same way adguard's do.
+func TestAudit_DNSCoverageParity_MixedAdguardPihole(t *testing.T) {
+	const zone = "example.com"
+	agFake := adguardfake.New("grafana."+zone, "10.0.0.13")
+	phFake := piholefake.New(
+		"grafana."+zone, "10.0.0.13",
+		"pihole."+zone, "203.0.113.9", // the asymmetric host (live drift)
+		"unrelated.example.org", "192.0.2.9", // out-of-zone: LiveRecords must ignore it
+	)
+	home := adguard.New(adguard.Config{Zone: zone, EdgeAddr: "10.0.0.13", Instance: "home", Doer: agFake})
+	vps := pihole.New(pihole.Config{Zone: zone, EdgeAddr: "10.0.0.13", Instance: "vps", Doer: phFake})
+
+	fake := caddyfake.New()
+	t.Cleanup(fake.Close)
+	fake.SeedCaddyfile(seedGrafana)
+	edge := caddy.New(fake.URL(), static.New(map[string]string{"grafana": "10.0.0.5:3000"}))
+	e := core.New(edge, zone, []ports.DNSProvider{home, vps}...)
+
+	rep, err := e.Audit(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, ok := findCode(rep, "dns_coverage_parity")
+	if !ok || f.Severity != "warning" {
+		t.Fatalf("expected dns_coverage_parity warning from mixed real drivers, got %+v", rep.Findings)
+	}
+	if !strings.Contains(f.Message, "pihole."+zone) ||
+		!strings.Contains(f.Message, "pihole[vps]") ||
+		!strings.Contains(f.Message, "adguard[home]") {
+		t.Errorf("parity message should name the drifted host and both mixed instances, got %q", f.Message)
+	}
+	// grafana is on BOTH resolvers; the out-of-zone pihole entry is zone-filtered.
+	if strings.Contains(f.Message, "grafana."+zone) || strings.Contains(f.Message, "unrelated.example.org") {
+		t.Errorf("covered/out-of-zone hosts must not appear in the parity finding: %q", f.Message)
+	}
+}
+
+// TestAudit_DNSCoverageParity_MixedAdguardPiholeInSync: the quiet half of the mixed
+// pair — identical in-zone coverage (values may differ per vantage; parity compares
+// PRESENCE) across an adguard and a pihole instance yields NO parity finding.
+func TestAudit_DNSCoverageParity_MixedAdguardPiholeInSync(t *testing.T) {
+	const zone = "example.com"
+	agFake := adguardfake.New("grafana."+zone, "10.0.0.13")
+	phFake := piholefake.New("grafana."+zone, "203.0.113.9") // vantage-correct different target
+	home := adguard.New(adguard.Config{Zone: zone, EdgeAddr: "10.0.0.13", Instance: "home", Doer: agFake})
+	vps := pihole.New(pihole.Config{Zone: zone, EdgeAddr: "203.0.113.9", Instance: "vps", Doer: phFake})
+
+	fake := caddyfake.New()
+	t.Cleanup(fake.Close)
+	fake.SeedCaddyfile(seedGrafana)
+	edge := caddy.New(fake.URL(), static.New(map[string]string{"grafana": "10.0.0.5:3000"}))
+	e := core.New(edge, zone, []ports.DNSProvider{home, vps}...)
+
+	rep, err := e.Audit(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f, ok := findCode(rep, "dns_coverage_parity"); ok {
+		t.Errorf("mixed resolvers in coverage parity must stay quiet, got %q", f.Message)
 	}
 }

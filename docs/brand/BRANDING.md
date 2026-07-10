@@ -63,7 +63,7 @@ The same rule governs the CLI (`internal/ui/style.go`, the `Sem` roles) and the
 SVG (`internal/ui/svg.go`). If a future surface adds a field, it picks a role,
 not a color.
 
-**Machine-readable tokens:** [`docs/brand/crenel-tokens.css`](docs/brand/crenel-tokens.css)
+**Machine-readable tokens:** [`docs/brand/crenel-tokens.css`](crenel-tokens.css)
 exposes the whole palette + typography as CSS custom properties (`--crenel-safe`,
 `--crenel-warn`, `--crenel-fail`, …) for a future dashboard/web surface. It mirrors
 the Go constants above; the Go renderers remain the source of truth.
@@ -188,7 +188,7 @@ art; the SVG mock adds green corner-crops and a left dot rail in the same spirit
 | `DNS` | managed scopes (split-horizon internal + public) | green / dim |
 | `LAST APPLY` | no persisted desired state → `unknown` | dim (by design, not an error) |
 
-[`docs/brand/crenel-status-hud.svg`](docs/brand/crenel-status-hud.svg) is the SVG of
+[`docs/brand/crenel-status-hud.svg`](crenel-status-hud.svg) is the SVG of
 this HUD, the early read-only-dashboard mock (the S5 milestone, drawn ahead).
 
 ## Usage

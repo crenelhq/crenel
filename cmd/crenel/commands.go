@@ -98,6 +98,8 @@ func (c *cli) dispatch(ctx context.Context, verb string, args []string) error {
 		return c.cmdUnack(ctx, args)
 	case "serve", "dashboard":
 		return c.cmdServe(ctx, args)
+	case "mcp":
+		return c.cmdMCP(ctx, args)
 	case "version", "-v", "--version":
 		fmt.Fprintf(c.out, "%s %s\n", config.ToolName, version)
 		return nil
@@ -537,29 +539,123 @@ func (c *cli) cmdPreview(ctx context.Context, args []string) error {
 	return nil
 }
 
-// buildOp constructs the op and applies the -mode / -param intent from flags.
-func (c *cli) buildOp(verb model.Verb, service string) (model.Op, error) {
-	op := c.engine.BuildOp(verb, service)
-	mode, err := parseMode(c.gf.mode)
+// opIntent is the per-op mutation intent (the CLI's flags, or an MCP write tool's
+// arguments) that buildOpFrom turns into a model.Op. Extracting it means the CLI
+// and the MCP write path construct ops through ONE builder — same scope/edges/mode/
+// auth resolution + validation, no parallel path.
+type opIntent struct {
+	mode, auth, to, scope, dns, edges string
+	// residency is the operator-declared residency class (--residency; see
+	// model.Op.Residency) carried verbatim onto the op — validation is layered:
+	// core refuses a class on an internal provider that cannot resolve classes,
+	// and each resolving provider refuses a class it has no target for.
+	residency string
+	params    []string
+}
+
+// buildOpFrom constructs a model.Op for verb+service, applying the mode/auth/to and
+// the #1 scope/edges appointment from intent. It is the single source of op
+// construction, shared by cli.buildOp (flags) and the MCP write tools (arguments).
+func buildOpFrom(engine *core.Engine, verb model.Verb, service string, in opIntent) (model.Op, error) {
+	// ResolveOp, not BuildOp: a bare name is resolved against ALL managed zones
+	// (zones-list aware) and refused loudly when it is ambiguous across them.
+	op, err := engine.ResolveOp(verb, service)
+	if err != nil {
+		return op, err
+	}
+	mode, err := parseMode(in.mode)
 	if err != nil {
 		return op, err
 	}
 	op.Mode = mode
-	op.Auth = c.gf.auth
-	if c.gf.to != "" {
+	op.Auth = in.auth
+	if in.to != "" {
 		if verb != model.Expose {
 			return op, fmt.Errorf("--to is only valid with `expose` (got %s)", verb)
 		}
-		op.To = c.gf.to
+		op.To = in.to
 	}
-	if len(c.gf.params) > 0 {
+	scopes, err := resolveScopes(in.scope, in.dns)
+	if err != nil {
+		return op, err
+	}
+	op.Scopes = scopes
+	op.Residency = strings.TrimSpace(in.residency)
+	edges, err := resolveEdges(in.edges, engine)
+	if err != nil {
+		return op, err
+	}
+	op.Edges = edges
+	if len(in.params) > 0 {
 		op.Params = map[string]string{}
-		for _, kv := range c.gf.params {
+		for _, kv := range in.params {
 			k, v, _ := strings.Cut(kv, "=")
 			op.Params[k] = v
 		}
 	}
 	return op, nil
+}
+
+// buildOp constructs the op and applies the -mode / -param intent from flags.
+func (c *cli) buildOp(verb model.Verb, service string) (model.Op, error) {
+	return buildOpFrom(c.engine, verb, service, opIntent{
+		mode: c.gf.mode, auth: c.gf.auth, to: c.gf.to,
+		scope: c.gf.scope, dns: c.gf.dns, edges: c.gf.edges, residency: c.gf.residency, params: c.gf.params,
+	})
+}
+
+// resolveScopes turns scope / dns into the op's DNS-scope appointment. scope is
+// sugar over dns (internal|public|both); the two are mutually exclusive. Both map
+// identically: internal|public -> that single scope; both/unset -> nil (every
+// scope). See docs/design/expose-scope-flags.md §2.
+func resolveScopes(scope, dns string) ([]model.Scope, error) {
+	raw, flag := dns, "--dns"
+	if scope != "" {
+		if dns != "" {
+			return nil, fmt.Errorf("--scope and --dns are mutually exclusive (--scope is the --dns shorthand) — set one")
+		}
+		raw, flag = scope, "--scope"
+	}
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "both":
+		return nil, nil
+	case "internal":
+		return []model.Scope{model.ScopeInternal}, nil
+	case "public":
+		return []model.Scope{model.ScopePublic}, nil
+	default:
+		return nil, fmt.Errorf("%s must be internal|public|both, got %q", flag, raw)
+	}
+}
+
+// resolveEdges parses a comma list of edge names and validates each against the
+// configured topology, so a typo fails loudly here instead of silently appointing
+// the route to no edge. Empty = every fronting edge (the default).
+func resolveEdges(edgesCSV string, engine *core.Engine) ([]string, error) {
+	if strings.TrimSpace(edgesCSV) == "" {
+		return nil, nil
+	}
+	known := map[string]bool{}
+	var names []string
+	for _, b := range engine.Edges {
+		known[b.Name] = true
+		names = append(names, b.Name)
+	}
+	var out []string
+	for _, part := range strings.Split(edgesCSV, ",") {
+		name := strings.TrimSpace(part)
+		if name == "" {
+			continue
+		}
+		if !known[name] {
+			return nil, fmt.Errorf("--edges: unknown edge %q — configured edges are: %s", name, strings.Join(names, ", "))
+		}
+		out = append(out, name)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("--edges was empty after parsing %q", edgesCSV)
+	}
+	return out, nil
 }
 
 // cmdResume re-drives an interrupted apply: it diagnoses which providers already
@@ -752,6 +848,14 @@ origins:
 #   providers:
 #     - {scope: internal, zone: example.com, edge_addr: 10.0.0.1, mock: true}
 #     - {scope: public, zone: example.com, edge_addr: 203.0.113.10, mock: true}
+# Residency classes (optional; adguard/pihole only): per-class answer addresses
+# layered over the edge_addr default, one map per instance = per vantage. An
+# 'expose --residency vps' (or 'residency: vps' in an apply file) then makes the
+# home resolver answer the PUBLIC edge and the vps resolver answer tunnel-direct:
+#     - {type: adguard, instance: home, scope: internal, zone: example.com,
+#        edge_addr: 10.0.0.1, targets: {vps: 203.0.113.10}, mock: true}
+#     - {type: adguard, instance: vps, scope: internal, zone: example.com,
+#        edge_addr: 10.0.0.1, targets: {vps: 100.100.0.2}, mock: true}
 `
 
 // starterExposures is the scaffold written by `crenel init` for the declarative
@@ -1112,6 +1216,14 @@ func (c *cli) cmdRename(ctx context.Context, args []string) error {
 func (c *cli) cmdAck(ctx context.Context, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: ack <host> --reason <slug>")
+	}
+	// docs/design/ack-marker.md §4b sketches `ack <host>[/<path>]`, but the
+	// implementation is host-only, first-match (§11). A slash-form argument used
+	// to fall straight through to host matching, never equal any route's host,
+	// and die with the generic "no participating edge" error — refuse it loudly
+	// and say what to do instead.
+	if strings.Contains(args[0], "/") {
+		return fmt.Errorf("ack %s: path-scoped ack targeting is not yet implemented — ack the bare host instead (the first matching route wins; on this edge, path-scoped carve-outs precede their host's UI route). See docs/design/ack-marker.md §4b", args[0])
 	}
 	if c.gf.reason == "" {
 		return fmt.Errorf("ack %s: --reason is required (the crenel-ack:<reason> slug — see docs/design/ack-marker.md)", args[0])

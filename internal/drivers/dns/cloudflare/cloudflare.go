@@ -57,6 +57,11 @@ type Config struct {
 	TTL int
 	// Doer is the injected API channel; defaults to a real OSDoer.
 	Doer Doer
+	// ZoneInName, when set, appends "/<zone>" to Name() — set by wiring ONLY when
+	// this instance came from a multi-entry `zones:` list, so per-zone siblings
+	// stay distinguishable in every label. Single-zone instances keep the exact
+	// pre-zones-list name (byte-identical output).
+	ZoneInName bool
 }
 
 // Driver implements ports.DNSProvider against the Cloudflare REST API, surgically.
@@ -78,8 +83,20 @@ func New(cfg Config) *Driver {
 	return d
 }
 
-func (d *Driver) Name() string       { return "cloudflare-api" }
+func (d *Driver) Name() string {
+	// A `zones:`-list sibling carries its zone in the label — otherwise a
+	// two-zone expansion would print two indistinguishable "cloudflare-api" lines.
+	if d.cfg.ZoneInName {
+		return "cloudflare-api/" + d.cfg.ZoneName
+	}
+	return "cloudflare-api"
+}
 func (d *Driver) Scope() model.Scope { return d.cfg.Scope }
+
+// ManagedZone implements ports.ZoneReporter: the zone this provider instance is
+// confined to. core uses it to route each host to only the providers whose zone
+// covers it (multi-zone topologies) and to group audit coverage-parity by zone.
+func (d *Driver) ManagedZone() string { return d.cfg.ZoneName }
 
 // OwnsAllLiveRecords implements ports.OwnedRecordReporter: this driver's LiveRecords is
 // marker-filtered (only records carrying MarkerPrefix), so every record it reports is

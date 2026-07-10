@@ -4,6 +4,197 @@ All notable changes to Crenel are recorded here. Versioning is informal while
 pre-1.0 (`v0.x` = "works, with documented boundaries"). The authoritative
 current-state map is [`STATE-OF-CRENEL.md`](STATE-OF-CRENEL.md).
 
+## v0.5.0 — 2026-07-10
+
+Minor — the arc from "audits and writes the edge it manages" to **"understands a
+multi-zone, multi-resolver, residency-aware edge — and an agent can drive it safely."**
+Six feature tracks plus a hardening pass, all green under `-race`, **zero external
+dependencies**. Live status is stated per feature below: this release also carries a
+week of live production trials (dual-instance coordinated writes, containerized durable
+persist, a live Pi-hole cycle, and the production cutover — 2026-07-09/10, recorded in
+`docs/internal/TRIAL-RECORD-live-proofs-2026-07-10.md` and
+`docs/internal/TRIAL-RECORD-pihole-2026-07-10.md`), while the newest surfaces (MCP,
+multi-zone routing, residency) are BUILT + hermetically tested but not yet individually
+live-trialed.
+
+**Pi-hole v6 — third internal-DNS provider, LIVE-PROVEN.** A second native
+internal-resolver driver alongside AdGuard (`internal/drivers/dns/pihole`), speaking the
+Pi-hole v6 REST API (session auth, one re-auth-and-retry on 401) with the API contract
+captured live against a real `pihole/pihole` container and checked in as fixtures.
+Honest divergences from AdGuard are refused loudly rather than mismodeled: IP-only
+targets (a CNAME-shaped target is refused at plan time), wildcards refused (they live in
+dnsmasq confs outside the API), and Pi-hole's silent same-name-duplicate trap is
+Crenel's own conflict refusal. A full expose→verify→drift→unexpose cycle ran against a
+real throwaway Pi-hole v6.4.3 instance with zero contract divergences. See
+docs/DNS-DESIGN.md §3c.
+
+**MCP server — an LLM agent can drive Crenel, read-only by construction.** `crenel mcp`
+serves the Model Context Protocol over stdio: three read tools
+(`crenel_status`/`crenel_audit`/`crenel_drift`) against the same narrow
+`core.ReadOnlyEngine` interface `serve` and `audit <target>` use, so a mutating call is
+unrepresentable, not merely refused; secrets in declared-unknown excerpts stay redacted
+with no `--show-secrets` escape hatch. Opt-in `crenel mcp --write` adds a **two-phase
+gated** write pair — `crenel_plan` returns a content-hash `plan_id`; `crenel_apply`
+commits only if the id re-derives against *current* live state, then runs the normal
+preview→apply→read-back-verify. BUILT + protocol-tested; no live end-to-end trial of a
+real LLM client against a real edge yet. See docs/MCP.md.
+
+**Multi-zone internal DNS — one block per resolver box.** A provider covering several
+apexes lists them once (`zones: ["a.example", "b.example"]`); wiring expands the list
+into per-zone zone-confined instances (equivalence-tested against the hand-expanded
+form), Pi-hole expansions share one session, and a bare service name that could live
+under two managed zones is refused with the candidate FQDNs. A new
+optional `ports.ZoneReporter` capability declares the zone a provider is confined to;
+core now routes each host only to the providers whose zone covers it (plan, apply-verify,
+declarative, reconcile), `dns_coverage_parity` groups resolvers **by zone** (cross-zone
+resolvers are never compared), and a host outside every managed zone gets the honest,
+quieter `edge_route_outside_managed_zones` declaration instead of a standing
+`edge_route_without_dns` cry-wolf. BUILT, fake-tested against the production shape
+(2 zones × 2 resolver instances); no live multi-zone trial. See docs/DNS-DESIGN.md §13.
+
+**Residency selector — per-host vantage-divergent DNS targets.** A host gains an
+operator-declared residency class (`expose --residency <class>` / an apply file's
+`residency:` key), and each internal resolver answers it from its OWN per-class
+`targets:` map layered over the `edge_addr` default — the reference architecture's
+`target(class, vantage)` rule (docs/REFERENCE-ARCH-split-horizon.md §2) made per-host.
+Refuse-loudly throughout: a class with no target on an instance refuses at plan time
+naming both; a non-default class on a provider without the capability refuses rather
+than silently misdirecting a vantage; public providers ignore the class by design (the
+public answer is class-invariant). Class unset behaves byte-identically to before.
+BUILT, hermetically tested. See docs/DNS-DESIGN.md §14.
+
+**Inline scope flags.** `expose`/`unexpose`/`set` gained `--scope internal|public|both`
+(sugar over `--dns`), `--dns`, and `--edges <a,b>` — the inline twin of an apply file's
+`dns:`/`edges:` fields, so an internal-only or single-edge expose is one command with no
+apply file. See docs/design/expose-scope-flags.md.
+
+**Ack hardening (live-found).** The ack marker is now host-qualified
+(`crenel-ack:<host>:<reason>`) so two hosts sharing a reason slug no longer collide on
+Caddy's globally-unique `@id` (legacy bare markers still parse); a failed ack now
+surfaces each edge's real driver error instead of a generic "no participating edge";
+a path-suffixed target (`ack host/api`) is refused with a specific message instead of
+dying generically (path-scoped ack is not implemented — the doc and code now agree).
+
+**Live proof — dual-instance + durable persist + production cutover (2026-07-09/10).**
+Coordinated dual-AdGuard expose/unexpose PROVEN LIVE across three full cycles (edge +
+both instances + surgical public applied atomically, read-back-verified per instance,
+vantage-verified from three viewpoints, reversed to a captured baseline each time);
+durable persist PROVEN LIVE on a containerized edge (route verified simultaneously in
+the host boot file, the container's view, and the running config) after two
+transport-truth fixes — the persist reload now runs through the edge's own transport
+(`ssh-exec` → in-container `caddy reload`) and pins the IPv4 admin address instead of
+bare `localhost`; and Crenel was promoted to the **production source of truth** (after
+operator `ack` of three path-scoped carve-outs the live edge reads default-deny
+ENFORCED at full coverage). A fail-closed forward-auth guard also landed live-found:
+a `ForwardAuth` policy with an empty verify URI is refused at plan and render time
+(it previously risked failing *open*).
+
+## v0.4.5 — 2026-07-10
+
+Public-snapshot patch. **Dual-instance internal DNS write path** — hermetic tests prove
+one `expose` fans out to both same-scope resolver instances (coinciding and
+vantage-divergent targets), read-back verifies each through its own labeled endpoint,
+a mid-transaction failure rolls back the first instance's rewrite AND the edge route,
+and unexpose removes each instance's own value. **Transport-true durability** — the
+durable-persist `validate`/`reload`/`adapt` subprocesses now run through the same exec
+chain as the admin calls on an `ssh-exec` edge, and `caddy reload` targets the exact
+IPv4 admin address (dual-stack `localhost` → `::1` silently broke restart-survival on
+the containerized edge). **Fail-closed auth guard** — a forward-auth policy with no
+verify URI is refused at plan and render time instead of risking a fail-open gate.
+
+*Honesty note:* the snapshot's own release notes described this as "proven against a
+real production two-site edge" **before** the corresponding trial record existed; the
+dual-instance *write* path was fake-proven at v0.4.5 cut time, and the live
+dual-instance proof landed with the 2026-07-10 trials recorded under v0.5.0 above.
+
+## v0.4.4 — 2026-07-09
+
+Public-snapshot patch: **audit any edge, zero config** (M-A1–M-A6,
+`docs/internal/AUDIT-ANYEDGE-DESIGN.md`). `crenel audit <target>` now takes a positional
+target with no settings file: a Caddy admin URL or Caddyfile path, an Nginx Proxy
+Manager data dir, a Traefik API URL (Pangolin and docker-labels setups included), or a
+caddy-docker-proxy `Caddyfile.autosave` dir. The audit REFUSES until the operator
+declares the boundary out loud (`--assume-public-boundary` / `--internal`); only the
+pasted target is ever contacted, anything beyond is opt-in via `--probe`; a clean
+foreign edge exits 0 so it crons quietly. Underneath: `Engine.ReadOnly` (config
+`read_only: true`) refuses every mutating verb before any driver `Plan`/`Apply`,
+exported as the narrow `core.ReadOnlyEngine` interface. BUILT + fixture-tested (the cdp
+fixture captured from a real container); no live `--probe` trial recorded.
+
+## v0.4.3 — 2026-07-09
+
+Public-snapshot patch — DX + posture + release plumbing:
+
+- **Adaptive HUD.** `status --hud` sizes to the real terminal (`TIOCGWINSZ` via stdlib
+  syscall — zero-deps preserved), height-budgeted down to a crown-only render for
+  short terminals; small wordmark scales render flat brand-green instead of a broken
+  bevel. A stock 80×24 now shows the full castle + panel without wrapping or scrolling.
+- **Recorded demo** (`docs/brand/crenel-demo.gif`) — the README hero now shows the real
+  expose→verify→drift→unexpose loop.
+- **Read-only engine posture** (`read_only: true`) — the M-A1 half of audit-any-edge,
+  shipped ahead of the target modes.
+- **Docs relaunch** — README repositioned around the split-horizon operator ("is Crenel
+  for you?" triage table, honest driver-support matrix, proven-live table).
+- **DCO-only contributions** (per-commit sign-off; CLA dropped) and a **release-binaries
+  workflow** (static linux/darwin amd64/arm64 artifacts attached to tags).
+
+## v0.4.2 — 2026-07-05
+
+Public-snapshot patch — closes three of the four LOW findings the independent audit
+left open (F2/F3/F5; see `docs/audits/independent-audit-2026-07-03.md`), plus the ack
+marker:
+
+- **CI (F5).** GitHub Actions runs `go build` / `go vet` / `go test -race` + `gitleaks`
+  on every push and PR.
+- **Verify-honesty gate (F2).** A file-driver write with no runtime probe configured is
+  REFUSED (rolled back) rather than silently stood up unverified —
+  `UnverifiedWriteError`, with `--allow-unverified` as the explicit escape hatch.
+- **File lock (F3).** The mutating apply path takes a file lock, so two concurrent
+  Crenel invocations can't interleave read-modify-write on a file-provider edge.
+- **`ack` marker.** Operator acknowledgment of an intentionally-unmodeled route
+  (`crenel ack <host> [reason]` / `unack` — `docs/design/ack-marker.md`): the vetted
+  carve-out that lets `audit`/`drift` run cron-clean on a brownfield edge without
+  pretending the route parses. F4 (reconcile TOCTOU) remains open, documented, low.
+
+## v0.4.1 — 2026-07-04
+
+Public-snapshot patch: **F1**, the one MEDIUM from the independent audit (DeepSeek,
+9 parallel code-tracing subagents + an independent verification pass, 2026-07-03 —
+which found the default-deny and never-silently-wrong invariants SOUND, no
+CRITICAL/HIGH). An nginx config whose `server` blocks Crenel didn't read — a stock
+`http { server {} }`-wrapped nginx.conf, a stream-only config, an include-only config,
+or a map/upstream-only helper file — read as a false `ENFORCED` with zero routes and
+zero warnings. Fixed: `server_not_read` now DECLARES the unrecognized block, so
+default-deny downgrades to UNKNOWN — the bounded-honesty invariant restored on the
+exact shape the audit found.
+
+## v0.4.0 — 2026-07-03
+
+**The first public release** — `github.com/crenelhq/crenel`, Apache-2.0, clean history
+(v0.1.0–v0.3.2 remain the private pre-history; summarized below and in this file). No
+new engine capability over v0.3.2 — this release is the launch packaging of what the
+private line had built and proven:
+
+- **`expose --to <host:port>`** — name the backend inline, no pre-edited origins map;
+  the target is TCP-probed before any route is written (`--no-validate` to skip), and
+  the origin persists into settings on a verified apply.
+- **Launch scaffolding** — LICENSE/NOTICE/CONTRIBUTING (DCO), CODE_OF_CONDUCT,
+  `docs/OPEN-CORE.md` (the Apache core is the whole product for an individual
+  operator), a security-audit package under `docs/security/`, and the
+  batteries-included `bundle/` quickstart.
+- **Proven-live posture carried forward:** durable restart-surviving persist,
+  one-command `rename`, cross-edge atomic rollback, surgical Cloudflare on a shared
+  production zone, and the full-chain production expose — each backed by a trial
+  record (`archive/trials/results/`, `docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md`).
+
+Full launch notes: the `v0.4.0` GitHub release body
+(`docs/launch/RELEASE-NOTES-v0.4.0.md` in the private repo).
+An independent third-party audit ran against this release two days later — see v0.4.1.
+
+*Note on versioning:* v0.4.x version numbers are labels on the scrubbed public
+snapshot mirror (see `docs/internal/README.md`'s snapshot-flow convention), not tags
+on the private `develop` line; dates are the snapshot publication dates.
+
 ## v0.3.2 — 2026-06-30
 
 Consolidation release: the experimental Cloudflare DNS hardening from v0.3.1 is now

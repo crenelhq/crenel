@@ -187,3 +187,60 @@ func TestAck_RefusesCrenelManagedRoute(t *testing.T) {
 		t.Fatal("Ack must refuse a route already carrying crenel's ownership marker")
 	}
 }
+
+// TestNormalize_LegacyBareMarkerStillRecognized is the backward-compat guard
+// for the host-qualified marker change: real edges already carry the LEGACY
+// bare form (@id crenel-ack:<reason>, no host segment). Read-side it must
+// still classify UnknownAcknowledged with its reason slug, and Unack must
+// still remove it (prefix match, not exact-marker match).
+func TestNormalize_LegacyBareMarkerStillRecognized(t *testing.T) {
+	fake := caddyfake.New()
+	defer fake.Close()
+	if err := fake.SeedJSON(`{
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":443"],
+          "routes": [
+            {
+              "@id": "crenel-ack:legacy-carveout",
+              "match": [{"host": ["app.example.com"], "path": ["/api/hawser"]}],
+              "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "10.0.0.9:8080"}]}]
+            },
+            {"handle": [{"handler": "static_response", "status_code": 403}]}
+          ]
+        }
+      }
+    }
+  }
+}`); err != nil {
+		t.Fatal(err)
+	}
+	d := caddy.New(fake.URL(), static.New(map[string]string{"app": "10.0.0.9:8080"}))
+	ctx := context.Background()
+
+	// Classify: the bare legacy marker still reads acknowledged, slug intact.
+	live, err := d.ReadLiveState(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(live.Unparsed) != 1 || live.Unparsed[0].Kind != model.UnknownAcknowledged {
+		t.Fatalf("legacy bare marker must still classify acknowledged_unknown, got %+v", live.Unparsed)
+	}
+	if !strings.Contains(live.Unparsed[0].Reason, "legacy-carveout") {
+		t.Errorf("Reason must carry the legacy slug, got %q", live.Unparsed[0].Reason)
+	}
+
+	// Unack: prefix matching must strip the bare form too.
+	if err := d.Unack(ctx, "app.example.com"); err != nil {
+		t.Fatalf("Unack of a legacy bare marker: %v", err)
+	}
+	live, err = d.ReadLiveState(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(live.Unparsed) != 1 || live.Unparsed[0].Kind != model.UnknownMatcher {
+		t.Errorf("after unack the route must revert to matcher_conditional, got %+v", live.Unparsed)
+	}
+}

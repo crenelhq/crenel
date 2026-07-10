@@ -1,0 +1,1 @@
+{"error":{"key":"bad_request","message":"Invalid value","hint":"dns.hosts[1]: invalid hostname (\"*.homelab.example\")"},"took":3.528594970703125e-05}

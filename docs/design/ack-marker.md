@@ -258,6 +258,19 @@ posture as `expose`:
 whenever the underlying route is scoped by matcher (so an ack is always scoped
 to what the operator actually meant — never a blanket "ack the whole host").
 
+> **Current implementation (host-only, first-match).** The shipped verb takes a
+> BARE host only: `crenel ack <host> --reason <slug>`. Path-scoped targeting
+> (`<host>/<path>`, the `--path` sketch above) is not implemented — a slash in
+> the host argument is refused loudly at the CLI with a pointer here, rather
+> than silently failing host matching. The marker is stamped on the FIRST route
+> the driver's traversal reaches for that host; on a Caddy edge, path-scoped
+> carve-outs precede their host's UI route, so first-match hits the carve-out.
+> See §11 for the full shipped-vs-sketch delta. Also note the stamped marker is
+> now HOST-QUALIFIED — `crenel-ack:<host>:<reason>` — because Caddy `@id`s are
+> globally unique and the bare `crenel-ack:<reason>` form collided when two
+> hosts shared a reason slug; the bare form remains recognized on read (and by
+> `unack`) for markers already live in configs.
+
 ### 4c. `crenel unack <host>[/<path>]`
 
 The exact inverse — removes the marker. The route reverts to whatever

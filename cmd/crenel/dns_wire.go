@@ -12,6 +12,8 @@ import (
 	"github.com/crenelhq/crenel/internal/drivers/dns/cloudflare/cfapifake"
 	"github.com/crenelhq/crenel/internal/drivers/dns/dnscontrol"
 	"github.com/crenelhq/crenel/internal/drivers/dns/dnscontrol/dnscontrolfake"
+	"github.com/crenelhq/crenel/internal/drivers/dns/pihole"
+	"github.com/crenelhq/crenel/internal/drivers/dns/pihole/piholefake"
 	"github.com/crenelhq/crenel/internal/model"
 	"github.com/crenelhq/crenel/internal/ports"
 )
@@ -26,6 +28,9 @@ import (
 //     mock is set.
 //   - "adguard": the native AdGuard Home control-API driver, for the INTERNAL resolver
 //     rewrites. Talks real HTTP unless mock is set.
+//   - "pihole": the native Pi-hole v6 API driver, for the INTERNAL resolver's Local
+//     DNS host entries (session auth by password only — no username). Talks real HTTP
+//     unless mock is set.
 //
 // Credentials are NEVER hardcoded: an env-var reference (*_env) is read at wiring time
 // (the secret never lands on disk); a literal is accepted but redacted at every output
@@ -47,6 +52,7 @@ func buildDNS(s config.Settings) ([]ports.DNSProvider, error) {
 			Scope:         s.DNS.Scope,
 			Zone:          s.DNS.Zone,
 			EdgeAddr:      s.DNS.EdgeAddr,
+			Targets:       s.DNS.Targets,
 			Mock:          s.DNS.Mock,
 			DedicatedZone: s.DNS.DedicatedZone,
 			ApplyMode:     s.DNS.ApplyMode,
@@ -63,7 +69,72 @@ func buildDNS(s config.Settings) ([]ports.DNSProvider, error) {
 	}
 	var out []ports.DNSProvider
 	for _, spec := range specs {
-		p, err := buildDNSProvider(s, spec)
+		ps, err := buildDNSProviders(s, spec)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, ps...)
+	}
+	return out, nil
+}
+
+// zoneExpansion carries the cross-zone SHARED state of one `zones:`-list provider
+// entry while buildDNSProviders expands it into per-zone driver instances. The
+// drivers themselves stay strictly zone-confined (their battle-tested shape);
+// what the zones should share is shared here instead:
+//
+//   - multi: the entry declares 2+ zones — weave each instance's zone into its
+//     display name so labels never collide as N identical "adguard[home]" lines.
+//     A single-zone entry (or a plain `zone:`) leaves names byte-identical.
+//   - pihole: the ONE session-authenticated channel reused by every zone's
+//     driver instance. Pi-hole sessions are a finite server-side seat pool and
+//     the endpoint/credential are identical across the expansion, so N drivers
+//     doing N logins against the same box would be pure waste; OSDoer is
+//     mutex-guarded, making the shared pointer safe under concurrent calls.
+//     (adguard is stateless Basic-auth and cloudflare a stateless bearer token —
+//     nothing to share there beyond the copied config values.)
+type zoneExpansion struct {
+	multi  bool
+	pihole *pihole.OSDoer
+}
+
+// buildDNSProviders expands one provider entry into its driver instance(s): one
+// zone-confined instance per declared zone. `zones: [a]` ≡ `zone: a`; setting
+// both fields is refused loudly (never a silent precedence pick), as are
+// empty and duplicate list entries.
+func buildDNSProviders(s config.Settings, spec config.DNSProviderSettings) ([]ports.DNSProvider, error) {
+	zones := spec.Zones
+	if len(zones) > 0 && spec.Zone != "" {
+		return nil, fmt.Errorf("dns provider %s: set `zone` OR `zones`, not both (zone %q vs zones %v) — `zones` alone declares every managed zone", spec.Type, spec.Zone, spec.Zones)
+	}
+	if len(zones) == 0 {
+		// The single-zone shape, unchanged ("" defaults to the top-level zone below).
+		zones = []string{spec.Zone}
+	} else {
+		seen := map[string]bool{}
+		for _, z := range zones {
+			key := strings.ToLower(strings.TrimSpace(z))
+			if key == "" {
+				return nil, fmt.Errorf("dns provider %s: `zones` contains an empty entry — every managed zone must be named explicitly", spec.Type)
+			}
+			if seen[key] {
+				return nil, fmt.Errorf("dns provider %s: `zones` lists %q twice", spec.Type, key)
+			}
+			seen[key] = true
+		}
+		// A pinned Cloudflare zone_id names exactly ONE zone — it cannot apply to a
+		// multi-zone list (each expanded zone resolves its own id by name instead).
+		if len(zones) > 1 && spec.ZoneID != "" {
+			return nil, fmt.Errorf("dns provider %s: `zone_id` pins a single zone and cannot be combined with a multi-entry `zones` list — drop it (ids resolve per zone by name)", spec.Type)
+		}
+	}
+	exp := &zoneExpansion{multi: len(zones) > 1}
+	var out []ports.DNSProvider
+	for _, z := range zones {
+		one := spec // copy: same endpoint/creds/instance/targets — ONLY the zone differs
+		one.Zone = z
+		one.Zones = nil
+		p, err := buildDNSProvider(s, one, exp)
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +143,7 @@ func buildDNS(s config.Settings) ([]ports.DNSProvider, error) {
 	return out, nil
 }
 
-func buildDNSProvider(s config.Settings, spec config.DNSProviderSettings) (ports.DNSProvider, error) {
+func buildDNSProvider(s config.Settings, spec config.DNSProviderSettings, exp *zoneExpansion) (ports.DNSProvider, error) {
 	scope := model.ScopeInternal
 	if spec.Scope == string(model.ScopePublic) {
 		scope = model.ScopePublic
@@ -82,9 +153,23 @@ func buildDNSProvider(s config.Settings, spec config.DNSProviderSettings) (ports
 		zone = s.Zone
 	}
 
+	// Residency targets (per-class vantage answers, REFERENCE-ARCH §2) are an
+	// INTERNAL-resolver capability: only adguard/pihole resolve them. Refusing them
+	// on any other type here keeps the never-silently-ignore-config rule — a
+	// `targets:` block on a public/whole-zone provider would otherwise be dead
+	// config the operator believes is live.
+	switch t := strings.ToLower(spec.Type); t {
+	case "adguard", "pihole":
+		// supported — plumbed into the driver config below.
+	default:
+		if len(spec.Targets) > 0 {
+			return nil, fmt.Errorf("dns provider %s (zone %q): `targets` (residency classes) is only supported on internal resolver types adguard|pihole — the public answer is class-invariant (edge_addr)", t, zone)
+		}
+	}
+
 	switch strings.ToLower(spec.Type) {
 	case "", "mock", "dnscontrol":
-		cfg := dnscontrol.Config{ZoneName: zone, Scope: scope, EdgeAddr: spec.EdgeAddr, DedicatedZone: spec.DedicatedZone}
+		cfg := dnscontrol.Config{ZoneName: zone, Scope: scope, EdgeAddr: spec.EdgeAddr, DedicatedZone: spec.DedicatedZone, ZoneInName: exp.multi}
 		if spec.Mock || strings.EqualFold(spec.Type, "mock") {
 			// Safe demo: in-process fake shell, never touches real DNS.
 			cfg.Shell = dnscontrolfake.New(zone)
@@ -97,12 +182,13 @@ func buildDNSProvider(s config.Settings, spec config.DNSProviderSettings) (ports
 		// legacy whole-zone dnscontrol push (requires dedicated_zone). See docs/DNS-DESIGN.md.
 		if surgicalMode(spec.ApplyMode) {
 			ccfg := cloudflare.Config{
-				ZoneName: zone,
-				ZoneID:   spec.ZoneID,
-				Scope:    scope,
-				EdgeAddr: spec.EdgeAddr,
-				Proxied:  spec.Proxied,
-				TTL:      spec.TTL,
+				ZoneName:   zone,
+				ZoneInName: exp.multi,
+				ZoneID:     spec.ZoneID,
+				Scope:      scope,
+				EdgeAddr:   spec.EdgeAddr,
+				Proxied:    spec.Proxied,
+				TTL:        spec.TTL,
 			}
 			if spec.Mock {
 				// Safe demo: in-process fake Cloudflare API, no real token needed.
@@ -116,7 +202,7 @@ func buildDNSProvider(s config.Settings, spec config.DNSProviderSettings) (ports
 			ccfg.Doer = cloudflare.OSDoer{Token: token}
 			return cloudflare.New(ccfg), nil
 		}
-		cfg := dnscontrol.Config{ZoneName: zone, Scope: scope, EdgeAddr: spec.EdgeAddr, DedicatedZone: spec.DedicatedZone}
+		cfg := dnscontrol.Config{ZoneName: zone, Scope: scope, EdgeAddr: spec.EdgeAddr, DedicatedZone: spec.DedicatedZone, ZoneInName: exp.multi}
 		if spec.Mock {
 			// Safe demo: in-process fake shell, no real token needed.
 			cfg.Shell = dnscontrolfake.New(zone)
@@ -137,7 +223,7 @@ func buildDNSProvider(s config.Settings, spec config.DNSProviderSettings) (ports
 		if scope == model.ScopePublic {
 			return nil, fmt.Errorf("dns provider adguard (zone %q): scope must be internal — AdGuard is a resolver, never public-authoritative", zone)
 		}
-		acfg := adguard.Config{Zone: zone, Scope: scope, EdgeAddr: spec.EdgeAddr, Instance: spec.Instance}
+		acfg := adguard.Config{Zone: zone, Scope: scope, EdgeAddr: spec.EdgeAddr, Targets: spec.Targets, Instance: spec.Instance, ZoneInName: exp.multi}
 		if spec.Mock {
 			// Safe demo: in-process fake control API, no real endpoint needed.
 			acfg.Doer = adguardfake.New()
@@ -163,8 +249,41 @@ func buildDNSProvider(s config.Settings, spec config.DNSProviderSettings) (ports
 		}
 		return adguard.New(acfg), nil
 
+	case "pihole":
+		if scope == model.ScopePublic {
+			return nil, fmt.Errorf("dns provider pihole (zone %q): scope must be internal — Pi-hole is a resolver, never public-authoritative", zone)
+		}
+		pcfg := pihole.Config{Zone: zone, Scope: scope, EdgeAddr: spec.EdgeAddr, Targets: spec.Targets, Instance: spec.Instance, ZoneInName: exp.multi}
+		if spec.Mock {
+			// Safe demo: in-process fake v6 API, no real endpoint needed.
+			pcfg.Doer = piholefake.New()
+			return pihole.New(pcfg), nil
+		}
+		if spec.Endpoint == "" {
+			return nil, fmt.Errorf("dns provider pihole (zone %q): missing endpoint (the Pi-hole v6 API base URL)", zone)
+		}
+		// Fail fast on a missing API password (parity with the adguard/cloudflare
+		// checks): a referenced-but-unset env var, or no credential at all, would send
+		// an UNAUTHENTICATED request. Pi-hole v6 auth is session-by-password only — no
+		// username, so password alone is the credential.
+		password := resolveSecret(spec.Password, spec.PasswordEnv)
+		if spec.PasswordEnv != "" && password == "" {
+			return nil, fmt.Errorf("dns provider pihole (zone %q): password_env %q is not set", zone, spec.PasswordEnv)
+		}
+		if password == "" {
+			return nil, fmt.Errorf("dns provider pihole (zone %q): missing API password — set password_env (preferred) or password", zone)
+		}
+		// A `zones:`-list expansion shares ONE session channel across its per-zone
+		// instances (same endpoint, same credential): the first zone builds it, the
+		// rest reuse it — one login instead of N against the same finite seat pool.
+		if exp.pihole == nil {
+			exp.pihole = &pihole.OSDoer{BaseURL: spec.Endpoint, Password: password}
+		}
+		pcfg.Doer = exp.pihole
+		return pihole.New(pcfg), nil
+
 	default:
-		return nil, fmt.Errorf("dns provider (zone %q): unknown type %q (want mock|cloudflare|adguard)", zone, spec.Type)
+		return nil, fmt.Errorf("dns provider (zone %q): unknown type %q (want mock|cloudflare|adguard|pihole)", zone, spec.Type)
 	}
 }
 

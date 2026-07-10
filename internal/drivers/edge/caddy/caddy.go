@@ -1217,11 +1217,14 @@ func (d *Driver) adoptWalk(ctx context.Context, routes []any, routesPath string,
 	return nil
 }
 
-// Ack stamps the crenel-ack:<reason> marker (docs/design/ack-marker.md) onto the
-// FIRST route matching host, via PATCH — same match/handlers/backend, only the
-// @id changes. It navigates the RAW config (like Adopt/adoptWalk) so unmodeled
-// fields survive untouched. Idempotent: a route already carrying this exact
-// marker is skipped. Implements ports.Acker.
+// Ack stamps the HOST-QUALIFIED crenel-ack:<host>:<reason> marker
+// (docs/design/ack-marker.md) onto the FIRST route matching host, via PATCH —
+// same match/handlers/backend, only the @id changes. Host-qualified because
+// Caddy's @id index is GLOBAL: the old bare crenel-ack:<reason> form collided
+// when two hosts were ack'd with the same reason slug (the admin API rejects
+// the second PATCH as a duplicate @id). It navigates the RAW config (like
+// Adopt/adoptWalk) so unmodeled fields survive untouched. Idempotent: a route
+// already carrying this exact marker is skipped. Implements ports.Acker.
 func (d *Driver) Ack(ctx context.Context, host, reason string) error {
 	_, raw, err := d.fetchConfigRaw(ctx)
 	if err != nil {
@@ -1233,7 +1236,7 @@ func (d *Driver) Ack(ctx context.Context, host, reason string) error {
 	}
 	routes := rawRoutes(cfg, d.server)
 	base := fmt.Sprintf("/config/apps/http/servers/%s/routes", d.server)
-	found, err := d.ackWalk(ctx, routes, base, host, model.AckMarker(reason))
+	found, err := d.ackWalk(ctx, routes, base, host, model.AckMarkerFor(host, reason))
 	if err != nil {
 		return fmt.Errorf("caddy ack %s: %w", host, err)
 	}
@@ -1287,6 +1290,9 @@ func (d *Driver) ackWalk(ctx context.Context, routes []any, routesPath, host, ma
 				return true, nil // idempotent: already in the desired state
 			}
 			if marker == "" {
+				// Prefix match (not exact) so Unack removes BOTH marker forms: the
+				// current host-qualified crenel-ack:<host>:<reason> and the legacy
+				// bare crenel-ack:<reason> still live on real edges.
 				if !strings.HasPrefix(id, model.AckMarkerPrefix) {
 					return true, nil // not currently ack'd — Unack is a tolerated no-op
 				}

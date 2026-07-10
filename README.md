@@ -70,9 +70,20 @@ contribution, not a rewrite), but honesty about the *implemented* surface:
 | **nginx** | ✅ file | ✅ file only | ⚠️ same as Traefik | managed-block re-render fidelity documented |
 | **Cloudflare DNS** | ✅ | ✅ surgical (shared zones) or whole-zone (dedicated) | ✅ | ownership marker `managed-by:crenel` |
 | **AdGuard Home** | ✅ rewrites | ✅ (dual-instance aware) | ✅ presence | value-drift detection deliberately opt-out (see limits) |
+| **Pi-hole (v6)** | ✅ Local DNS host entries | ✅ (dual-instance aware, session auth) | ✅ presence | IP targets only (no CNAME); wildcards refused (they live in dnsmasq confs, outside the API); same marker-less value-drift opt-out as AdGuard |
 | **Tailscale** | ✅ serve.json read | 🚧 planned | — | write path unbuilt/untrialed |
 | **NetBird** | ✅ read-only | — by design | — | mesh grants surfaced, never driven |
 | **Auth (forward-auth)** | — | ✅ by reference (Authelia, any) | ✅ | you own the auth config; Crenel renders the reference |
+
+One edge can serve hosts under **several apex zones** (say, `*.homelab.example`
+and `*.smallbiz.example` on one Caddy): a provider covering several apexes lists
+them once — `zones: ["homelab.example", "smallbiz.example"]` — one block per
+resolver box. Crenel routes every host only to the providers whose zone covers
+it: zone-confined resolvers never see an out-of-zone write, coverage parity is
+compared per zone (never across zones), a host no provider's zone covers is
+declared honestly rather than flagged as a missing record, and a bare service
+name that could live under two zones is refused with the candidate FQDNs
+(say the host out loud).
 
 ## Why trust it with your edge
 
@@ -166,6 +177,35 @@ crenel $CFG expose status --auth none          # public with no auth = explicit
 crenel $CFG apply crenel.exposures.yaml --dry-run
 ```
 
+Internal-only, or just one edge — inline, no apply file:
+
+```bash
+crenel $CFG expose ha --to 10.0.0.19:8123 --scope internal --auth none
+# internal DNS record + edge route only. NO public/Cloudflare record, so nothing
+# "goes public" and no auth is forced. Reachable only where an internal name
+# resolves (split-horizon DNS). Drop --scope for the full public chain.
+
+crenel $CFG expose grafana --to grafana:3000 --auth authelia --edges home
+# appoint the route to just the `home` edge (of a multi-edge home+vps topology).
+```
+
+`--scope internal|public|both` is the ergonomic bundle (it's sugar over `--dns`);
+`--edges <a,b>` picks which edges serve the route; `--dns internal|public|both` is
+the granular DNS half. All three also work on `unexpose`/`set`. This is the inline
+twin of an apply file's `dns:`/`edges:` fields — same mechanism, one command. See
+[`docs/design/expose-scope-flags.md`](docs/design/expose-scope-flags.md).
+
+A host that doesn't live at home gets a **residency class**: `expose vault
+--residency vps` (or `residency: vps` in an apply file) makes each internal
+resolver answer with its *own* vantage-correct address for that host, from a
+per-provider `targets:` map in settings (e.g. the home resolver answers the
+public edge IP, the tunnel-side resolver answers the tunnel-direct address).
+A class no resolver has a target for is **refused at plan time**, naming the
+instance and the class — never silently answered with the default. Class unset
+(the common home-resident case) behaves exactly as before. See
+[`docs/DNS-DESIGN.md`](docs/DNS-DESIGN.md) §14 and the reference architecture's
+target rule.
+
 Caddy edges: set `caddy_persist_path` so exposures survive a container restart —
 Crenel writes between `# crenel-managed-begin/end` markers, validates, reloads,
 and preserves the rest of your Caddyfile byte-for-byte.
@@ -182,9 +222,22 @@ go build -o bin/crenel ./cmd/crenel
 ./bin/crenel -config examples/settings-brownfield.json status
 ```
 
+## MCP server: let an agent drive it (read-only by default)
+
+`crenel mcp` speaks the [Model Context Protocol](https://modelcontextprotocol.io)
+over stdio, so an LLM agent can query your edge live: `crenel_status`,
+`crenel_audit`, `crenel_drift`. Read-only **by construction** — the server holds
+the engine only through the narrow read interface, so a mutating call is
+unrepresentable, not merely refused. Opt-in `crenel mcp --write` adds a
+**two-phase gated** write pair (`crenel_plan` -> `crenel_apply` with a
+content-hash plan id), with every CLI guardrail intact. See
+[`docs/MCP.md`](docs/MCP.md); [`docs/mcp/mcp.json`](docs/mcp/mcp.json) is a
+ready `mcpServers` snippet and [`docs/mcp/SKILL.md`](docs/mcp/SKILL.md) teaches
+an agent the safety contract.
+
 ## Proven, not promised
 
-Beyond the hermetic suite (**545 test functions, race-clean, 17 packages**,
+Beyond the hermetic suite (**715 test functions, race-clean, 18 packages**,
 under the rule *a fake may only accept what the real edge accepts*), the claims
 that matter were exercised against real production edges — the maintainer's own
 homelab + VPS — each run recorded and reverted byte-for-byte (hostnames
@@ -208,9 +261,10 @@ couldn't catch — which is the whole argument for read-back verification.
 
 What Crenel *can't* do is stated as loudly as what it can:
 
-- **Marker-less AdGuard value drift isn't detected.** AdGuard rewrites carry no
-  metadata field, so Crenel can't distinguish a foreign rewrite from a stale one
-  of its own; value-checking would cry wolf on your intentional rewrites.
+- **Marker-less AdGuard/Pi-hole value drift isn't detected.** AdGuard rewrites
+  and Pi-hole host entries carry no metadata field, so Crenel can't distinguish
+  a foreign entry from a stale one of its own; value-checking would cry wolf on
+  your intentional entries.
   Presence is verified; value drift detection is deliberately scoped to
   providers with ownership markers (Cloudflare surgical).
 - **Path-granular routing is detected, not modeled.** A route scoped by

@@ -1,0 +1,1 @@
+{"config":{"dns":{"hosts":["10.0.0.5 grafana.homelab.example","10.0.0.6 grafana.homelab.example"]}},"took":2.6941299438476562e-05}

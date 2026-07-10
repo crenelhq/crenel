@@ -516,8 +516,14 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 	// explicit map OR some wildcard pattern there covers it — so a `*.homelab.example`
 	// wildcard on home is NOT silently misread as "missing adguard.homelab.example" just
 	// because home only has the wildcard entry and vps has the explicit one.
+	// zone (multi-zone): the provider's DECLARED confinement (ports.ZoneReporter;
+	// "" = unconfined). Parity below is grouped BY ZONE — two resolvers confined to
+	// DIFFERENT zones hold disjoint record sets by construction, so comparing their
+	// coverage against each other would fire on every host, permanently (the exact
+	// cry-wolf multi-zone was added to kill). Only same-zone instances are peers.
 	type internalCov struct {
 		name      string
+		zone      string
 		explicit  map[string]string // explicit host (lowercased) → live value
 		wildcards []wildcardRewrite // wildcard patterns, e.g. ("*.homelab.example" → IP)
 	}
@@ -535,7 +541,7 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 			return rep, fmt.Errorf("read live dns (%s): %w", dp.Name(), err)
 		}
 		if dp.Scope() == model.ScopeInternal {
-			cov := internalCov{name: dp.Name(), explicit: make(map[string]string, len(recs))}
+			cov := internalCov{name: dp.Name(), zone: dnsZone(dp), explicit: make(map[string]string, len(recs))}
 			for _, rec := range recs {
 				name := strings.ToLower(rec.Name)
 				if isWildcardName(name) {
@@ -574,6 +580,14 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 			// value crenel would set (DesiredRecords). The name still resolves, so every
 			// name-only check reads clean — but it points at the WRONG target (a public
 			// record misdirects internet traffic → critical; an internal one → warning).
+			// Residency note: this desired-value comparison is residency-CORRECT as
+			// is. Only ownsAll providers (surgical Cloudflare — PUBLIC) are value-
+			// checked, and the public answer is class-invariant (REFERENCE-ARCH §2:
+			// every class's public record points at the public edge = edge_addr), so
+			// the default-class DesiredRecords below IS the residency-resolved desired
+			// value. Internal resolvers, where classes legitimately diverge, are
+			// marker-less and never value-checked — divergence stays quiet by design
+			// (parity is coverage-based).
 			if ownsAll {
 				if desired, derr := dp.DesiredRecords(model.Op{Verb: model.Expose, Host: rec.Name}); derr == nil {
 					for _, want := range desired {
@@ -672,9 +686,26 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 	// flags it (as `dns_coverage_parity` with a value-aware message). The pure vantage
 	// case (two resolvers, two EXPLICIT entries with intentionally different vantage
 	// targets, NO wildcard substitution) is unchanged and remains parity-clean.
-	if len(internalCovs) >= 2 {
+	//
+	// ZONE GROUPING (multi-zone): parity peers are the internal providers of the SAME
+	// declared zone. Providers confined to different zones hold disjoint record sets by
+	// construction — cross-zone comparison would flag every host forever. Providers
+	// that declare no zone ("") group together, preserving the pre-multi-zone behavior.
+	covGroups := map[string][]internalCov{}
+	var covZones []string // group keys in first-appearance order (deterministic output)
+	for _, ic := range internalCovs {
+		if _, seen := covGroups[ic.zone]; !seen {
+			covZones = append(covZones, ic.zone)
+		}
+		covGroups[ic.zone] = append(covGroups[ic.zone], ic)
+	}
+	for _, zone := range covZones {
+		group := covGroups[zone]
+		if len(group) < 2 {
+			continue // a lone resolver in its zone has no peer to drift from
+		}
 		union := map[string]bool{}
-		for _, ic := range internalCovs {
+		for _, ic := range group {
 			for h := range ic.explicit {
 				union[h] = true
 			}
@@ -685,7 +716,7 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 			// the resolver has NO explicit entry for host but a wildcard there matches).
 			wildcardCovers := map[string]wildcardRewrite{}
 			explicitValues := map[string]string{} // resolvers with explicit h → their value
-			for _, ic := range internalCovs {
+			for _, ic := range group {
 				if v, ok := ic.explicit[host]; ok {
 					present = append(present, ic.name)
 					explicitValues[ic.name] = v
@@ -748,7 +779,17 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 	// single `*.zone` rewrite acting as the resolver's catch-all and no explicit
 	// per-host entries. The wildcard's value-correctness for any one host is a separate
 	// concern (per-provider desired-vs-live / `dns_value_drift` for owned records).
+	//
+	// ZONE HONESTY (multi-zone): "missing record" is only an actionable claim when some
+	// configured provider is RESPONSIBLE for the host's zone — the operator wired a
+	// provider for that domain, so an absent record there is real drift. A host outside
+	// EVERY managed zone is a different, quieter fact: crenel has no provider for its
+	// domain, so name-reachability was NOT evaluated (its DNS may be managed elsewhere,
+	// which is none of crenel's business). Declared once (aggregated, ok severity) —
+	// suppression-with-a-reason, never a silent drop, and never the standing cry-wolf
+	// warning that trains the operator to ignore the audit.
 	if len(e.DNS) > 0 {
+		var outsideZones []string
 		for _, host := range sortedKeys(exposed) {
 			if dnsCovered[host] {
 				continue
@@ -756,10 +797,22 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 			if _, ok := wildcardCovering(allWildcards, host); ok {
 				continue
 			}
+			if !e.anyManagedZoneCovers(host) {
+				outsideZones = append(outsideZones, host)
+				continue
+			}
 			rep.Findings = append(rep.Findings, AuditFinding{
 				Severity: "warning",
 				Code:     "edge_route_without_dns",
 				Message:  fmt.Sprintf("edge route %s has no DNS record — exposed but not reachable by name", host),
+			})
+		}
+		if len(outsideZones) > 0 {
+			rep.Findings = append(rep.Findings, AuditFinding{
+				Severity: "ok",
+				Code:     "edge_route_outside_managed_zones",
+				Message: fmt.Sprintf("%d edge route(s) fall outside every managed DNS zone — no provider is configured for their domain(s), so name-reachability was NOT evaluated (not a missing record): %s",
+					len(outsideZones), strings.Join(outsideZones, ", ")),
 			})
 		}
 	}
@@ -961,13 +1014,35 @@ func edgeLabel(b EdgeBinding, total int) string {
 	return "edge[" + b.Name + "]: "
 }
 
-// serviceOf derives the logical service name from a host by stripping the zone
-// suffix — the inverse of BuildOp's host derivation. Used by the cross-edge
-// consistency check to ask each edge's Fronts predicate about a live host.
+// serviceOf derives the logical service name from a host by stripping a
+// MANAGED zone suffix — the inverse of ResolveOp/BuildOp's host derivation.
+// Used everywhere a live host is mapped back to the operator's service name
+// (Fronts predicates, origin resolution, drift/report labels).
+//
+// The top-level zone strips unconditionally (unchanged, pre-zones behavior).
+// A PROVIDER-managed zone strips only with EVIDENCE that the bare name is how
+// the operator actually keys the service — an explicit Fronts predicate (an
+// origins map) accepting it. Without that evidence the host stays an FQDN, so
+// every origins entry persisted under its FQDN key (the only spelling that
+// worked before zones-list) keeps resolving byte-identically: the persisted
+// keying is never silently re-interpreted, only NEW bare-keyed multi-zone
+// configs gain the stripped form.
 func (e *Engine) serviceOf(host string) string {
 	if e.Zone != "" {
 		if s := strings.TrimSuffix(host, "."+e.Zone); s != host {
 			return s
+		}
+	}
+	for _, z := range e.providerZones() {
+		if strings.EqualFold(z, e.Zone) {
+			continue // the default zone already had its unconditional pass above
+		}
+		if s := strings.TrimSuffix(strings.ToLower(host), "."+z); s != strings.ToLower(host) {
+			// Preserve the host's original spelling in the stripped prefix.
+			bare := host[:len(s)]
+			if e.explicitlyFronts(bare) {
+				return bare
+			}
 		}
 	}
 	return host

@@ -238,11 +238,48 @@ func (f *Fake) handlePatchRoute(w http.ResponseWriter, r *http.Request) {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	// Real Caddy's @id index is GLOBAL: loading a config where two nodes carry
+	// the same @id is rejected by the admin API. Mirror that here so anything
+	// that stamps @ids (adoption, ack markers) collides in tests exactly the way
+	// it collides live. The node being REPLACED may of course already hold the
+	// id (idempotent restamp) — only a duplicate elsewhere in the tree is fatal.
+	if id, _ := route["@id"].(string); id != "" {
+		curID := ""
+		if cur, err := navigate(f.config, tokens); err == nil {
+			if cm, ok := cur.(map[string]any); ok {
+				curID, _ = cm["@id"].(string)
+			}
+		}
+		if curID != id && countIDs(f.config, id) > 0 {
+			http.Error(w, fmt.Sprintf("@id %q already in use elsewhere in the config; @id values must be globally unique", id), http.StatusBadRequest)
+			return
+		}
+	}
 	if err := setByPath(f.config, tokens, route); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// countIDs walks the whole config tree counting nodes whose "@id" equals id —
+// the global-uniqueness check handlePatchRoute enforces (mirroring real Caddy).
+func countIDs(node any, id string) int {
+	n := 0
+	switch v := node.(type) {
+	case map[string]any:
+		if got, _ := v["@id"].(string); got == id {
+			n++
+		}
+		for _, child := range v {
+			n += countIDs(child, id)
+		}
+	case []any:
+		for _, child := range v {
+			n += countIDs(child, id)
+		}
+	}
+	return n
 }
 
 // navigate walks root by tokens (map keys or slice indices) and returns the

@@ -201,6 +201,50 @@ Auth: AdGuard Home's control API takes **HTTP Basic** credentials (the same acco
 as the web UI). The driver sends `Authorization: Basic …` built from the configured
 user + password (or password env-ref).
 
+### 3c. Pi-hole — native v6 API driver (internal, Local DNS host entries)
+
+Pi-hole is the same *kind* of thing as AdGuard here: an internal resolver whose
+"Local DNS" entries override answers for specific names. Its adapter,
+`internal/drivers/dns/pihole`, speaks the **Pi-hole v6 REST API** over the same
+injectable `Doer` seam. The contract was captured live against the official
+`pihole/pihole` image (core v6.4.3 / FTL v6.7) — fixtures + transcript in
+`internal/drivers/dns/pihole/testdata/`:
+
+| Crenel op | Pi-hole v6 API |
+|---|---|
+| `LiveRecords` | `GET /api/config/dns/hosts` → `{"config":{"dns":{"hosts":["IP host", …]}}}` |
+| add (`Apply`) | `PUT /api/config/dns/hosts/<url-encoded "IP host">` → 201 (400 duplicate/invalid) |
+| remove (`Apply`) | `DELETE /api/config/dns/hosts/<url-encoded "IP host">` → 204 (404 absent = tolerated no-op) |
+
+Auth is **session-based**, not Basic: `POST /api/auth {"password": …}` grants a
+`sid` (validity 1800 s) carried as a `sid:` header. The `OSDoer` acquires it lazily,
+**reuses** it across calls (sessions are a finite server-side seat pool), and on a
+401 re-authenticates once and retries — the expiry path an hours-apart sequence hits.
+There is no username; `password_env` (preferred) or `password` is the whole credential.
+
+Where Pi-hole semantics force honest divergence from the AdGuard pattern:
+
+- **IP targets only.** A `dns.hosts` entry is a dnsmasq `IP host` line; the API
+  400s any non-IP value (captured). So `edge_addr` must be an IP — a CNAME-style
+  target is refused at plan time, not bounced off the API mid-apply. (v6 has a
+  separate `cnameRecords` endpoint; deliberately out of this driver's scope.)
+- **Wildcards are refused with the real reason.** The endpoint itself rejects a
+  wildcard hostname (400 `invalid hostname`, captured); Pi-hole wildcard answers
+  live in custom dnsmasq conf files (`address=/…/…`) *outside* the API. The driver
+  refuses `*.…` hosts loudly and says exactly that.
+- **Same-name duplicates are the trap, not an error.** Pi-hole happily holds two
+  entries for the same host with different IPs (captured 201 — no dedupe by name).
+  The driver's conflict check refuses to create that ambiguity, exactly like
+  AdGuard's same-domain/different-answer refusal.
+
+Everything else mirrors AdGuard: zone confinement (Pi-hole has no zone concept —
+the same any-domain hijack trap), per-instance labels (`pihole[vps]`), scope always
+internal, and **no `OwnedRecordReporter`** — a bare `IP host` string carries no
+ownership marker, so a value-drift check would cry wolf on the operator's own
+entries (§3b's marker-less reasoning applies verbatim). Coverage parity is
+provider-agnostic: a mixed `adguard[home]` + `pihole[vps]` split-horizon drifts and
+clears exactly as a dual-AdGuard pair (proven in `core.dns_parity_test`).
+
 ---
 
 ## 4. Credentials & secret handling
@@ -677,4 +721,122 @@ interface (`*:3000`), so a **direct HTTP `endpoint`** (`http://100.100.0.2:3000`
 - `internal/config/settings.go` — `apply_mode` / `zone_id` / `proxied` / `ttl` fields.
 - Tests — see §6 (faithful rejections, OSShell exec, wiring dispatch, redaction) and §11d
   (surgical foreign-untouched proof, ownership refusal, primitive refusal, OSDoer auth).
+
+## 13. Multi-zone routing — one edge, several apex zones
+
+The production shape that motivated this: **one Caddy edge fronting both
+`*.homelab.example` and `*.smallbiz.example`**, with a zone-confined DNS provider
+entry per (zone × resolver instance).
+
+> **Interface (feat/zones-list):** the operator writes ONE provider block per
+> resolver box with `zones: ["homelab.example", "smallbiz.example"]`; wiring
+> expands it into the per-zone zone-confined instances this section describes
+> (equivalence-tested — identical plan routing, live records, and audit
+> findings vs the hand-expanded form). `zone` and `zones` are mutually
+> exclusive; Pi-hole zone-expansions share one authenticated session. Names
+> gain a `/zone` suffix only when an entry declares 2+ zones. Bare-service
+> derivation resolves across all managed zones, refusing loudly with candidate
+> FQDNs when ambiguous; origins-map keys are never re-interpreted. Config could already *express* a zone-confined
+provider (per-provider `zone`, since M3), but core routed every host to **every**
+internal provider regardless of zone, so a two-zone config either hard-errored (the
+AdGuard/Pi-hole zone guard rightly refusing the out-of-zone write on every plan and
+reconcile) or cried wolf permanently (`edge_route_without_dns` on every host of the
+provider-less zone; coverage parity comparing resolvers of *different zones* as if they
+were peers). The zone guard was correct; the routing above it was missing.
+
+### 13a. `ports.ZoneReporter` — the zone as a declared capability
+
+An optional `DNSProvider` capability declaring the single zone a provider is confined
+to (`""` = unconfined — the back-compat default; an unconfined provider covers every
+host, so stubs and pre-multi-zone configs behave byte-identically). Implemented by
+AdGuard, Pi-hole, the surgical Cloudflare driver, and the dnscontrol adapter. Like the
+rest of the capability seams (`OwnedRecordReporter`, `ResidencyTargeter`), core never
+guesses confinement it cannot see.
+
+### 13b. Zone-aware routing in core (`internal/core/dns_zone.go`)
+
+`dnsCoversHost(provider, host)` — the zone apex itself or any name under it — gates
+every DNS touchpoint:
+
+- **plan / apply-verify / declarative**: an op's host is planned and verified against a
+  provider only when that provider's zone covers it. A skipped provider keeps `cs.DNS`
+  **positionally aligned** as an empty change (the per-provider index discipline of §12
+  holds), and the apply read-back *declares* "host outside this provider's managed
+  zone" rather than silently no-op-ing.
+- **reconcile**: a canonical host produces desired records only on covering providers —
+  an out-of-zone "missing record" is not drift; it is a record that provider is
+  FORBIDDEN to hold.
+
+### 13c. Zone-grouped parity + the honest out-of-zone finding
+
+- `dns_coverage_parity` now groups internal resolvers **by zone**: cross-zone resolver
+  pairs hold disjoint host sets *by construction* and are never compared (no more false
+  "missing" across unrelated zones); within-zone drift fires unchanged, wildcard- and
+  value-guard behavior per §12b.
+- A host outside **every** managed zone gets a new, quieter finding —
+  `edge_route_outside_managed_zones` (ok-severity, aggregated): "no provider is
+  configured for this host's zone." That replaces the standing
+  `edge_route_without_dns` cry-wolf such a host used to trip; a host *inside* a managed
+  zone but genuinely missing its record still warns via `edge_route_without_dns` as
+  before.
+
+**Status: BUILT, hermetically tested** against the production shape (2 zones × 2
+AdGuard instances internal + 1 public single-zone) through the real AdGuard driver —
+**no live multi-zone trial has been run.** Edge drivers themselves still have no zone
+concept (handled at the DNS-routing layer only), and an equivalent confinement for
+public multi-zone Cloudflare is a follow-on — see STATE-OF-CRENEL.md §6.z B.
+
+## 14. Residency selector — per-host-class vantage targets on internal resolvers
+
+§12 gave each resolver instance a single vantage-correct `edge_addr` — right for the
+home-resident bulk, but the reference architecture's target rule
+(`docs/REFERENCE-ARCH-split-horizon.md` §2) is a function `target(class, vantage)`:
+an **edge-resident** host should be answered with the PUBLIC edge by the home
+(non-tunnel) resolver and **tunnel-direct** by the VPS (tunnel) resolver — genuinely
+divergent answers for the same name, per vantage. This section makes that rule
+per-HOST.
+
+### 14a. The class is op-carried, never stored
+
+A host's residency class is an **operator declaration**: `expose --residency <class>`
+(or an apply file's `residency:` key) → `model.Op.Residency` — transient like every
+other op field, consistent with live-state-authoritative (no stored desired state).
+Class `""` (home-resident, the default and the bulk) gates nothing: every provider
+answers its configured `edge_addr`, byte-identical to pre-residency behavior. Note the
+consequence: **unexpose must re-declare the class** so each instance removes its OWN
+vantage value — a class-less unexpose of a residency host fails read-back and rolls
+back (loud, never a wrong delete).
+
+### 14b. `ports.ResidencyTargeter` + the per-provider `targets:` map
+
+Resolution is a **driver** concern: each internal provider resolves the class against
+its own `targets: {<class>: <addr>, …}` config map, layered over the `edge_addr`
+default. The instance IS the vantage, so the two maps differ by design (home →
+`targets: {vps: <public edge IP>}`, vps → `targets: {vps: <tunnel-direct addr>}`).
+A declared class with **no entry** on an instance is refused at PLAN time, naming the
+instance and the class — never guessed. Wiring refuses a `targets` block on a
+non-resolver provider type rather than silently ignore config.
+
+### 14c. Refusal semantics in core (`internal/core/residency.go`)
+
+Core's job is only to guarantee the refuse-loudly contract holds for providers that
+predate the capability: a **non-default class on an internal provider without
+`ResidencyTargeter`** is a plan-time refusal (shared by the imperative and declarative
+plans) — that provider would otherwise silently write its default `edge_addr` and
+misdirect its entire vantage, the exact wrong-target failure the selector exists to
+prevent. **Public providers are exempt by design**: the §2 table's public column is
+class-invariant (every class's public answer is the public edge), so a public provider
+legitimately ignores the class, and `dns_value_drift` keeps comparing owned public
+records against their class-invariant desired value.
+
+Read-back stays value-aware **per instance** (the declarative DNS verify became
+value-aware as part of this work), rollback compensates each instance with its own
+resolved value, and audit parity stays coverage-based — the divergence is the point,
+not drift (§12b).
+
+**Status: BUILT, hermetically tested** (`internal/core/residency_test.go`: regression
+default, divergent expose + per-instance verify + quiet audit, plan-time refusals both
+ways, declarative apply, per-instance unexpose, loud class-less unexpose, public
+class-invariance, mid-transaction rollback; plus adguard/pihole driver-contract tests)
+— **no live residency trial has been run.**
 ```

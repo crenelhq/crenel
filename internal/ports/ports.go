@@ -104,6 +104,49 @@ type OwnedRecordReporter interface {
 	OwnsAllLiveRecords() bool
 }
 
+// ZoneReporter is an OPTIONAL DNSProvider capability: it declares the single DNS zone
+// this provider instance is confined to (e.g. "homelab.example"). core uses it to route
+// each host to ONLY the providers whose zone covers it — the multi-zone edge case: one
+// edge serving hosts under two apexes ("homelab.example" + "smallbiz.example"), with
+// separate provider entries per zone. Without it, every plan/reconcile fan-out would ask
+// EVERY provider for EVERY host, and a zone-confined driver (AdGuard/Pi-hole/Cloudflare)
+// would correctly refuse the out-of-zone write — turning a legitimate two-zone config
+// into a hard error. Audit likewise uses it to group coverage-parity comparisons by
+// zone (two resolvers of DIFFERENT zones must never be compared against each other).
+//
+// A provider that does not implement it — or reports "" — is treated as covering every
+// host (back-compat: the pre-multi-zone behavior, and the honest default for a provider
+// whose confinement core cannot see).
+type ZoneReporter interface {
+	// ManagedZone returns the zone this provider is confined to ("" = unconfined).
+	// Config-derived, cheap, never mutates.
+	ManagedZone() string
+}
+
+// ResidencyTargeter is an OPTIONAL DNSProvider capability: it declares that this
+// provider can resolve a host's RESIDENCY class (model.Op.Residency; the reference
+// architecture's `target(class, vantage)` rule, docs/REFERENCE-ARCH-split-horizon.md
+// §2) to ITS OWN vantage-correct answer — a per-provider `targets` map layered over
+// the single default edge_addr. This is what turns the per-PROVIDER target divergence
+// the dual-resolver split already supports into per-HOST divergence: for an
+// edge-resident host the home (non-tunnel) resolver answers the PUBLIC edge while the
+// tunnel resolver answers tunnel-direct, and each instance resolves the class against
+// only its own map.
+//
+// The contract is refuse-loudly, never guess: a class the provider has no target for
+// MUST return an error (core surfaces it at plan time, before any write), and core
+// REFUSES a non-default residency op on any INTERNAL provider that does not implement
+// this capability at all — a provider that cannot express the class must never
+// silently fall back to its default target and misdirect a vantage. PUBLIC providers
+// do not implement it: the public answer is the public edge for every class (the §2
+// table's Cloudflare column is constant).
+type ResidencyTargeter interface {
+	// ResidencyTarget resolves a residency class to this provider's answer address.
+	// "" (the home-resident default) returns the configured edge_addr; an unknown
+	// class returns a loud, instance-naming error. Config-derived, never mutates.
+	ResidencyTarget(class string) (string, error)
+}
+
 // OriginResolver maps a logical service name to a backend address.
 type OriginResolver interface {
 	Resolve(serviceName string) (string, error)

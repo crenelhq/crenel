@@ -1,0 +1,1 @@
+{"error":{"key":"bad_request","message":"Invalid value","hint":"dns.hosts[1]: neither a valid IPv4 nor IPv6 address (\"nonsenseentry\")"},"took":2.9325485229492188e-05}

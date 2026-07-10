@@ -101,6 +101,68 @@ func TestBuildDNSAdguardPublicScopeRejected(t *testing.T) {
 	}
 }
 
+func TestBuildDNSDispatchPihole(t *testing.T) {
+	ps, err := buildDNS(dnsSettings(config.DNSProviderSettings{
+		Type: "pihole", Scope: "internal", EdgeAddr: "10.0.0.13", Instance: "vps",
+		Endpoint: "http://10.0.0.54:8080", Password: "pw",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ps) != 1 || ps[0].Name() != "pihole[vps]" || ps[0].Scope() != model.ScopeInternal {
+		t.Fatalf("expected one internal pihole[vps] provider, got %+v", ps)
+	}
+}
+
+func TestBuildDNSPiholeMissingEndpointErrors(t *testing.T) {
+	_, err := buildDNS(dnsSettings(config.DNSProviderSettings{Type: "pihole", Scope: "internal", EdgeAddr: "10.0.0.13"}))
+	if err == nil || !strings.Contains(err.Error(), "missing endpoint") {
+		t.Fatalf("expected missing-endpoint error, got %v", err)
+	}
+}
+
+// Parity with the adguard/cloudflare missing-credential checks: a pihole provider
+// with no API password must fail the build, never send an unauthenticated request.
+func TestBuildDNSPiholeMissingPasswordErrors(t *testing.T) {
+	_, err := buildDNS(dnsSettings(config.DNSProviderSettings{
+		Type: "pihole", Scope: "internal", EdgeAddr: "10.0.0.13", Endpoint: "http://x:8080",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "missing API password") {
+		t.Fatalf("expected missing-password error, got %v", err)
+	}
+}
+
+func TestBuildDNSPiholePasswordEnvUnsetErrors(t *testing.T) {
+	_, err := buildDNS(dnsSettings(config.DNSProviderSettings{
+		Type: "pihole", Scope: "internal", EdgeAddr: "10.0.0.13", Endpoint: "http://x:8080",
+		PasswordEnv: "CRENEL_TEST_PH_PW_UNSET",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "is not set") {
+		t.Fatalf("expected env-unset error, got %v", err)
+	}
+}
+
+func TestBuildDNSPiholePublicScopeRejected(t *testing.T) {
+	_, err := buildDNS(dnsSettings(config.DNSProviderSettings{
+		Type: "pihole", Scope: "public", EdgeAddr: "10.0.0.13", Endpoint: "http://x:8080", Password: "pw",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "scope must be internal") {
+		t.Fatalf("expected public-scope rejection, got %v", err)
+	}
+}
+
+func TestBuildDNSPiholeMockNeedsNoCreds(t *testing.T) {
+	ps, err := buildDNS(dnsSettings(config.DNSProviderSettings{
+		Type: "pihole", Scope: "internal", EdgeAddr: "10.0.0.13", Mock: true,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ps) != 1 || ps[0].Name() != "pihole" {
+		t.Fatalf("mock pihole should build without creds, got %+v", ps)
+	}
+}
+
 func TestBuildDNSUnknownTypeErrors(t *testing.T) {
 	_, err := buildDNS(dnsSettings(config.DNSProviderSettings{Type: "route53", Scope: "public"}))
 	if err == nil || !strings.Contains(err.Error(), "unknown type") {

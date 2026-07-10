@@ -401,6 +401,9 @@ type DNSSettings struct {
 	Scope    string `json:"scope"`          // "internal" | "public"
 	Zone     string `json:"zone"`           // DNS zone managed
 	EdgeAddr string `json:"edge_addr"`      // address records point at (the edge)
+	// Targets (see DNSProviderSettings) — single-provider form: per-residency-class
+	// answer addresses layered over the edge_addr default.
+	Targets map[string]string `json:"targets,omitempty"`
 	// Mock, when true, wires an in-process fake provider instead of contacting a
 	// real backend — the safe, no-infra demo path (mirrors --fake-seed for edge).
 	Mock bool `json:"mock"`
@@ -429,16 +432,42 @@ type DNSSettings struct {
 // Type selects the backend: "" / "mock" is the in-process fake (the safe default,
 // touches no real infra); "cloudflare" drives the public authoritative zone via the
 // dnscontrol CLOUDFLAREAPI provider; "adguard" drives the internal resolver rewrites
-// via the AdGuard Home control API. Credentials are NEVER hardcoded — prefer the
+// via the AdGuard Home control API; "pihole" drives the internal resolver's Local
+// DNS host entries via the Pi-hole v6 API. Credentials are NEVER hardcoded — prefer the
 // *_env reference fields (the secret stays out of the config file); a literal value
 // is accepted but is redacted at every output boundary (its JSON key is in
 // redact.secretKeyParts). See docs/DNS-DESIGN.md §4 and SECURITY.md §1/§6.
 type DNSProviderSettings struct {
-	Type     string `json:"type,omitempty"` // "" | "mock" | "cloudflare" | "adguard"
+	Type     string `json:"type,omitempty"` // "" | "mock" | "cloudflare" | "adguard" | "pihole"
 	Scope    string `json:"scope"`          // "internal" | "public"
 	Zone     string `json:"zone"`           // DNS zone managed (defaults to top-level zone)
 	EdgeAddr string `json:"edge_addr"`      // address records point at (the edge)
 	Mock     bool   `json:"mock"`           // in-process fake (safe, no-infra)
+
+	// Zones declares ALL the zones this one provider entry manages — the multi-zone
+	// resolver shape said ONCE (one endpoint, one credential set, one instance label)
+	// instead of a copy-pasted entry per zone that invites config drift. Wiring
+	// expands it into one zone-confined driver instance per zone (the battle-tested
+	// single-zone drivers are untouched), sharing what should be shared: the instance
+	// label and, for pihole, the session channel (one login, not N). When the list
+	// carries 2+ zones the zone is woven into each instance's display name
+	// ("adguard[home]/zone-a") so plan/apply/audit labels never collide; `zones: [a]`
+	// is byte-identical to `zone: a`. Setting BOTH Zone and Zones is a loud config
+	// error at wiring — never a silent precedence guess.
+	Zones []string `json:"zones,omitempty"`
+
+	// Targets maps a RESIDENCY class (the operator-declared `expose --residency
+	// <class>` / apply-file `residency:` key) to the address THIS provider instance
+	// answers for hosts of that class — the per-host half of the reference
+	// architecture's `target(class, vantage)` rule (docs/REFERENCE-ARCH-split-horizon.md
+	// §2). The instance is the vantage, so each internal provider carries its OWN map:
+	// e.g. the home (non-tunnel) resolver maps "vps" to the PUBLIC edge IP while the
+	// vps (tunnel) resolver maps "vps" to the tunnel-direct address. edge_addr stays
+	// the home-resident default (class unset), so configs without targets behave
+	// byte-identically to before. Only internal resolver types (adguard/pihole) accept
+	// it — wiring refuses it elsewhere rather than silently ignore config; a declared
+	// class with no entry is refused loudly at plan time (never guessed).
+	Targets map[string]string `json:"targets,omitempty"`
 
 	// Instance is an OPTIONAL stable label distinguishing this provider from another of
 	// the same type+scope+zone — the dual-resolver split-horizon case: two adguard
@@ -483,9 +512,12 @@ type DNSProviderSettings struct {
 	APIToken    string `json:"api_token,omitempty"`
 	APITokenEnv string `json:"api_token_env,omitempty"`
 
-	// --- adguard (internal) credentials ---
-	// Endpoint is the AdGuard Home control API base URL (e.g. "http://10.0.0.53:3000").
-	// Username + Password (or PasswordEnv) are the Basic-auth control credentials.
+	// --- adguard / pihole (internal) credentials ---
+	// Endpoint is the resolver's API base URL (adguard: the control API, e.g.
+	// "http://10.0.0.53:3000"; pihole: the v6 web/API base, e.g. "http://10.0.0.54:8080").
+	// adguard: Username + Password (or PasswordEnv) are the Basic-auth control
+	// credentials. pihole: Password (or PasswordEnv) alone — v6 auth is a
+	// session-by-password login (POST /api/auth), there is no username.
 	Endpoint    string `json:"endpoint,omitempty"`
 	Username    string `json:"username,omitempty"`
 	Password    string `json:"password,omitempty"`

@@ -26,7 +26,7 @@ Suggested reading order:
    — the operator-record write-up of the 2026-06-30 live proofs (shared-zone
    Cloudflare, dual-AdGuard parity, full-chain expose) that closed punch-list
    items without their own standalone trial-result doc.
-8. [`DEPLOY-VPS.md`](DEPLOY-VPS.md) — the runbook for running Crenel directly
-   on the VPS edge host, against its loopback-only admin API.
-9. [`TEASER-TIMELINE.md`](TEASER-TIMELINE.md) — the living plan/timeline for
-   Crenel's capability teaser reel (fake-names-only demo-recording discipline).
+8. `DEPLOY-VPS.md` *(private repo only — export-ignored from the public
+   snapshot, along with `DEMO-RECORDING.md` and `TEASER-TIMELINE.md`)* — the
+   runbook for running Crenel directly on the VPS edge host, against its
+   loopback-only admin API.

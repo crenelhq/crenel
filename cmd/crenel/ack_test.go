@@ -77,3 +77,33 @@ func TestCLI_AckUnack(t *testing.T) {
 		t.Errorf("after unack the path-scoped route is a real unknown again, deny should read UNKNOWN:\n%s", s)
 	}
 }
+
+// TestCLI_AckRefusesSlashForm: docs/design/ack-marker.md §4b sketches `ack
+// <host>[/<path>]`, but the implementation is host-only first-match — a slash
+// argument used to silently fail host matching and die with the generic "no
+// participating edge" error. The cmd layer must refuse it loudly instead,
+// naming the workaround (ack the bare host) and the doc section.
+func TestCLI_AckRefusesSlashForm(t *testing.T) {
+	f := caddyfake.New()
+	t.Cleanup(f.Close)
+	if err := f.SeedJSON(`{"apps":{"http":{"servers":{"srv0":{"listen":[":443"],"routes":[
+    {"match":[{"host":["secrets.example.com"],"path":["/api"]}],
+     "handle":[{"handler":"reverse_proxy","upstreams":[{"dial":"10.0.0.5:8200"}]}]},
+    {"handle":[{"handler":"static_response","status_code":403}]}
+  ]}}}}}`); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := newTestCLI(t, f, true, "")
+	c.gf.reason = "x"
+
+	err := c.dispatch(context.Background(), "ack", []string{"secrets.example.com/api"})
+	if err == nil {
+		t.Fatal("slash-form ack target must be refused")
+	}
+	if !strings.Contains(err.Error(), "path-scoped ack targeting is not yet implemented") {
+		t.Errorf("refusal must say path targeting is unimplemented, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "ack the bare host") {
+		t.Errorf("refusal must name the workaround, got: %v", err)
+	}
+}

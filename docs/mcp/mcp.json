@@ -1,0 +1,23 @@
+{
+  "//": "Claude Code / generic MCP `mcpServers` snippet for crenel. Copy the entry you want into your client's MCP config (e.g. ~/.claude.json or a project .mcp.json). Adjust the crenel path, --config, or -admin-url/-zone to your edge. No credentials are baked in — crenel reads the same config as the CLI.",
+
+  "mcpServers": {
+    "crenel": {
+      "//": "READ-ONLY: status/audit/drift. Read-only by construction — safe to grant without an approval gate.",
+      "command": "crenel",
+      "args": ["--config", "/etc/crenel/crenel.settings.yaml", "mcp"]
+    },
+
+    "crenel-rw": {
+      "//": "READ + GATED WRITE: adds crenel_plan + crenel_apply (two-phase). Approve crenel_apply through your client's tool-approval flow; crenel_plan is read-only and safe to auto-approve.",
+      "command": "crenel",
+      "args": ["--config", "/etc/crenel/crenel.settings.yaml", "mcp", "--write"]
+    },
+
+    "crenel-env": {
+      "//": "No settings file — drive the edge from flags/env instead.",
+      "command": "crenel",
+      "args": ["-admin-url", "http://127.0.0.1:2019", "-zone", "example.com", "mcp"]
+    }
+  }
+}

@@ -198,6 +198,7 @@ func TestAdguardNameInstanceLabel(t *testing.T) {
 //   - the vps instance REFUSES (conflict) and writes nothing, and the error names the
 //     instance ("adguard[vps]") so the operator knows WHICH resolver is blocked;
 //   - the home instance, evaluated independently, plans the add cleanly.
+//
 // (RED before the per-instance Name(): the conflict error read a bare "adguard:", so the
 // instance attribution this asserts did not exist.)
 func TestAdguardPerInstanceOwnershipRefusesForeign(t *testing.T) {
@@ -231,5 +232,47 @@ func TestAdguardPerInstanceOwnershipRefusesForeign(t *testing.T) {
 	}
 	if len(change.Add) != 1 || change.Add[0].Name != host {
 		t.Fatalf("home should add the host independently, got %+v", change)
+	}
+}
+
+// --- residency selector (per-host targets; docs/REFERENCE-ARCH-split-horizon.md §2) ---
+
+// TestResidencyTarget_Contract pins the driver-side resolver contract: the empty
+// class is the home-resident default (EdgeAddr, back-compat), a configured class
+// resolves to THIS instance's vantage target, and a missing class is a loud,
+// instance-naming refusal — never a silent EdgeAddr fallback.
+func TestResidencyTarget_Contract(t *testing.T) {
+	d := adguard.New(adguard.Config{
+		Zone: "example.com", EdgeAddr: "10.0.0.13", Instance: "home",
+		Targets: map[string]string{"vps": "203.0.113.9"},
+	})
+	if got, err := d.ResidencyTarget(""); err != nil || got != "10.0.0.13" {
+		t.Errorf("default class must resolve to EdgeAddr: got %q, %v", got, err)
+	}
+	if got, err := d.ResidencyTarget("vps"); err != nil || got != "203.0.113.9" {
+		t.Errorf("vps class must resolve to the configured target: got %q, %v", got, err)
+	}
+	_, err := d.ResidencyTarget("edge-resident")
+	if err == nil {
+		t.Fatal("an unconfigured class must refuse")
+	}
+	if !strings.Contains(err.Error(), "adguard[home]") || !strings.Contains(err.Error(), `"edge-resident"`) {
+		t.Errorf("refusal must name the instance and the class: %v", err)
+	}
+}
+
+// TestDesiredRecords_ResidencyResolved: DesiredRecords carries the residency-
+// resolved value (and infers the record type from IT, not from EdgeAddr).
+func TestDesiredRecords_ResidencyResolved(t *testing.T) {
+	d := adguard.New(adguard.Config{
+		Zone: "example.com", EdgeAddr: "10.0.0.13",
+		Targets: map[string]string{"vps": "2001:db8::9"},
+	})
+	recs, err := d.DesiredRecords(model.Op{Verb: model.Expose, Host: "vault.example.com", Residency: "vps"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recs) != 1 || recs[0].Value != "2001:db8::9" || recs[0].Type != "AAAA" {
+		t.Errorf("expected one AAAA record at the residency target, got %+v", recs)
 	}
 }

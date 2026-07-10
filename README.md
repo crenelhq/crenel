@@ -245,9 +245,9 @@ anonymized to `homelab.example` in the write-ups):
 
 | Claim | Proven live | Record |
 |---|---|---|
-| One-command rename survives `docker restart` | 2026-06-28 | [trial](archive/trials/results/TRIAL-RESULT-rename-onecommand-2026-06-28.md) |
-| Durable persist into an existing wildcard site | 2026-06-28 | [trial](archive/trials/results/TRIAL-RESULT-durable-persist-2026-06-28.md) |
-| Cross-edge atomic rollback (zero changes on failure) | 2026-06-28 | [trial](archive/trials/results/TRIAL-RESULT-chain-write-2026-06-28.md) |
+| One-command rename survives `docker restart` | 2026-06-28 | [trial](docs/internal/trials/TRIAL-RESULT-rename-onecommand-2026-06-28.md) |
+| Durable persist into an existing wildcard site | 2026-06-28 | [trial](docs/internal/trials/TRIAL-RESULT-durable-persist-2026-06-28.md) |
+| Cross-edge atomic rollback (zero changes on failure) | 2026-06-28 | [trial](docs/internal/trials/TRIAL-RESULT-chain-write-2026-06-28.md) |
 | Surgical Cloudflare write on a *shared* production zone | 2026-06-30 | [record](docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md) |
 | Full chain — 2 edges + 2 AdGuards + Cloudflare, one command | 2026-06-30 | [record](docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md) |
 | Dual-AdGuard split-horizon parity audit catches real divergence | 2026-06-30 | [record](docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md) |
@@ -277,7 +277,7 @@ What Crenel *can't* do is stated as loudly as what it can:
   surgical mode, which refuses to touch any record it doesn't own.
 
 Full current state — what's built, live-proven, and open — is maintained in
-[`STATE-OF-CRENEL.md`](STATE-OF-CRENEL.md). Design docs live in
+[`STATE-OF-CRENEL.md`](docs/STATE-OF-CRENEL.md). Design docs live in
 [`docs/internal/`](docs/internal/); the plain-English explainer is
 [`docs/WHAT-CRENEL-DOES.md`](docs/WHAT-CRENEL-DOES.md); the split-horizon
 reference architecture is

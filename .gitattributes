@@ -2,25 +2,16 @@
 # but are omitted by `git archive` — the mechanism the snapshot flow uses
 # (docs/LAUNCH-PLAN-github.md §1), so the cut happens automatically.
 #
-# Kept exportable on purpose: archive/README.md and archive/trials/** (the root
-# README's "Proven, not promised" table links three trials/results files).
-# gitattributes has no export-ignore negation, so archive/ is pruned entry by
-# entry rather than wholesale.
-
-archive/BUILD_LOG.md            export-ignore
-archive/CONTEXT.md              export-ignore
-archive/PROVING-GROUND.md       export-ignore
-archive/outputs                 export-ignore
-archive/outputs/**              export-ignore
-archive/diag-artifacts          export-ignore
-archive/diag-artifacts/**       export-ignore
-archive/incident-2026-06-27     export-ignore
-archive/incident-2026-06-27/**  export-ignore
-
+# archive/ (the private build journal) and site/ (the website source) are
+# excluded wholesale; the three trial-result files the README cites moved to
+# docs/internal/trials/ so the public evidence chain stays intact.
 docs/internal/TEASER-TIMELINE.md  export-ignore
 docs/internal/DEMO-RECORDING.md   export-ignore
 docs/internal/DEPLOY-VPS.md       export-ignore
-
 docs/launch                     export-ignore
 docs/launch/**                  export-ignore
 docs/LAUNCH-PLAN-github.md      export-ignore
+archive export-ignore
+archive/** export-ignore
+site export-ignore
+site/** export-ignore

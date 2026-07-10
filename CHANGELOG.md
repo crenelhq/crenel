@@ -2,7 +2,7 @@
 
 All notable changes to Crenel are recorded here. Versioning is informal while
 pre-1.0 (`v0.x` = "works, with documented boundaries"). The authoritative
-current-state map is [`STATE-OF-CRENEL.md`](STATE-OF-CRENEL.md).
+current-state map is [`STATE-OF-CRENEL.md`](docs/STATE-OF-CRENEL.md).
 
 ## v0.5.0 — 2026-07-10
 
@@ -185,7 +185,7 @@ private line had built and proven:
 - **Proven-live posture carried forward:** durable restart-surviving persist,
   one-command `rename`, cross-edge atomic rollback, surgical Cloudflare on a shared
   production zone, and the full-chain production expose — each backed by a trial
-  record (`archive/trials/results/`, `docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md`).
+  record (`docs/internal/trials/`, `docs/internal/TRIAL-RECORD-live-proofs-2026-06-30.md`).
 
 Full launch notes: the `v0.4.0` GitHub release body
 (`docs/launch/RELEASE-NOTES-v0.4.0.md` in the private repo).
@@ -273,7 +273,7 @@ bounded timeout (a clean failure, never a hang), drift→reconcile, the ephemera
 warning proven by a real container restart, and cross-edge atomic rollback (Caddy + Traefik —
 one edge fails → both roll back, none left half-applied). Every mutating beat was byte-for-byte
 restored and all anchors identical before/after. Recorded in
-[`TRIAL-RESULT-bench-stress-2026-06-29.md`](archive/trials/results/TRIAL-RESULT-bench-stress-2026-06-29.md) (doc-only;
+[`TRIAL-RESULT-bench-stress-2026-06-29.md`](docs/internal/trials/TRIAL-RESULT-bench-stress-2026-06-29.md) (doc-only;
 no code change).
 
 **Housekeeping.** The standalone `crenel banner` status line now prints the real build version
@@ -405,7 +405,7 @@ forward-auth by reference (`--auth`, per-driver), `set`/`resume`, and the brande
 Four edge drivers behind one port: **Caddy, Traefik, nginx, NetBird** (mesh; reads, refuses
 mutation loudly).
 
-The authoritative current-state map is [`STATE-OF-CRENEL.md`](STATE-OF-CRENEL.md); the live
+The authoritative current-state map is [`STATE-OF-CRENEL.md`](docs/STATE-OF-CRENEL.md); the live
 trial records are the `TRIAL-RESULT-*` docs.
 
 ## v0.1.1 — 2026-06-27
@@ -508,7 +508,7 @@ of non-test Go across 41 files.
 Anything below reads as a *declared unknown* (refuse / `UNKNOWN`) rather than a
 confident wrong answer. Full register in
 [`docs/internal/TOPOLOGY-RISK-REGISTER.md`](docs/internal/TOPOLOGY-RISK-REGISTER.md); current state in
-[`STATE-OF-CRENEL.md`](STATE-OF-CRENEL.md) §3.
+[`STATE-OF-CRENEL.md`](docs/STATE-OF-CRENEL.md) §3.
 
 - **Caddy: use `--granular` on any real/brownfield edge.** Full-load (the
   default) is a full-config replace, safe only on a greenfield/Crenel-owned edge —

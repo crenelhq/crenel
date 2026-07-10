@@ -360,7 +360,7 @@ short list that remains."
   + dual-AdGuard split) this is all built to drive.
 - **`internal/DESIGN.md`**: the architecture and the load-bearing invariants.
 - **`SECURITY.md`**: the threat model, what secrets the config holds, and the redaction guarantee.
-- The **`archive/trials/results/TRIAL-RESULT-*.md`** files: the byte-for-byte records behind
+- The **`internal/trials/TRIAL-RESULT-*.md`** files: the byte-for-byte records behind
   the durable-persist, chain-write, rename, and dedicated-zone Cloudflare proofs, plus
   **`internal/TRIAL-RECORD-live-proofs-2026-06-30.md`** for the 2026-06-30 operator-record
   proofs (shared-zone Cloudflare, dual-AdGuard parity, and the `finances.homelab.example`

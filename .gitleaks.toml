@@ -12,7 +12,7 @@
 #       tests deliberately feed FAKE secrets (cf-SECRET-…, cf-LEAK-…,
 #       abc-DEF-1234-secret) and the standard jwt.io dummy JWT (sub=1234567890)
 #       and assert they get redacted.
-#   - archive/trials/results/TRIAL-RESULT-chain-write-2026-06-28.md
+#   - docs/internal/trials/TRIAL-RESULT-chain-write-2026-06-28.md
 #       A URL fragment (an internal host:port plus an /api path) in a results
 #       table, matched by generic-api-key — not a credential.
 
@@ -24,7 +24,7 @@ useDefault = true
 [allowlist]
 description = "Synthetic redaction-test fixtures and one URL fragment — verified false positives, pre-existing in public v0.4.0."
 # Keyed by BASENAME (unanchored regex) so the entries survive file moves — e.g.
-# the trial-result doc was later relocated into archive/trials/results/.
+# the trial-result doc was later relocated into docs/internal/trials/.
 paths = [
   '''redact_test\.go''',
   '''TRIAL-RESULT-chain-write-2026-06-28\.md''',

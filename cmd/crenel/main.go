@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -158,6 +159,31 @@ func run(args []string) int {
 		return 1
 	}
 
+	// CONFIG-FREE verbs short-circuit BEFORE loadSettings (and therefore before
+	// XDG config discovery): `crenel version` must print the version on ANY box,
+	// even one whose discovered ~/.config/crenel config has unreachable providers
+	// or unset creds envs. Same for help, and for init — which BOOTSTRAPS a config
+	// and can never require one. Live-found regression, 2026-07-10: discovery made
+	// `version` attempt full provider wiring and die on a missing DNS token.
+	// (`banner` and zero-config `audit <target>` are handled just below, also
+	// before loadSettings.) The dispatch() cases for version/help remain for
+	// programmatic callers but are unreachable from run().
+	switch verb {
+	case "version", "-v", "--version":
+		fmt.Fprintf(os.Stdout, "%s %s\n", config.ToolName, version)
+		return 0
+	case "help", "-h", "--help":
+		writeUsage(os.Stdout)
+		return 0
+	case "init":
+		c := &cli{out: os.Stdout, errOut: os.Stderr}
+		if err := c.cmdInit(verbArgs); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		return 0
+	}
+
 	// `crenel banner` is pure branding — print the hero banner with no settings/engine.
 	if verb == "banner" {
 		ui.Style{Color: color, Cols: termCols(gf), Rows: termRows(gf), Version: version}.WriteHeroBanner(os.Stdout, termCols(gf))
@@ -219,7 +245,48 @@ func run(args []string) int {
 // driver/core error values stay real for programmatic callers and tests. See
 // SECURITY.md §6.
 func printError(gf *globalFlags, err error) {
-	fmt.Fprintln(os.Stderr, "error:", errMessage(gf, err))
+	msg := errMessage(gf, err)
+	msg += discoveryHint(gf, msg)
+	fmt.Fprintln(os.Stderr, "error:", msg)
+}
+
+// noConfigDiscoveryHint is appended to a connection-class error when crenel ran
+// on BARE DEFAULTS (no -config, no CRENEL_CONFIG, no discovered XDG config, no
+// -admin-url/-fake-seed override) — the exact first-touch confusion where the
+// user HAS a config at the XDG path but crenel dialed 127.0.0.1:2019 anyway.
+const noConfigDiscoveryHint = " (no config file found at $XDG_CONFIG_HOME/crenel/config.json or ~/.config/crenel/config.json; pass -config or set CRENEL_CONFIG)"
+
+// discoveryHint returns noConfigDiscoveryHint when it applies to this error,
+// else "". gf.settingsPath is non-empty whenever a config WAS loaded — via flag,
+// env, or discovery (loadSettings assigns the discovered path) — so the hint can
+// never appear on the path where a config was found.
+func discoveryHint(gf *globalFlags, msg string) string {
+	if gf.settingsPath != "" || gf.adminURL != "" || gf.fakeSeed != "" {
+		return ""
+	}
+	if !isConnectFailure(msg) {
+		return ""
+	}
+	return noConfigDiscoveryHint
+}
+
+// isConnectFailure reports whether an error message is in the
+// cannot-reach-the-admin-endpoint class (dial/timeout failures), the only class
+// where the "did you mean to pass a config?" hint self-explains.
+func isConnectFailure(msg string) bool {
+	for _, sig := range []string{
+		"connection refused",
+		"dial tcp",
+		"no such host",
+		"no route to host",
+		"i/o timeout",
+		"context deadline exceeded",
+	} {
+		if strings.Contains(msg, sig) {
+			return true
+		}
+	}
+	return false
 }
 
 // errMessage returns an error's text with secret bytes masked unless --show-secrets.
@@ -431,8 +498,51 @@ func absorbPostVerbFlags(gf *globalFlags, args []string) ([]string, error) {
 	return out, nil
 }
 
-// loadSettings layers file settings under flag/env overrides.
+// discoveredConfigNames are the file names probed (in order) inside each
+// candidate config directory by discoverSettingsPath. Both formats config.Load
+// accepts are probed under the one canonical base name "config"; `crenel init`'s
+// crenel.settings.yaml scaffold is a cwd artifact passed via -config, so it is
+// deliberately NOT probed here.
+var discoveredConfigNames = []string{"config.json", "config.yaml", "config.yml"}
+
+// discoverSettingsPath resolves the DEFAULT settings file when neither -config
+// nor CRENEL_CONFIG is set: $XDG_CONFIG_HOME/crenel/<name>, then
+// ~/.config/crenel/<name>, first existing regular file wins. "" means nothing
+// was found and the caller keeps today's bare-defaults behavior. Overridable in
+// tests (which must not depend on the real home directory).
+var discoverSettingsPath = func() string {
+	var dirs []string
+	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" {
+		dirs = append(dirs, filepath.Join(x, "crenel"))
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		dirs = append(dirs, filepath.Join(home, ".config", "crenel"))
+	}
+	for _, d := range dirs {
+		for _, name := range discoveredConfigNames {
+			p := filepath.Join(d, name)
+			if fi, err := os.Stat(p); err == nil && fi.Mode().IsRegular() {
+				return p
+			}
+		}
+	}
+	return ""
+}
+
+// loadSettings layers file settings under flag/env overrides. With no explicit
+// -config / CRENEL_CONFIG it first probes the XDG-standard locations (see
+// discoverSettingsPath); a discovered path is assigned to gf.settingsPath so it
+// behaves IDENTICALLY to -config <path> everywhere downstream (transport, creds
+// env refs, origins persistence). A discovered-but-invalid file errors loudly —
+// it never silently falls through to bare defaults. An explicit -admin-url or
+// -fake-seed declares the wiring inline, so discovery is skipped there too — a
+// demo/CI invocation must not pick up a machine-local config by surprise.
 func loadSettings(gf *globalFlags) (config.Settings, error) {
+	if gf.settingsPath == "" && gf.adminURL == "" && gf.fakeSeed == "" {
+		if p := discoverSettingsPath(); p != "" {
+			gf.settingsPath = p
+		}
+	}
 	s, err := config.Load(gf.settingsPath)
 	if err != nil {
 		return s, err
@@ -482,13 +592,21 @@ Getting started:
 Read-only commands:
   status                 Show what is exposed right now (reads live state)
   audit                  Live-only invariant + cross-provider consistency checks
-  audit <target>         Zero-config READ-ONLY audit of ANY Caddy edge — no
-                         settings file. <target> is a Caddy admin URL
-                         (http://…:2019; the ONLY request made is GET /config/)
-                         or a Caddyfile path. Foreign/generator-owned edges are
-                         audited, never mutated; an unrecognized target is
-                         refused loudly (exit 2), never guessed. Auditing a
-                         foreign edge is NOT an endorsement of its config
+  audit <target>         Zero-config READ-ONLY audit of ANY edge — no settings
+                         file. <target> is one of: a Caddy admin URL
+                         (http://…:2019), a Caddyfile path, an Nginx Proxy
+                         Manager data dir (contains proxy_host/*.conf), a
+                         caddy-docker-proxy dir (holds Caddyfile.autosave), or
+                         a Traefik API URL (Pangolin and docker-labels setups).
+                         Requires a boundary declaration: --assume-public-boundary
+                         (keep the "edge route => public" default) or --internal
+                         (edge is not internet-facing). Only the pasted target
+                         is ever contacted (--probe opts into the admin endpoint
+                         the config itself declares). Foreign/generator-owned
+                         edges are audited, never mutated; an unrecognized
+                         target is refused loudly (exit 2), never guessed.
+                         Auditing a foreign edge is NOT an endorsement of its
+                         config
   preview expose <svc>   Show the change for exposing a service (no apply)
   preview unexpose <svc> Show the change for unexposing a service (no apply)
   preview rename <old-host> <new-host>
@@ -549,7 +667,11 @@ Mutating commands (preview -> confirm -> apply -> read-back-verify):
                          whatever it would otherwise be declared as
 
 Global flags:
-  -config <path>     settings JSON (env CRENEL_CONFIG)
+  -config <path>     settings file, JSON or YAML (env CRENEL_CONFIG). When
+                     neither is set, crenel looks for
+                     $XDG_CONFIG_HOME/crenel/config.{json,yaml,yml}, then
+                     ~/.config/crenel/config.{json,yaml,yml}, before falling
+                     back to bare defaults (direct admin_url)
   -admin-url <url>   Caddy admin API base URL (env CRENEL_ADMIN_URL)
   -zone <zone>       DNS zone for host derivation (env CRENEL_ZONE)
   -fake-seed <file>  run against an in-process fake Caddy seeded from a fixture

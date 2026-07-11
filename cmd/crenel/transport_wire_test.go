@@ -105,7 +105,7 @@ func TestBuild_SSHExecEdge_ReadsThroughRealSh(t *testing.T) {
 			Name:     "home",
 			Driver:   "caddy",
 			AdminURL: "http://127.0.0.1:1", // ignored: the transport routes the call
-			Origins:  map[string]string{"grafana": "10.0.0.5:3000"},
+			Origins:  config.PlainOrigins(map[string]string{"grafana": "10.0.0.5:3000"}),
 			Transport: &config.TransportSettings{
 				Type:     "ssh-exec",
 				Command:  []string{"sh"}, // innermost shell, reads the script from stdin

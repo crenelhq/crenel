@@ -38,7 +38,7 @@ func newExposeToCLI(t *testing.T, fake *caddyfake.Fake, settingsBody string) (*c
 	if err != nil {
 		t.Fatal(err)
 	}
-	res := static.New(s.Origins) // may be empty — --to is the point
+	res := static.New(s.Origins.Addrs()) // may be empty — --to is the point
 	edge := caddy.New(fake.URL(), res)
 	engine := core.New(edge, "example.com")
 	out := &bytes.Buffer{}
@@ -91,7 +91,7 @@ func TestCLI_ExposeWithTo_WritesRouteAndPersistsOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Origins["immich"] != "10.0.0.99:2283" {
+	if got.Origins["immich"].Addr != "10.0.0.99:2283" {
 		t.Errorf("origins not persisted; got %v", got.Origins)
 	}
 }

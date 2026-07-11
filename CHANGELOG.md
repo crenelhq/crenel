@@ -4,6 +4,71 @@ All notable changes to Crenel are recorded here. Versioning is informal while
 pre-1.0 (`v0.x` = "works, with documented boundaries"). The authoritative
 current-state map is [`STATE-OF-CRENEL.md`](docs/STATE-OF-CRENEL.md).
 
+## v0.5.2 — 2026-07-11
+
+The release where the tool's own production edge reached **`DRIFT: 0`** — a real
+two-edge (home + VPS chain front), two-zone, dual-resolver split-horizon
+deployment reading fully clean, with both edges' default-deny certified. Getting
+there surfaced everything below.
+
+**Wildcard-aware presence, everywhere.** Three sibling fixes to one cry-wolf
+pattern: (1) public DNS drift — an operator's unowned `*.zone` wildcard now
+satisfies public presence when it answers with the expected target (new
+read-only `CoverageReporter` capability on the surgical Cloudflare driver:
+presence checks may see foreign records; mutation and ownership stay
+marker-gated — previously every wildcard-covered host flagged a permanent
+`missing_dns_record`, and running reconcile would have "fixed" it by publishing
+internal hostnames to public DNS); (2) chain forwards — a front edge's covering
+wildcard forward satisfies the "half-present chain" check when it dials the
+downstream (a value-mismatched wildcard still flags, naming where it actually
+dials); (3) chain follow-through — a wildcard relay at the front now resolves
+and is accounted for instead of warning `chain_unresolved`.
+
+**Internal-scope services.** Origins entries (and `expose --scope internal`)
+accept a structured form declaring a service internal-only: no public DNS
+record is demanded or created, no chain-front forward is demanded — and a new
+critical audit finding (`internal_scope_public_exposure`) fires if the host
+nonetheless becomes publicly reachable (explicit public record, front route,
+or tunnel publication). Split-horizon "this must never leak" is now a
+declared, *verified* property instead of a hole in the config.
+
+**`crenel triage`.** Interactive guided walk of every route crenel could not
+understand — the brownfield first-audit wall. Per-route evidence card (edge,
+structural locator, why it defied modeling, what WAS understood, raw JSON),
+then ack-with-reason / skip / open-full-JSON, with an evidence-derived reason
+slug suggested at the prompt. Acks land through a new ack-by-locator path
+(`crenel ack --route '<locator>' --reason <slug>`) that can address routes
+with no recoverable host, read-back-verified, markers within the existing
+`@id` grammar.
+
+**Full-load admin guard.** A full-config load now carries a custom listen-only
+`admin` block through verbatim (read-back-verified it survived) and refuses
+loudly when the block holds anything a Caddyfile cannot faithfully re-render —
+previously a full load silently reverted a customized admin endpoint to the
+localhost default (trial finding F1).
+
+**Daily-driver setup.** `crenel init --xdg` scaffolds `~/.config/crenel/`
+(discovered config, exposures starter, 0600 `crenel.env` secrets stub using
+the `*_env` convention), and the README gains a "Daily driver" section: config
+discovery order, the env-file pattern (shell and systemd variants), a cron
+drift check with an ntfy alert example, and the optional HUD alias.
+
+**Help-text accuracy pass.** Every verb's usage text audited against actual
+behavior: three undocumented global flags surfaced (`-force`,
+`-allow-unverified`, `-caddy-persist`), audit flags got their own section,
+missing verbs/aliases/env vars documented, `dnscontrol` added to the DNS
+provider enum error.
+
+**Container distribution.** Release tags now also publish a multi-arch OCI image,
+`ghcr.io/crenelhq/crenel` (linux amd64/arm64, alpine base, smoke-tested with
+`crenel version` before push) via a sibling job in the release workflow; the root
+`Dockerfile` is the release image (bundle/Dockerfile stays the demo-bundle build).
+New `docs/CONTAINER.md` documents the reference compose topology: the sidecar
+pattern (`network_mode: "service:caddy"` → loopback admin, no exec transport),
+the durable-persist wiring that works today (rw-mounted boot Caddyfile +
+`caddy_persist.caddy_command` over the docker socket, tradeoffs stated), host-cron
+drift checks, and the honest list of what does not work containerized.
+
 ## v0.5.0 — 2026-07-10
 
 Minor — the arc from "audits and writes the edge it manages" to **"understands a

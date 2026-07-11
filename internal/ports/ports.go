@@ -104,6 +104,36 @@ type OwnedRecordReporter interface {
 	OwnsAllLiveRecords() bool
 }
 
+// CoverageReporter is an OPTIONAL DNSProvider capability: a READ-ONLY view of ALL
+// records in the provider's zone — crenel-owned AND foreign, including operator
+// wildcards — for PRESENCE/COVERAGE checks only.
+//
+// Why it exists: a marker-filtered provider (the surgical Cloudflare driver) keeps
+// LiveRecords scoped to crenel-OWNED records — the correct boundary for everything
+// that feeds mutation and ownership reasoning. But presence is a property of the
+// ZONE, not of crenel's footprint: an operator's UNOWNED `*.zone` wildcard already
+// answers every exposed host under the zone, and a coverage check that cannot see it
+// flags a permanent `missing_dns_record` per host — the public-scope cry-wolf
+// sibling of the internal wildcard-awareness fix (audit's dns_coverage_parity /
+// dns_without_edge_route / edge_route_without_dns wildcard treatment).
+//
+// HARD SEPARATION (the load-bearing safety property): CoverageRecords may be
+// consumed ONLY by presence/coverage checks — "is this name already answered, and by
+// what value?". It must NEVER feed a mutation, an ownership decision, or an
+// owned-record value-drift check; those stay marker-gated on LiveRecords +
+// OwnedRecordReporter. Coverage may READ foreign records; crenel still never
+// TOUCHES them.
+//
+// Providers whose LiveRecords is already zone-complete (AdGuard/Pi-hole: filtered
+// by zone but NOT by ownership — they have no ownership marker to filter on) gain
+// nothing from implementing it; core falls back to LiveRecords for them, which
+// preserves their behavior byte-identically.
+type CoverageReporter interface {
+	// CoverageRecords reads ALL records currently present in the provider's zone
+	// (owned + foreign, explicit + wildcard). Read-only; never mutates.
+	CoverageRecords(ctx context.Context) ([]model.Record, error)
+}
+
 // ZoneReporter is an OPTIONAL DNSProvider capability: it declares the single DNS zone
 // this provider instance is confined to (e.g. "homelab.example"). core uses it to route
 // each host to ONLY the providers whose zone covers it — the multi-zone edge case: one
@@ -189,6 +219,34 @@ type Acker interface {
 	// Unparsed kind it would otherwise classify as. A no-op if the route is not
 	// currently ack'd.
 	Unack(ctx context.Context, host string) error
+}
+
+// LocatorAcker is an OPTIONAL capability an EdgeProvider may implement,
+// EXTENDING Acker's host addressing to STRUCTURAL-PATH addressing: acking a
+// declared-unknown route by the exact Locator its Unparsed entry reports
+// (e.g. "apps.http.servers.srv0.routes[1].handle[subroute].routes[5]").
+// Needed because an unparsed route may have NO recoverable host to hand to
+// Acker.Ack (a top-level host-less route with an unmodeled handler is the
+// canonical case) — the locator is then the ONLY address crenel has for it.
+// The marker stays within the crenel-ack:<qualifier>:<reason> @id convention
+// (docs/design/ack-marker.md): the qualifier is a sanitized form of the
+// locator, so two path-acked routes never collide on a global @id index and
+// ParseAckMarker classifies the route acknowledged on the next read.
+// `crenel triage` and `crenel ack --route` are the consumers.
+type LocatorAcker interface {
+	// AckLocator stamps the marker onto the route AT locator — same
+	// match/handlers/backend, only the marker changes. Idempotent (an exact
+	// re-ack is a tolerated no-op); refuses a crenel-managed route (that @id
+	// means ownership, not acknowledgment) and a locator that does not resolve
+	// to a route in the live config.
+	AckLocator(ctx context.Context, locator, reason string) error
+	// UnackLocator removes any crenel-ack marker from the route at locator.
+	// A no-op if the route is not currently ack'd.
+	UnackLocator(ctx context.Context, locator string) error
+	// RouteRawJSON returns the FULL pretty-printed raw JSON of the route at
+	// locator, for the operator to inspect during triage (Unparsed.RawExcerpt
+	// is bounded at read time; this is the unbounded evidence view).
+	RouteRawJSON(ctx context.Context, locator string) (string, error)
 }
 
 // Persister is an OPTIONAL capability an EdgeProvider may implement: writing the

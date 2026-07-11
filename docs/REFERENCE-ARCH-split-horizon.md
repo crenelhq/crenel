@@ -122,6 +122,18 @@ the tunnel vantage.
 - So it's a real **function evaluated independently per provider**, never one shared value broadcast
   to both resolvers.
 
+**The internal-only row is a declared, verified property, not just a config omission.** An
+origins entry may take the structured form `svc: {addr, scope: internal}` (or `expose <svc>
+--scope internal`, which persists it). Crenel then never demands or creates a public DNS record
+for that host and never asks the chain front to forward it — and `audit` **enforces** the
+declaration: an internal-scope host that is nonetheless publicly reachable (an explicit public
+record, a chain-front route, a tunnel publication) is a critical
+`internal_scope_public_exposure` finding on every run. A zone-wide public `*.zone` wildcard
+alone does not flag (with no public route the name dead-ends at a default-denying edge — the
+normal split-horizon shape); wildcard DNS coverage *combined with* a covering wildcard forward
+at the front is a warning (`internal_scope_wildcard_covered`), because that combination is real
+reachability.
+
 **"Sync," precisely:** consistent **coverage** (both resolvers know the same managed host set) with
 **vantage-correct targets** (each computed by the rule above), all **tracked as Crenel-owned**. Not
 "identical rules" on both boxes; identical *coverage*, differentiated *answers*.
@@ -246,6 +258,8 @@ recorded byte-for-byte (see the repo's `TRIAL-RESULT-*.md`).
 | **`dns_value_drift` audit + `DriftValueDNS` reconcile-side correction** (owned-record target drift detected AND corrected) | **BUILT** (PRs #13, #14), scoped via the optional `ports.OwnedRecordReporter` capability. Surgical Cloudflare opts in (its `LiveRecords` is marker-filtered, so every record is provably Crenel's). Marker-less AdGuard deliberately does NOT implement the capability; a value check there would cry wolf on the operator's legitimately-foreign rewrites. Documented limit, not a fix. |
 | **Wildcard-aware sibling DNS-vs-edge checks** (`dns_without_edge_route` / `edge_route_without_dns`) | **BUILT** (PR #16). A wildcard `*.zone` is a CATCH-ALL: backed by any exposed host under the zone, so not flagged dangling unless nothing in the zone is exposed; covers any name in the zone for the reverse check. |
 | **Tailscale funnel per-host recovery** (parses `serve.json` AllowFunnel keys → public set; per-edge authoritative public for the `public_without_auth` check) | **BUILT** (PR #17): `serve.json` `AllowFunnel` keys (port stripped from `host:port`) become the per-host public set; the conservative `exposed → public` default is now per-edge AUTHORITATIVE for edges with parsed per-host recovery. Tailnet-only `Web` entries (no `AllowFunnel`) are deliberately NOT modeled as a separate scope; the cry-wolf they previously caused is fixed but the affirmative tailnet-scope axis is roadmap. |
+| **Internal-scope declaration + audit enforcement** (`scope: internal` origins form / `expose --scope internal`; critical `internal_scope_public_exposure` when an internal host is publicly reachable anyway; wildcard-combination warning) | **BUILT · test-covered** (see §2's target rule; `internal/core/internal_scope_test.go`) |
+| **Wildcard-aware public presence + chain follow-through** (an operator's unowned public `*.zone` wildcard satisfies presence when it answers with the expected target; a covering wildcard forward at the front satisfies the half-present-chain check when it dials the downstream; a wildcard relay resolves instead of warning `chain_unresolved`) | **BUILT · live-proven** — this is what let a real two-edge, two-zone, dual-resolver deployment of exactly this architecture read fully clean (`DRIFT: 0`, both edges' default-deny certified) |
 | **Cloudflare-free public provider** (self-hosted DNS/tunnel; see §6) | **ROADMAP** (new provider; not built) |
 
 The formerly-gated next steps are now **DONE and PROVEN LIVE (2026-06-30):** (a) the live

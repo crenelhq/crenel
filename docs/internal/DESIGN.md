@@ -192,6 +192,13 @@ type OriginResolver interface {
     falsely flip default-deny to ENFORCED), a surviving/added route carrying real
     forward-auth (which it would strip), or a TCP-passthrough route — directing the
     operator to `--granular`. (Safety review F1/F2; `fullLoadSafe`.)
+    The **admin block** gets the same treatment (pihole-trial finding F1: a full
+    replace with no `admin` global reverted a port-published admin socket to the
+    localhost default mid-apply): a listen-only custom admin block is **carried
+    through** the render as `{ admin <listen> }` and read-back-verified to have
+    survived; an admin block carrying anything more (origins, enforce_origin,
+    identity, …) has no faithful Caddyfile rendering, so the full-load is
+    refused loudly. (`adminCarryListen`.)
   - *granular* (`WithGranularApply` / `--granular`): **additive** structured
     admin-API ops — insert each route at index 0 tagged with an `@id`, remove via
     `DELETE /id/crenel-route-<host>`. Never reads or rewrites routes Crenel does
@@ -577,6 +584,82 @@ requires it set (host:port) — a pure-front config (`downstream_address` empty,
 everything") is READ-only until an address is configured. The chain `Adopt` of a
 pre-existing forward (stamping the front's leaf as a managed forward) reuses the normal
 per-edge adoption; two-zone front edges remain the related follow-on noted above.
+
+## Internal-scope services — declared internal-only in a split-horizon topology (INTERNAL-SCOPE)
+
+Split-horizon architectures deliberately keep some hosts internal-only: internal
+DNS records exist, the home edge routes them, but the public chain-front edge does
+NOT forward them and public DNS must NEVER carry them. Before this feature crenel
+had no way to say that — a service in a chain-downstream edge's origins projection
+made drift demand a forward route on the chain FRONT (`missing_route` "half-present
+chain") and made the public DNS desired set demand a record; the only escape was
+keeping the service OUT of origins entirely (unmanaged, unverified).
+
+### The declaration
+
+An origins entry is polymorphic (`config.Origin`): a plain address string keeps
+today's semantics byte-identically, and the structured form declares the scope:
+
+```jsonc
+"origins": {
+  "grafana": "10.0.0.7:3000",                        // default: all scopes
+  "ha": {"addr": "10.0.0.19:8123", "scope": "internal"}
+}
+```
+
+(YAML uses the nested block-map form — the yaml subset deliberately has no flow
+maps.) Parse errors are LOUD: an unknown scope value, a missing `addr`, or an
+unknown key (a typo'd `scop`) refuses the whole config load — a security-relevant
+declaration is never silently defaulted. `expose <svc> --to <addr> --scope
+internal` persists the structured form, so the per-op flag becomes the standing
+declaration. Scope is a property of the SERVICE: declaring it `internal` on one
+edge and default on another is refused at wiring (`collectInternalScope`).
+The aggregated set lands on `core.Engine.InternalScope`.
+
+### Demand gates (what crenel stops asking for)
+
+- **Public DNS**: `Plan` and `planReconcile` skip PUBLIC-scope providers for an
+  internal-scope service — no desired record, no `missing_dns_record` demand, no
+  corrective Add, an empty (alignment-preserving) DNS slot. An explicit
+  `--scope/--dns public` on such a service is refused loudly (it contradicts the
+  config).
+- **Chain front**: `roleFor` yields `roleNone` instead of `roleForward`, which
+  gates every consumer at once — `Plan` never synthesizes the forward, reconcile
+  never demands the "half-present chain" route, `verifyReconcile` never expects it.
+- **Internal legs unchanged**: the downstream edge still fronts the service
+  terminally; its route and the internal DNS records stay fully managed, drifted,
+  reconciled, and read-back-verified exactly as before.
+
+### The guarantee (what an ack could never give)
+
+The demand gates only stop crenel from *creating* public legs. Audit additionally
+ENFORCES the declaration on every run — `internal_scope_public_exposure`,
+severity **critical**, when an internal-scope service IS publicly reachable:
+
+- an EXPLICIT public DNS record at its host (owned or foreign — the
+  `CoverageReporter` view; someone published this exact name);
+- an explicit route/forward for the host at a chain-FRONT edge;
+- the host observed published by a tunnel/overlay ingress.
+
+Wildcards get deliberate, documented treatment: a zone-wide public `*.zone`
+wildcard covers every internal host *by construction* (often unavoidable in the
+very architecture this feature serves), and with no public route the name resolves
+to an edge that default-denies it — unreachable in practice, so wildcard-only
+coverage alone is **no finding** (a permanent cry-wolf would train the operator to
+ignore audit). The COMBINATION — public wildcard coverage AND a covering wildcard
+forward at the chain front — is real reachability and raises the lower-severity
+`internal_scope_wildcard_covered` **warning** note. Finding text always says what
+to do: remove the record/route/ingress rule, or change the declared scope.
+
+Reconcile deliberately never *removes* an offending public record/route: that is a
+posture violation, not mechanical drift, so audit flags it for the human instead
+of a mutating verb silently deleting a public name.
+
+### Surfacing
+
+`status` tags internal-scope hosts `[internal]` on the route line
+(`Engine.InternalScopedHost`, mapped through the same `serviceOf` derivation the
+projection predicates use, so tagging and gating can never disagree).
 
 ## Typed route Mode — expressible intent + loud refusal (M6)
 

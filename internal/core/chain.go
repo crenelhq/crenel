@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 
 	"github.com/crenelhq/crenel/internal/model"
@@ -108,6 +109,46 @@ func (b EdgeBinding) chainForward(r model.Route) bool {
 	return dialHost(r.Upstream.Address) == dialHost(b.DownstreamAddress)
 }
 
+// wildcardRouteCovering returns the first live WILDCARD route whose pattern covers
+// host. The caddy reader surfaces a zone-wide site block with no nested per-host
+// matchers as a literal `*.zone` leaf route (Host = the pattern, Address = its dial)
+// — the real front-edge shape where one wildcard forwards a whole zone downstream.
+// Matching REUSES wildcardPatternCovers, the one wildcard rule shared with the DNS
+// coverage checks: if real routing would match the host via the wildcard, presence
+// checks must consider it present. Whether the wildcard forwards to the RIGHT place
+// is the caller's judgment (chainForward on the returned route).
+func wildcardRouteCovering(routes []model.Route, host string) (model.Route, bool) {
+	for _, r := range routes {
+		if isWildcardName(r.Host) && wildcardPatternCovers(r.Host, host) {
+			return r, true
+		}
+	}
+	return model.Route{}, false
+}
+
+// wildcardForwardCoverage returns (sorted) the downstream-routed hosts a front's
+// WILDCARD chain-forward route actually carries: the hosts routed at the downstream
+// edge that the `*.zone → downstream` relay covers. Empty for a non-wildcard route,
+// a route that does not forward to the downstream (chainForward), or an unreadable/
+// unconfigured downstream — the callers then fall back to their conservative path.
+func (cc chainContext) wildcardForwardCoverage(b EdgeBinding, r model.Route) []string {
+	if !isWildcardName(r.Host) || !b.chainForward(r) {
+		return nil
+	}
+	idx, ok := cc.byEdge[b.DownstreamEdge]
+	if !ok || idx.err != nil {
+		return nil
+	}
+	var out []string
+	for h := range idx.hosts {
+		if wildcardPatternCovers(r.Host, h) {
+			out = append(out, h)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // resolveChain returns the ChainLink for a front route that forwards into the chain,
 // or nil when this binding is not a chain front or the route is not a forward. It
 // FOLLOWS THROUGH to the downstream edge: a readable downstream that routes the host
@@ -131,6 +172,15 @@ func (cc chainContext) resolveChain(b EdgeBinding, r model.Route) *model.ChainLi
 			link.Resolved = true
 			link.DownstreamAddress = dr.Upstream.Address
 			link.DownstreamAuth = dr.Upstream.Auth
+		} else if covered := cc.wildcardForwardCoverage(b, r); len(covered) > 0 {
+			// A zone-wide WILDCARD relay: the downstream never routes the literal
+			// `*.zone` pattern, so the exact-host lookup above cannot resolve it — its
+			// COVERED hosts each resolve per-host at the downstream. Declared (not
+			// Resolved: there is no single downstream backend/auth for a pattern, so
+			// effectiveAuth keeps the honest asserted-downstream posture), with a
+			// reason that says the relay is carrying real hosts, not dangling.
+			link.Reason = fmt.Sprintf("wildcard relay: covers %d host(s) routed at downstream edge %q (each resolves per-host)",
+				len(covered), b.DownstreamEdge)
 		} else {
 			link.Reason = fmt.Sprintf("host not routed at downstream edge %q (dangling forward)", b.DownstreamEdge)
 		}

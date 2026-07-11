@@ -19,6 +19,9 @@ var mutatingVerbs = map[string]bool{
 	"reconcile": true, "resume": true,
 	"import": true, "apply": true,
 	"ack": true, "unack": true,
+	// triage is the interactive ack loop — every [a] is the same live-config
+	// write as `ack`, so it holds the same lock for its whole session.
+	"triage": true,
 }
 
 // lockPath is the flock target for a mutating command: beside the settings file

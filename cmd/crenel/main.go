@@ -47,6 +47,12 @@ type globalFlags struct {
 	// reason is the operator's crenel-ack:<reason> slug for `ack` (see
 	// docs/design/ack-marker.md) — required, never inferred.
 	reason string
+	// route is the STRUCTURAL-PATH target for `ack`/`unack` (--route): the
+	// Unparsed.Locator audit/status report, e.g.
+	// "apps.http.servers.srv0.routes[1].handle[subroute].routes[5]" — the only
+	// address a host-less unparsed route has. `crenel triage` is the guided
+	// front-end for the same path. Mutually exclusive with a positional host.
+	route string
 	// to is the explicit backend override for `expose` (host:port). When set, it
 	// bypasses the per-edge OriginResolver for THIS op and is persisted into the
 	// settings-file origins map on a verified apply so `status`/`audit`/`drift`/
@@ -359,7 +365,7 @@ func termRows(gf *globalFlags) int {
 }
 
 func bindGlobals(fs *flag.FlagSet, gf *globalFlags) {
-	fs.StringVar(&gf.settingsPath, "config", os.Getenv("CRENEL_CONFIG"), "path to settings JSON")
+	fs.StringVar(&gf.settingsPath, "config", os.Getenv("CRENEL_CONFIG"), "path to settings file (JSON or YAML)")
 	fs.StringVar(&gf.adminURL, "admin-url", os.Getenv("CRENEL_ADMIN_URL"), "Caddy admin API base URL")
 	fs.StringVar(&gf.zone, "zone", os.Getenv("CRENEL_ZONE"), "DNS zone for host derivation")
 	fs.StringVar(&gf.fakeSeed, "fake-seed", os.Getenv("CRENEL_FAKE_SEED"), "seed an in-process fake Caddy admin API from this fixture file (safe demo mode)")
@@ -373,6 +379,7 @@ func bindGlobals(fs *flag.FlagSet, gf *globalFlags) {
 	fs.StringVar(&gf.mode, "mode", "", "route mode: http (default) | passthrough | mesh")
 	fs.StringVar(&gf.auth, "auth", "", "forward-auth policy to attach (e.g. authelia); 'none' to publish unprotected on purpose")
 	fs.StringVar(&gf.reason, "reason", "", "ack: the crenel-ack:<reason> slug to stamp (required)")
+	fs.StringVar(&gf.route, "route", "", "ack/unack: target a route by its structural path (the locator audit/status print) instead of by host — the only way to address a host-less route")
 	fs.StringVar(&gf.to, "to", "", "expose: explicit backend address for this service (host:port); persists into the settings-file origins map on apply")
 	fs.StringVar(&gf.to, "upstream", "", "alias for --to")
 	fs.BoolVar(&gf.noValidate, "no-validate", false, "expose: skip the pre-flight TCP probe of --to (use when the backend is not up yet but the address is known-correct)")
@@ -450,6 +457,8 @@ func absorbPostVerbFlags(gf *globalFlags, args []string) ([]string, error) {
 			gf.params = append(gf.params, val)
 		case "reason":
 			gf.reason = val
+		case "route":
+			gf.route = val
 		case "scope":
 			gf.scope = val
 		case "dns":
@@ -465,7 +474,7 @@ func absorbPostVerbFlags(gf *globalFlags, args []string) ([]string, error) {
 	}
 	isValueFlag := func(name string) bool {
 		return name == "mode" || name == "auth" || name == "param" || name == "to" || name == "upstream" || name == "reason" ||
-			name == "scope" || name == "dns" || name == "edges" || name == "residency"
+			name == "route" || name == "scope" || name == "dns" || name == "edges" || name == "residency"
 	}
 
 	var out []string
@@ -502,7 +511,8 @@ func absorbPostVerbFlags(gf *globalFlags, args []string) ([]string, error) {
 // candidate config directory by discoverSettingsPath. Both formats config.Load
 // accepts are probed under the one canonical base name "config"; `crenel init`'s
 // crenel.settings.yaml scaffold is a cwd artifact passed via -config, so it is
-// deliberately NOT probed here.
+// deliberately NOT probed here. (`crenel init --xdg` writes config.yaml into the
+// XDG dir precisely so THIS probe finds it.)
 var discoveredConfigNames = []string{"config.json", "config.yaml", "config.yml"}
 
 // discoverSettingsPath resolves the DEFAULT settings file when neither -config
@@ -588,6 +598,9 @@ Usage:
 
 Getting started:
   init [dir]             Scaffold starter crenel.settings.yaml + crenel.exposures.yaml
+  init --xdg             Scaffold into $XDG_CONFIG_HOME/crenel (or ~/.config/crenel):
+                         config.yaml (auto-discovered — no -config flag needed),
+                         crenel.exposures.yaml, and a 0600 crenel.env secrets stub
 
 Read-only commands:
   status                 Show what is exposed right now (reads live state)
@@ -620,7 +633,8 @@ Read-only commands:
   serve [--addr :8080] [--refresh 5]
                          Run the READ-ONLY status dashboard: live 'status' as the
                          branded HUD over HTTP, auto-refreshing. Never mutates —
-                         all writes stay on the CLI (alias: dashboard)
+                         all writes stay on the CLI (alias: dashboard; --addr
+                         honors env CRENEL_SERVE_ADDR)
   mcp [--write]          Run the MCP server over stdio (JSON-RPC 2.0) for an LLM
                          agent. Default is READ-ONLY (crenel_status / crenel_audit /
                          crenel_drift) — no mutating tool exists, safe to hand to
@@ -628,6 +642,9 @@ Read-only commands:
                          (crenel_plan -> crenel_apply, confirm-by-plan-id; never
                          bypasses default-deny / public-auth / verify). See
                          docs/MCP.md + docs/mcp/SKILL.md
+  version                Print the crenel version (needs no config)
+  banner                 Print the hero banner (pure branding, no config/engine)
+  help                   Show this help
 
 Mutating commands (preview -> confirm -> apply -> read-back-verify):
   expose <svc> [--to host:port] [--scope internal|public|both] [--edges a,b]
@@ -636,12 +653,14 @@ Mutating commands (preview -> confirm -> apply -> read-back-verify):
                          instead of pre-declaring it in config. --scope internal
                          keeps it off public DNS (internal-only, no forced auth);
                          --edges appoints it to specific edges (see Global flags)
-  unexpose <svc>         Remove a service's exposure (honors --scope/--dns/--edges)
+  unexpose <svc>         Remove a service's exposure (honors --scope/--dns/
+                         --edges/--residency)
   rename <old-host> <new-host>
                          Move a service to a new hostname as ONE atomic, durable
                          transaction (add new + remove old), copying the source
                          route's exact backend / mode / auth. Make-before-break
-                         (zero-downtime), read-back-verified, rolled back as a unit
+                         (zero-downtime), read-back-verified, rolled back as a
+                         unit (alias: move)
   set <svc> <on|off>     Set exposure state explicitly
   resume <expose|unexpose> <svc>
                          Re-drive an interrupted apply: complete the remaining
@@ -657,14 +676,34 @@ Mutating commands (preview -> confirm -> apply -> read-back-verify):
                          Flags: --adopt (adopt matching unmanaged hosts inline),
                          --prune (unexpose owned hosts absent from the file),
                          --dry-run (preview only)
+  triage [--edge <name>] [--dry-run]
+                         Interactive walk through every route crenel could NOT
+                         understand (the ones audit counts against default-deny):
+                         each shows a bounded evidence card — edge, structural
+                         path, what crenel DID understand, the raw route JSON —
+                         then prompts [a]ck with reason / [s]kip / [o]pen full
+                         JSON / [q]uit. Acks go through the same read-back-
+                         verified write path as 'ack'; --dry-run prints what
+                         would be acked. Requires a terminal (use 'ack --route'
+                         in scripts). [q] leaves already-written acks in place.
   ack <host> --reason <slug>
                          Acknowledge an intentionally-unmodeled route (the
                          crenel-ack marker, docs/design/ack-marker.md): stamps
                          it in the live config so audit/status show ACK instead
                          of a recurring UNKNOWN, without weakening default-deny
                          or making the route reachable. Caddy only for now.
+  ack --route '<locator>' --reason <slug>
+                         Same, addressed by the route's STRUCTURAL PATH (the
+                         locator audit/status print, e.g. apps.http.servers.
+                         srv0.routes[1].handle[subroute].routes[5]) — the only
+                         way to target a route with no recoverable host. The
+                         marker is crenel-ack:<sanitized-locator>:<slug>; note
+                         locators shift if routes are reordered, so re-run
+                         audit for a fresh locator before acking.
   unack <host>           Remove the crenel-ack marker, reverting the route to
                          whatever it would otherwise be declared as
+  unack --route '<locator>'
+                         Same, addressed by structural path
 
 Global flags:
   -config <path>     settings file, JSON or YAML (env CRENEL_CONFIG). When
@@ -677,6 +716,10 @@ Global flags:
   -fake-seed <file>  run against an in-process fake Caddy seeded from a fixture
   -granular          additive structured-admin-API apply (rich/production edges)
   -layer4            Caddy caddy-l4 plugin present: render passthrough via layer4
+  -caddy-persist <path>
+                     mirror managed routes into this mounted Caddyfile after a
+                     verified apply, so they survive a Caddy restart (env
+                     CRENEL_CADDY_PERSIST)
   -mode <m>          route mode: http (default) | passthrough | mesh
   -auth <policy>     forward-auth policy to attach (e.g. authelia); 'none' to
                      publish unprotected on purpose (required to expose public
@@ -706,12 +749,32 @@ Global flags:
                      the route to (default: every edge that fronts the service)
   -param key=value   mode-specific intent (repeatable), e.g. -param group=admins
   -yes               skip confirmation for mutating commands
+  -force             ownership escape hatch: permit mutating a route whose
+                     ownership is UNKNOWN (never a FOREIGN/generator-owned one);
+                     use only after verifying ownership out-of-band
+  -allow-unverified  accept a file-driver write whose runtime probe is
+                     unavailable instead of rolling it back (the report still
+                     won't claim "verified")
   -json              JSON output where supported
   -show-secrets      show raw secret values (default: masked tokens/keys/hashes)
+
+Audit flags:
+  -assume-public-boundary
+                     audit: keep the conservative "edge route => public" default
+                     (a zero-config target audit REQUIRES this or -internal)
+  -internal          audit: declare the edge NOT internet-facing —
+                     public_without_auth downgrades to exposure_unscoped.
+                     Mutually exclusive with -assume-public-boundary; refused
+                     when a managed PUBLIC DNS provider is configured
+  -probe             audit <target>: contact the admin endpoint the target
+                     config ITSELF declares (one GET /config/) to upgrade
+                     CONFIG evidence to RUNTIME
 
 Status surface:
   -hud, -banner      draw the full HUD banner (wordmark + CORE MATRIX panel)
   -plain             suppress the branded header/HUD (scriptable output only)
+  -width, -height    pin the terminal size used to draw the full-width banner
+                     (0 = auto: COLUMNS/LINES env, else the real window size)
 
 By default 'status' prints a compact colored header on a terminal and plain,
 scriptable output when piped. Color follows NO_COLOR / TTY detection.

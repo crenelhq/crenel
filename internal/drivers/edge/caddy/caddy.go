@@ -647,19 +647,20 @@ func normalizeServer(srv Server, serverKey string) (routes []model.Route, unpars
 				case denyOnly:
 					continue // host-less subroute wrapping only a deny — keeps the default-deny
 				}
-				unparsed = append(unparsed, model.Unparsed{
-					Locator: loc, Kind: model.UnknownNestedRoute,
-					Reason:     "top-level host-less subroute not descended (no host to attribute its leaves to)",
-					RawExcerpt: r.excerpt(),
-				})
+				// ack-aware (like every host-scoped declare site): a host-less route is
+				// exactly the case with NO host to hand `crenel ack`, so the path-addressed
+				// ack (AckLocator / `ack --route`) is its only remedy — the read side must
+				// honor the marker it stamps or the ack could never read back verified.
+				unparsed = append(unparsed, ackAware(loc,
+					"top-level host-less subroute not descended (no host to attribute its leaves to)",
+					r.ID, r.excerpt(), model.UnknownNestedRoute))
 				continue
 			}
 			// A host-less route with some other handler crenel does not model.
-			unparsed = append(unparsed, model.Unparsed{
-				Locator: loc, Kind: model.UnknownHandler,
-				Reason:     "top-level host-less route with handler(s) crenel does not model: " + r.handlerNames(),
-				RawExcerpt: r.excerpt(),
-			})
+			// ack-aware for the same reason as the subroute case above.
+			unparsed = append(unparsed, ackAware(loc,
+				"top-level host-less route with handler(s) crenel does not model: "+r.handlerNames(),
+				r.ID, r.excerpt(), model.UnknownHandler))
 			continue
 		}
 		// Host-scoped route: enumerate its leaf reverse-proxy targets for EACH host
@@ -1048,8 +1049,18 @@ func (d *Driver) Apply(ctx context.Context, cs model.ChangeSet) error {
 	if err := multiServerFullLoadSafe(cfg, d.server); err != nil {
 		return err
 	}
+	// ADMIN GATE (trial finding F1): a full replace rebuilt from crenel's model
+	// carries no `admin` block, so it would revert a CUSTOM admin listener to
+	// Caddy's localhost default — silently killing the very socket crenel manages
+	// the edge through, mid-apply. A listen-only custom block is carried through
+	// verbatim (rendered as the `admin <listen>` global and read-back-verified
+	// below); anything richer is refused loudly. See adminCarryListen.
+	adminListen, err := adminCarryListen(raw)
+	if err != nil {
+		return err
+	}
 	desired := targetRoutes(live, cs.Edge)
-	body := renderCaddyfile(desired)
+	body := renderCaddyfile(desired, adminListen)
 
 	if err := d.load(ctx, body); err != nil {
 		return fmt.Errorf("caddy apply: load: %w", err)
@@ -1059,7 +1070,88 @@ func (d *Driver) Apply(ctx context.Context, cs model.ChangeSet) error {
 	if err := d.settle(ctx); err != nil {
 		return fmt.Errorf("caddy apply: post-load health: %w", err)
 	}
+	// Read-back verify the carried admin block: core's verification covers ROUTES,
+	// not the admin endpoint, so the carry-through must prove it survived here — a
+	// 200 from /load is not that proof (the silent-reload footgun applies to the
+	// admin block too). Note the mere fact this GET answered is already evidence
+	// (a reverted listener usually kills the socket we are talking on); comparing
+	// the listen value makes it explicit.
+	if adminListen != "" {
+		_, postRaw, err := d.fetchConfigRaw(ctx)
+		if err != nil {
+			return fmt.Errorf("caddy apply: post-load admin verify: %w", err)
+		}
+		got, gerr := adminCarryListen(postRaw)
+		if gerr != nil || got != adminListen {
+			return fmt.Errorf("caddy apply: full-config load did NOT preserve the custom admin listener %q "+
+				"(read back %q) — the admin endpoint may have reverted to Caddy's localhost default; "+
+				"recover the edge (reload its on-disk config) and use --granular (additive apply never "+
+				"touches the admin block)", adminListen, got)
+		}
+	}
 	return nil
+}
+
+// adminCarryListen inspects the RAW live config's top-level `admin` block and
+// decides how the full-load path must treat it (trial finding F1 — the first
+// pihole-trial expose reverted a port-published admin socket to localhost
+// mid-apply, because the rendered Caddyfile carried no `admin` global):
+//
+//   - absent / empty / explicit default ("localhost:2019") => ("", nil): the edge
+//     runs the default admin endpoint; a full replace lands back on that same
+//     default, so there is nothing to carry.
+//   - a LISTEN-ONLY block with a custom address => (listen, nil): provably
+//     renderable as the `{ admin <listen> }` Caddyfile global — the exact source
+//     spelling of that JSON — so Apply carries it through and read-back-verifies
+//     it survived. Preserving beats refusing when it is faithful.
+//   - anything else (origins, enforce_origin, remote, identity, config, disabled,
+//     …) => a loud refusal: the Caddyfile renderer cannot faithfully reproduce
+//     those fields, and a full replace would SILENTLY drop them — potentially
+//     cutting off or un-hardening the very admin endpoint crenel manages the edge
+//     through. Granular apply (additive per-route ops) never touches the admin
+//     block and stays the safe path for such an edge.
+func adminCarryListen(raw string) (string, error) {
+	var top struct {
+		Admin json.RawMessage `json:"admin"`
+	}
+	// An unreadable top-level doc never reaches here (fetchConfigRaw parsed it),
+	// but stay defensive: refusing on parse failure is the honest posture.
+	if strings.TrimSpace(raw) == "" || strings.TrimSpace(raw) == "null" {
+		return "", nil
+	}
+	if err := json.Unmarshal([]byte(raw), &top); err != nil {
+		return "", fmt.Errorf("caddy apply: refusing full-config load — cannot parse live config to check the admin block: %w", err)
+	}
+	if len(top.Admin) == 0 || string(bytes.TrimSpace(top.Admin)) == "null" {
+		return "", nil // no admin block => default endpoint, nothing to lose
+	}
+	var admin map[string]json.RawMessage
+	if err := json.Unmarshal(top.Admin, &admin); err != nil {
+		return "", fmt.Errorf("caddy apply: refusing full-config load — live config has an admin block crenel cannot parse: %w", err)
+	}
+	var extra []string
+	for k := range admin {
+		if k != "listen" {
+			extra = append(extra, k)
+		}
+	}
+	if len(extra) > 0 {
+		sort.Strings(extra)
+		return "", fmt.Errorf("caddy apply: refusing full-config load — the live admin block carries %s beyond a "+
+			"plain listen address, which a full replace would SILENTLY drop (a rendered config has no way to carry "+
+			"them), degrading or cutting off the admin endpoint crenel manages this edge through; "+
+			"use --granular (additive apply never touches the admin block)", strings.Join(extra, ", "))
+	}
+	var listen string
+	if l, ok := admin["listen"]; ok {
+		if err := json.Unmarshal(l, &listen); err != nil {
+			return "", fmt.Errorf("caddy apply: refusing full-config load — live admin.listen is not a string: %w", err)
+		}
+	}
+	if listen == "" || listen == defaultAdminListen {
+		return "", nil // explicit default is the same endpoint a bare replace yields
+	}
+	return listen, nil
 }
 
 // fullLoadSafe refuses a full-config replace (POST /load) when live holds anything

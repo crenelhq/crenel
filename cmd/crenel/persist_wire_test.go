@@ -28,7 +28,7 @@ func TestDurablePersist_WiresDurableFileEdge(t *testing.T) {
 			FilePath:     "/opt/stacks/caddy/conf/Caddyfile",
 			CaddyCommand: []string{"ssh", "root@ml350", "pct", "exec", "113", "--", "docker", "exec", "-i", "caddy", "sh"},
 		},
-		origins: map[string]string{},
+		origins: config.Origins{},
 	}
 	prov, err := buildCaddyEdge(spec, static.New(map[string]string{}), &wiring{cleanup: func() {}})
 	if err != nil {

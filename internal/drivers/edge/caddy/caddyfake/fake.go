@@ -36,6 +36,11 @@ type Fake struct {
 	SilentReload bool
 	// RejectReload, when non-empty, makes POST /load return 400 with this msg.
 	RejectReload string
+	// DropAdminOnLoad, when true, applies /load but STRIPS any admin block the
+	// Caddyfile carried — modelling an edge that does not honor the carried
+	// admin global (the F1 failure shape), so tests can prove the driver's
+	// post-load admin read-back verification catches it loudly.
+	DropAdminOnLoad bool
 
 	// WriteDelay and ReadDelay, when > 0, make mutating (/load, PUT/DELETE /config,
 	// /id) and read (GET /config/) handlers stall for that long before responding —
@@ -620,6 +625,9 @@ func (f *Fake) handleLoad(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f.config = adapt(body, f.server)
+	if f.DropAdminOnLoad {
+		delete(f.config, "admin")
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -636,9 +644,10 @@ func (f *Fake) handleLoad(w http.ResponseWriter, r *http.Request) {
 func adapt(caddyfile, serverKey string) map[string]any {
 	routes := []any{}
 	var (
-		curAddr    string
-		inBlock    bool
-		directives []string
+		curAddr     string
+		inBlock     bool
+		directives  []string
+		adminListen string // from a global options block: `{ admin <listen> }`
 	)
 
 	flush := func() {
@@ -669,12 +678,24 @@ func adapt(caddyfile, serverKey string) map[string]any {
 			continue
 		}
 		if inBlock {
+			// A GLOBAL options block (bare `{`, no site address) is where real
+			// Caddy's adapter reads the admin endpoint: `admin <listen>` becomes
+			// top-level JSON `{"admin":{"listen":"<listen>"}}`. Mirroring that here
+			// is what lets tests prove the F1 carry-through survives a full /load
+			// — and, just as faithfully, that a Caddyfile WITHOUT the global
+			// reverts the admin block (the /load replace drops the seeded one).
+			if curAddr == "" {
+				if l, ok := strings.CutPrefix(line, "admin "); ok {
+					adminListen = strings.TrimSpace(l)
+				}
+				continue
+			}
 			directives = append(directives, line)
 		}
 	}
 	flush()
 
-	return map[string]any{
+	cfg := map[string]any{
 		"apps": map[string]any{
 			"http": map[string]any{
 				"servers": map[string]any{
@@ -686,6 +707,10 @@ func adapt(caddyfile, serverKey string) map[string]any {
 			},
 		},
 	}
+	if adminListen != "" {
+		cfg["admin"] = map[string]any{"listen": adminListen}
+	}
+	return cfg
 }
 
 func buildRoute(addr string, directives []string) map[string]any {

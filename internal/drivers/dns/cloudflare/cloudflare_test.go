@@ -428,6 +428,42 @@ func TestLiveRecords_OnlyOwned(t *testing.T) {
 	}
 }
 
+// CoverageRecords (ports.CoverageReporter) shows the FULL zone — foreign records
+// INCLUDING the unowned wildcard, plus crenel's own — while LiveRecords stays
+// marker-filtered. The read-only coverage view is what lets core's presence checks
+// see an operator wildcard without ever widening the mutation boundary.
+func TestCoverageRecords_FullZoneIncludingForeignWildcard(t *testing.T) {
+	fake := cfapifake.New(zone, "", foreignSeed()...)
+	d := newDriver(t, fake, false)
+	if err := applyOp(t, d, exposeOp("app."+zone)); err != nil {
+		t.Fatalf("expose: %v", err)
+	}
+	cov, err := d.CoverageRecords(context.Background())
+	if err != nil {
+		t.Fatalf("CoverageRecords: %v", err)
+	}
+	if len(cov) != len(foreignSeed())+1 {
+		t.Fatalf("coverage should show all %d zone records (foreign + crenel's), got %d: %+v", len(foreignSeed())+1, len(cov), cov)
+	}
+	var sawWildcard bool
+	for _, r := range cov {
+		if r.Name == "*."+zone && r.Value == "203.0.113.1" {
+			sawWildcard = true
+		}
+	}
+	if !sawWildcard {
+		t.Fatal("coverage view must include the unowned wildcard record")
+	}
+	// The ownership boundary is untouched: LiveRecords is still crenel-only.
+	live, err := d.LiveRecords(context.Background())
+	if err != nil {
+		t.Fatalf("LiveRecords: %v", err)
+	}
+	if len(live) != 1 {
+		t.Fatalf("LiveRecords must remain marker-filtered (1 owned record), got %+v", live)
+	}
+}
+
 // Pagination: a zone larger than one page is fully read.
 func TestListZone_Paginates(t *testing.T) {
 	var seed []cfapifake.Record

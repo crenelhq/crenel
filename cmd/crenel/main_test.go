@@ -285,9 +285,9 @@ func TestCLI_ChainStatusFollowsThrough(t *testing.T) {
 		Zone: "homelab.example",
 		Edges: []config.EdgeSettings{
 			{Name: "vps", Driver: "caddy", FakeSeed: filepath.Join("..", "..", "examples", "seed-chain-front.json"),
-				GranularApply: true, DownstreamEdge: "home", DownstreamAddress: "10.0.0.13", Origins: map[string]string{}},
+				GranularApply: true, DownstreamEdge: "home", DownstreamAddress: "10.0.0.13", Origins: config.Origins{}},
 			{Name: "home", Driver: "caddy", FakeSeed: filepath.Join("..", "..", "examples", "seed-chain-home.json"),
-				GranularApply: true, Origins: map[string]string{}},
+				GranularApply: true, Origins: config.Origins{}},
 		},
 	}
 	w, err := build(s)
@@ -367,10 +367,12 @@ func TestAbsorbPostVerbFlags(t *testing.T) {
 			checkMsg: "json absorbed, verb-local left",
 		},
 		{
-			name:     "repeatable param",
-			args:     []string{"svc", "--param", "group=admins", "--mode", "mesh"},
-			want:     []string{"svc"},
-			check:    func(g *globalFlags) bool { return len(g.params) == 1 && g.params[0] == "group=admins" && g.mode == "mesh" },
+			name: "repeatable param",
+			args: []string{"svc", "--param", "group=admins", "--mode", "mesh"},
+			want: []string{"svc"},
+			check: func(g *globalFlags) bool {
+				return len(g.params) == 1 && g.params[0] == "group=admins" && g.mode == "mesh"
+			},
 			checkMsg: "param + mode absorbed",
 		},
 		{
@@ -453,12 +455,71 @@ func TestCLI_Init(t *testing.T) {
 	if err := config.DecodeFile(filepath.Join(dir, "crenel.settings.yaml"), &s); err != nil {
 		t.Fatalf("scaffolded settings should decode: %v", err)
 	}
-	if s.EdgeDriver != "caddy" || s.Origins["grafana"] == "" {
+	if s.EdgeDriver != "caddy" || s.Origins["grafana"].Addr == "" {
 		t.Fatalf("scaffolded settings wrong: %+v", s)
 	}
 	// init must refuse to overwrite.
 	if err := c.cmdInit([]string{dir}); err == nil {
 		t.Fatal("init should refuse to overwrite existing files")
+	}
+}
+
+// TestCLI_InitXDG: --xdg scaffolds config.yaml + exposures + a 0600 crenel.env
+// into $XDG_CONFIG_HOME/crenel, under the exact name discoverSettingsPath probes.
+func TestCLI_InitXDG(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", base)
+	c, out := newTestCLI(t, seedFake(t), false, "")
+	if err := c.cmdInit([]string{"--xdg"}); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(base, "crenel")
+	for _, name := range []string{"config.yaml", "crenel.exposures.yaml", "crenel.env"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatalf("init --xdg should have written %s: %v", name, err)
+		}
+	}
+	// The secrets stub must be 0600 — it will hold real credentials.
+	fi, err := os.Stat(filepath.Join(dir, "crenel.env"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := fi.Mode().Perm(); perm != 0o600 {
+		t.Fatalf("crenel.env should be 0600, got %o", perm)
+	}
+	// The scaffolded config must decode as settings (same guarantee as plain init).
+	var s config.Settings
+	if err := config.DecodeFile(filepath.Join(dir, "config.yaml"), &s); err != nil {
+		t.Fatalf("scaffolded config should decode: %v", err)
+	}
+	if s.EdgeDriver != "caddy" {
+		t.Fatalf("scaffolded config wrong: %+v", s)
+	}
+	// The scaffold must be exactly what discovery finds.
+	if got := discoverSettingsPath(); got != filepath.Join(dir, "config.yaml") {
+		t.Fatalf("discovery should find the --xdg scaffold, got %q", got)
+	}
+	if !strings.Contains(out.String(), "crenel.env") {
+		t.Error("init --xdg should mention crenel.env in its next steps")
+	}
+	// --xdg must refuse to overwrite existing files.
+	if err := c.cmdInit([]string{"--xdg"}); err == nil {
+		t.Fatal("init --xdg should refuse to overwrite existing files")
+	}
+}
+
+// TestCLI_InitXDG_HomeFallback: with XDG_CONFIG_HOME unset, --xdg falls back to
+// ~/.config/crenel (HOME pinned to a temp dir — hermetic).
+func TestCLI_InitXDG_HomeFallback(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", home)
+	c, _ := newTestCLI(t, seedFake(t), false, "")
+	if err := c.cmdInit([]string{"--xdg"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".config", "crenel", "config.yaml")); err != nil {
+		t.Fatalf("init --xdg should fall back to ~/.config/crenel: %v", err)
 	}
 }
 

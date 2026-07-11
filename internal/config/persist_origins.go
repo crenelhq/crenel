@@ -19,29 +19,42 @@ import (
 // live per-edge and this helper cannot unambiguously pick which edge should
 // front the service. The caller must have already validated that.
 //
+// scope, when set to OriginScopeInternal, persists the STRUCTURED entry form
+// ({addr, scope: internal}) so the declared internal-only intent survives the
+// invocation and drives later drift/reconcile/audit demands — the `expose <svc>
+// --scope internal --to <addr>` shape. Empty scope keeps the plain-string form
+// byte-compatibly.
+//
 // Format is chosen by extension (.json vs .yaml/.yml). JSON goes through a
 // standard encoding/json round-trip. YAML uses a surgical text-insert that
 // preserves the operator's comments and layout — the yaml-subset decoder in
 // this package is decode-only, and a full re-emit would strip formatting.
-func SetTopLevelOrigin(path, service, backend string) error {
+func SetTopLevelOrigin(path, service, backend, scope string) error {
 	if path == "" {
 		return fmt.Errorf("no settings file to persist into (pass -config <path>)")
 	}
 	if service == "" || backend == "" {
 		return fmt.Errorf("service and backend are required")
 	}
+	switch scope {
+	case OriginScopeDefault, OriginScopeInternal:
+	default:
+		return fmt.Errorf("cannot persist origins entry with unknown scope %q", scope)
+	}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read settings %q: %w", path, err)
 	}
 	if isYAML(path, b) {
-		return writeOriginYAML(path, b, service, backend)
+		return writeOriginYAML(path, b, service, backend, scope)
 	}
-	return writeOriginJSON(path, b, service, backend)
+	return writeOriginJSON(path, b, service, backend, scope)
 }
 
 // writeOriginJSON updates the top-level `origins` object via a full JSON round-trip.
-func writeOriginJSON(path string, src []byte, service, backend string) error {
+// Existing entries decode through the polymorphic Origin form, so a config that
+// already carries structured (scoped) entries round-trips them intact.
+func writeOriginJSON(path string, src []byte, service, backend, scope string) error {
 	var raw map[string]json.RawMessage
 	if len(strings.TrimSpace(string(src))) == 0 {
 		raw = map[string]json.RawMessage{}
@@ -51,13 +64,13 @@ func writeOriginJSON(path string, src []byte, service, backend string) error {
 	if _, ok := raw["edges"]; ok {
 		return fmt.Errorf("multi-edge config (%q has `edges`): --to cannot pick a target edge — add `%s: %s` to the edge's origins map manually", path, service, backend)
 	}
-	origins := map[string]string{}
+	origins := Origins{}
 	if r, ok := raw["origins"]; ok && len(r) > 0 {
 		if err := json.Unmarshal(r, &origins); err != nil {
 			return fmt.Errorf("parse origins in %q: %w", path, err)
 		}
 	}
-	origins[service] = backend
+	origins[service] = Origin{Addr: backend, Scope: scope}
 	enc, err := json.Marshal(origins)
 	if err != nil {
 		return fmt.Errorf("encode origins: %w", err)
@@ -71,18 +84,25 @@ func writeOriginJSON(path string, src []byte, service, backend string) error {
 	return os.WriteFile(path, out, 0o600)
 }
 
-// writeOriginYAML surgically inserts (or replaces) `<service>: "<backend>"` under
-// the top-level `origins:` block, preserving everything else byte-for-byte.
-// Refuses multi-edge (top-level `edges:`) — the operator must edit the per-edge
-// origins manually there.
-func writeOriginYAML(path string, src []byte, service, backend string) error {
+// writeOriginYAML surgically inserts (or replaces) the service's entry under the
+// top-level `origins:` block, preserving everything else byte-for-byte. A
+// default-scope entry is the historical one-liner (`svc: "addr"`); an
+// internal-scope entry is a nested BLOCK map — the shape the yaml-subset
+// decoder supports (flow maps `{...}` are deliberately out of its scope):
+//
+//	ha:
+//	  addr: "10.0.0.19:8123"
+//	  scope: internal
+//
+// Refuses multi-edge (top-level `edges:`) — the operator must edit the
+// per-edge origins manually there.
+func writeOriginYAML(path string, src []byte, service, backend, scope string) error {
 	text := string(src)
 	if hasTopLevelKey(text, "edges") {
 		return fmt.Errorf("multi-edge config (%q has `edges`): --to cannot pick a target edge — add `%s: %s` to the edge's origins map manually", path, service, backend)
 	}
-	line := fmt.Sprintf("%s: %q", service, backend)
 
-	updated, ok := replaceOrInsertOriginYAML(text, service, line)
+	updated, ok := replaceOrInsertOriginYAML(text, service, backend, scope)
 	if !ok {
 		// No top-level `origins:` key found — append a fresh block at end of file.
 		var sb strings.Builder
@@ -90,19 +110,36 @@ func writeOriginYAML(path string, src []byte, service, backend string) error {
 		if len(text) > 0 && !strings.HasSuffix(text, "\n") {
 			sb.WriteString("\n")
 		}
-		sb.WriteString("origins:\n  ")
-		sb.WriteString(line)
+		sb.WriteString("origins:\n")
+		sb.WriteString(strings.Join(originEntryLines(service, backend, scope, 2), "\n"))
 		sb.WriteString("\n")
 		updated = sb.String()
 	}
 	return os.WriteFile(path, []byte(updated), 0o600)
 }
 
+// originEntryLines renders the YAML lines for one origins entry at the given
+// child indent: a single quoted-scalar line for the default scope, or the
+// nested block map for a scoped entry (child fields one extra level in).
+func originEntryLines(service, backend, scope string, indent int) []string {
+	pad := strings.Repeat(" ", indent)
+	if scope == OriginScopeDefault {
+		return []string{fmt.Sprintf("%s%s: %q", pad, service, backend)}
+	}
+	sub := strings.Repeat(" ", indent+2)
+	return []string{
+		pad + service + ":",
+		fmt.Sprintf("%saddr: %q", sub, backend),
+		sub + "scope: " + scope,
+	}
+}
+
 // replaceOrInsertOriginYAML edits the top-level `origins:` mapping. If service
-// is already present, its value line is replaced; else the new entry is
-// appended at the end of the mapping. Returns ok=false when no top-level
-// `origins:` key exists in text.
-func replaceOrInsertOriginYAML(text, service, newLine string) (string, bool) {
+// is already present, its entry — INCLUDING any nested block-map children of a
+// previously-structured entry — is replaced; else the new entry is appended at
+// the end of the mapping. Returns ok=false when no top-level `origins:` key
+// exists in text.
+func replaceOrInsertOriginYAML(text, service, backend, scope string) (string, bool) {
 	lines := strings.Split(text, "\n")
 	// Find the top-level `origins:` header (indent 0, key exactly "origins").
 	headerIdx := -1
@@ -144,20 +181,33 @@ func replaceOrInsertOriginYAML(text, service, newLine string) (string, bool) {
 			key = strings.TrimSpace(key[:idx])
 		}
 		if key == service {
-			// Replace this line, preserving its indent.
-			pad := strings.Repeat(" ", ind)
-			lines[j] = pad + newLine
-			return strings.Join(lines, "\n"), true
+			// Replace this entry at its own indent — and swallow any DEEPER-indented
+			// child lines (a previously structured entry's addr:/scope: block), so a
+			// scope change never strands stale children under the new entry.
+			end := j + 1
+			for end < len(lines) {
+				trimEnd := strings.TrimSpace(lines[end])
+				if trimEnd == "" || strings.HasPrefix(trimEnd, "#") {
+					break // preserve blank/comment lines after the entry
+				}
+				if leadingSpaces(lines[end]) <= ind {
+					break
+				}
+				end++
+			}
+			out := append([]string{}, lines[:j]...)
+			out = append(out, originEntryLines(service, backend, scope, ind)...)
+			out = append(out, lines[end:]...)
+			return strings.Join(out, "\n"), true
 		}
 		blockEnd = j + 1
 	}
 	if blockIndent == 0 {
 		blockIndent = 2
 	}
-	pad := strings.Repeat(" ", blockIndent)
 	insertAt := blockEnd
 	inserted := append([]string{}, lines[:insertAt]...)
-	inserted = append(inserted, pad+newLine)
+	inserted = append(inserted, originEntryLines(service, backend, scope, blockIndent)...)
 	inserted = append(inserted, lines[insertAt:]...)
 	return strings.Join(inserted, "\n"), true
 }

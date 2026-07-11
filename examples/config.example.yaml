@@ -1,0 +1,82 @@
+# crenel — canonical starter config (YAML).
+#
+# This is the file to copy when you set up crenel for real. It mirrors what
+# `crenel init --xdg` scaffolds, grown to the most common real shape: one Caddy
+# edge + split-horizon DNS (one internal resolver, one public provider) + a
+# forward-auth policy. Every value below is a placeholder — substitute your own.
+#
+# Where to put it so crenel finds it without a -config flag:
+#   ~/.config/crenel/config.yaml        (or $XDG_CONFIG_HOME/crenel/config.yaml)
+# Secrets NEVER go in this file: fields ending in _env name an environment
+# variable, and the value lives in ~/.config/crenel/crenel.env (mode 0600).
+#
+# This is NOT desired state. What is exposed is always read LIVE from the edge;
+# these fields only say WHERE your providers are and how to talk to them.
+# Delete any block marked (optional) that you don't use — a smaller config is a
+# better config.
+
+# --- The edge -----------------------------------------------------------------
+edge_driver: caddy              # caddy | traefik | nginx | netbird
+admin_url: http://127.0.0.1:2019   # Caddy's admin API. Keep it loopback-only.
+granular_apply: true            # additive admin-API writes — required for any
+                                # real (non-throwaway) edge; never replaces
+                                # config it didn't write
+zone: example.com               # your domain: `crenel expose grafana` manages
+                                # grafana.example.com
+
+# (optional) Survive a Caddy restart: mirror managed routes into the boot
+# Caddyfile after every verified apply. Point at the file Caddy boots from.
+# caddy_persist_path: /etc/caddy/Caddyfile
+
+# --- Origins: service -> backend ----------------------------------------------
+# The services crenel may manage and where each one actually runs. A plain
+# string is the common form. The block form additionally DECLARES a service
+# internal-only: no public DNS record is ever demanded or created for it, and
+# `crenel audit` raises a critical finding if it becomes publicly reachable
+# anyway. (`crenel expose <svc> --scope internal` writes this form for you.)
+origins:
+  grafana: 10.0.0.5:3000
+  # photos: 10.0.0.6:2342
+  # ha:                         # internal-only example (structured form)
+  #   addr: 10.0.0.19:8123
+  #   scope: internal
+
+# --- Forward-auth policies (optional; delete if you run no auth gate) ----------
+# Attach with `--auth <name>` (or `auth:` in an apply file). crenel renders a
+# per-edge REFERENCE to your auth setup — you own the actual Authelia/middleware
+# config. Publishing a public host with NO auth always requires an explicit
+# `--auth none`.
+auth_policies:
+  authelia:
+    caddy_forward_auth: authelia:9091
+    caddy_forward_auth_verify_uri: /api/verify?rd=https://auth.example.com
+
+# --- Split-horizon DNS (optional; delete if crenel should only drive the edge) -
+# One internal resolver (LAN clients get the LAN answer) + one public provider
+# (the internet gets the edge). One `crenel expose` keeps all of them and the
+# edge in agreement, read-back-verified.
+dns:
+  enabled: true
+  providers:
+    # Internal: AdGuard Home rewrites (type: pihole works the same way).
+    - type: adguard
+      scope: internal
+      zone: example.com
+      edge_addr: 10.0.0.2            # what internal clients should resolve to
+      endpoint: http://10.0.0.53:3000
+      username: admin
+      password_env: ADGUARD_PASSWORD  # value lives in crenel.env, not here
+    # Public: Cloudflare, surgical mode — per-record writes, each record marked
+    # managed-by:crenel; safe in a zone that also holds records you made by hand.
+    - type: cloudflare
+      scope: public
+      zone: example.com
+      edge_addr: 203.0.113.10        # your edge's public IP
+      apply_mode: surgical
+      api_token_env: CLOUDFLARE_API_TOKEN
+
+# --- No infrastructure yet? ----------------------------------------------------
+# You can try every command against a built-in in-process fake instead of a real
+# edge: uncomment the line below (and delete the dns: block, or set mock: true
+# on each provider). Nothing real is ever contacted.
+# fake_seed: examples/seed-rich-prod.json

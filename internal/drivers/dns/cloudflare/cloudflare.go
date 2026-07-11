@@ -193,6 +193,30 @@ func (d *Driver) LiveRecords(ctx context.Context) ([]model.Record, error) {
 	return recs, nil
 }
 
+// CoverageRecords implements ports.CoverageReporter: the FULL zone view — owned AND
+// foreign records, including operator wildcards — from the same paginated zone list
+// that already backs LiveRecords/Diff/Apply, WITHOUT the ownership-marker filter.
+//
+// It exists so core's presence/coverage checks (drift's missing_dns_record, audit's
+// edge-route-without-DNS reverse check) can see that an operator's unowned `*.zone`
+// wildcard already answers an exposed host — otherwise the marker-filtered
+// LiveRecords hides the wildcard and every covered host cries wolf as permanently
+// missing. Read-only by contract: nothing returned here may feed a mutation or an
+// ownership decision (the marker boundary in the mutate primitives is untouched).
+func (d *Driver) CoverageRecords(ctx context.Context) ([]model.Record, error) {
+	all, err := d.listZone(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var recs []model.Record
+	for _, r := range all {
+		if underZone(r.Name, d.cfg.ZoneName) {
+			recs = append(recs, toModel(r, d.cfg.Scope))
+		}
+	}
+	return recs, nil
+}
+
 // Diff computes the surgical change to realize op. It reads the FULL live zone to
 // reason about foreign records at crenel's name, but the change it emits only ever
 // concerns crenel-owned records.

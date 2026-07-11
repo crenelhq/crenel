@@ -50,7 +50,19 @@ func build(s config.Settings) (*wiring, error) {
 		return nil, err
 	}
 
+	internalScope, err := collectInternalScope(edgeSpecs(s))
+	if err != nil {
+		w.cleanup()
+		return nil, err
+	}
+
 	w.engine = core.NewMulti(bindings, s.Zone, dnsProviders...)
+	// Internal-scope declarations (split-horizon): the aggregated set of services
+	// whose origins entries carry scope "internal". core uses it to gate public
+	// DNS demands and chain-front forwards, and audit uses it to enforce the
+	// never-publicly-reachable guarantee. See docs/internal/DESIGN.md
+	// "Internal-scope services".
+	w.engine.InternalScope = internalScope
 	// `read_only: true` builds an audit-only engine: every mutating verb refuses
 	// before planning (core.ErrReadOnlyEngine), and audit re-frames the edge-wide
 	// generator finding to ok-severity foreign_managed_readonly (the expected
@@ -87,7 +99,7 @@ type edgeSpec struct {
 	transport        *config.TransportSettings // HOW to reach the admin API (caddy only)
 	readTimeout      time.Duration
 	writeTimeout     time.Duration
-	origins          map[string]string
+	origins          config.Origins
 	// authPolicies is the global policy-name -> per-driver reference map (from
 	// config.AuthPolicies), translated per driver at construction. Shared by every
 	// edge: the operator defines a policy once.
@@ -278,18 +290,55 @@ func buildTransport(ts *config.TransportSettings, w *wiring) (ports.Transport, e
 }
 
 // frontsFor builds a projection predicate from an edge's origins: it fronts a
-// service iff that service is in its origin map.
-func frontsFor(origins map[string]string) func(string) bool {
+// service iff that service is in its origin map. Scope does not affect
+// PARTICIPATION — an internal-scope service is still fully fronted (and managed)
+// by the edge that declares it; scope only gates the public legs (core).
+func frontsFor(origins config.Origins) func(string) bool {
 	return func(service string) bool {
 		_, ok := origins[service]
 		return ok
 	}
 }
 
+// collectInternalScope aggregates the internal-scope service declarations across
+// every edge's origins into the engine-level set. A service declared "internal"
+// on one edge and default-scope on another is REFUSED loudly: scope is a
+// property of the SERVICE (a reachability intent), not of one edge's address
+// entry, and a silent precedence guess either way could publish an internal
+// service or strip a public one. Declare it consistently on every edge that
+// fronts it.
+func collectInternalScope(specs []edgeSpec) (map[string]bool, error) {
+	internal := map[string]bool{}
+	defaulted := map[string]string{} // service -> first edge that declared it default-scope
+	internalOn := map[string]string{}
+	for _, spec := range specs {
+		for svc, org := range spec.origins {
+			if org.Internal() {
+				if _, ok := internalOn[svc]; !ok {
+					internalOn[svc] = spec.name
+				}
+				internal[svc] = true
+			} else if _, ok := defaulted[svc]; !ok {
+				defaulted[svc] = spec.name
+			}
+		}
+	}
+	for svc := range internal {
+		if other, ok := defaulted[svc]; ok {
+			return nil, fmt.Errorf("service %q is declared scope internal on edge %q but default-scope on edge %q — scope is a per-service intent; declare it identically in every origins map that lists the service",
+				svc, internalOn[svc], other)
+		}
+	}
+	if len(internal) == 0 {
+		return nil, nil
+	}
+	return internal, nil
+}
+
 // buildEdgeProvider constructs one edge's EdgeProvider from its spec. This is the
 // ONLY place an edge driver is chosen — core never knows which it got.
 func buildEdgeProvider(spec edgeSpec, w *wiring) (ports.EdgeProvider, error) {
-	resolver := static.New(spec.origins)
+	resolver := static.New(spec.origins.Addrs())
 	switch spec.driver {
 	case "traefik":
 		if spec.traefikPath == "" {

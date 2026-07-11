@@ -182,6 +182,40 @@ type Engine struct {
 	// edge with managed public records is internet-facing by construction.
 	// Default false.
 	DeclaredInternal bool
+
+	// InternalScope is the operator's per-SERVICE internal-only declaration for a
+	// split-horizon topology (set at wiring from structured origins entries —
+	// `{"addr": ..., "scope": "internal"}`): the named services are deliberately
+	// NOT publicly reachable. Distinct from DeclaredInternal (a whole-EDGE audit
+	// posture): this is a per-service demand gate PLUS a guarantee —
+	//   - Plan/reconcile never demand (or create) a record for the service at a
+	//     PUBLIC-scope DNS provider;
+	//   - a chain FRONT edge is never asked to forward it (roleFor yields
+	//     roleNone instead of roleForward, so the missing_route "half-present
+	//     chain" demand cannot fire for it);
+	//   - internal legs (internal DNS records, the downstream edge route) stay
+	//     fully managed and verified, byte-identically to before;
+	//   - audit ENFORCES the declaration: an internal-scope service that IS
+	//     publicly reachable (explicit public DNS record, or a chain-front
+	//     route/forward, or a tunnel-published host) is a CRITICAL finding —
+	//     internal_scope_public_exposure. See docs/internal/DESIGN.md
+	//     "Internal-scope services".
+	// Keys use the same service keying as the origins maps / Fronts predicates
+	// (bare name in the default zone, FQDN otherwise). Nil/empty = no internal-
+	// scope services (byte-identical pre-feature behavior).
+	InternalScope map[string]bool
+}
+
+// internalScoped reports whether service is declared internal-only. The key
+// convention matches the origins maps (see InternalScope).
+func (e *Engine) internalScoped(service string) bool { return e.InternalScope[service] }
+
+// InternalScopedHost reports whether host belongs to an internal-only service —
+// the display hook for status/HUD `[internal]` tagging (cmd) and any host-keyed
+// caller. It maps the host back through the same serviceOf derivation the
+// projection predicates use, so tagging and gating can never disagree.
+func (e *Engine) InternalScopedHost(host string) bool {
+	return e.internalScoped(e.serviceOf(host))
 }
 
 // New builds a single-edge Engine with compensating rollback enabled by default.
@@ -303,6 +337,18 @@ func (e *Engine) Plan(ctx context.Context, op model.Op) (model.ChangeSet, error)
 	if err := model.ValidateAuth(op.Mode, op.Auth); err != nil {
 		return model.ChangeSet{}, err
 	}
+	// Internal-scope vs an EXPLICIT public appointment: `--scope public` (or
+	// `--dns public`) on a service declared internal-only is a direct
+	// contradiction of the config — refused loudly here rather than silently
+	// honoring either side. (An unset scope list is fine: the public providers
+	// are simply skipped below, the declared posture.)
+	if e.internalScoped(op.Service) {
+		for _, sc := range op.Scopes {
+			if sc == model.ScopePublic {
+				return model.ChangeSet{}, fmt.Errorf("service %q is declared scope internal in origins — an explicit public DNS appointment contradicts it; change the declaration or drop --scope/--dns public", op.Service)
+			}
+		}
+	}
 	cs := model.ChangeSet{Op: op}
 	participating := 0
 	for _, b := range e.Edges {
@@ -366,8 +412,13 @@ func (e *Engine) Plan(ctx context.Context, op model.Op) (model.ChangeSet, error)
 		//  - zone routing (multi-zone): a provider whose declared zone does not
 		//    cover the op's host is not asked for records at all — a zone-confined
 		//    driver would refuse the out-of-zone write (its guard), and that refusal
-		//    is the CORRECT posture in a two-zone topology, not an error.
-		if !scopeSelected(op.Scopes, dp.Scope()) || !dnsCoversHost(dp, op.Host) {
+		//    is the CORRECT posture in a two-zone topology, not an error;
+		//  - internal-scope declaration: a service declared internal-only in origins
+		//    NEVER gets a record at a public-scope provider — the standing,
+		//    persisted twin of `--scope internal`, so the declared posture holds on
+		//    every op without re-saying the flag.
+		if !scopeSelected(op.Scopes, dp.Scope()) || !dnsCoversHost(dp, op.Host) ||
+			(dp.Scope() == model.ScopePublic && e.internalScoped(op.Service)) {
 			cs.DNS = append(cs.DNS, model.DNSChange{Scope: dp.Scope()})
 			continue
 		}

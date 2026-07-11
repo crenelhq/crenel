@@ -16,12 +16,41 @@
 > throughout as consistent pseudonyms (`homelab.example`, `smallbiz.example`,
 > RFC 5737/1918 ranges, generic host labels).
 >
-> _Last updated 2026-07-10 (adaptive HUD; audit-any-edge M-A1–M-A6; dual-AdGuard
-> write-path test gate; MCP server (read-only + `--write` two-phase gated); Pi-hole
-> v6 provider; multi-zone internal DNS; seven live dogfood fixes). Verified against
-> `develop` HEAD `a2def5c`. Public GitHub snapshot mirror is at `v0.4.5` (see below —
-> no corresponding tag exists on `develop`; the snapshot is a separately-maintained
-> scrubbed mirror per `docs/internal/README.md`'s snapshot-flow convention)._
+> _Last updated 2026-07-11 (the v0.5.2 pass: wildcard-aware presence everywhere;
+> internal-scope services; `crenel triage` + ack-by-locator; full-load admin guard;
+> `init --xdg` + daily-driver docs; help-text accuracy pass; OCI image +
+> docs/CONTAINER.md). Verified against `develop` HEAD `b791224`. Public GitHub
+> snapshot mirror is a separately-maintained scrubbed mirror per
+> `docs/internal/README.md`'s snapshot-flow convention._
+>
+> **2026-07-11 pass (v0.5.2 — the tool's own production edge reads `DRIFT: 0`).**
+> Getting a real two-edge (home + VPS chain front), two-zone, dual-resolver
+> split-horizon deployment to read fully clean surfaced and shipped six tracks
+> (see CHANGELOG.md v0.5.2 for the narrative): (1) **wildcard-aware presence,
+> everywhere** — an operator's unowned public `*.zone` wildcard satisfies public
+> presence when it answers with the expected target (new read-only
+> `ports.CoverageReporter` capability on the surgical Cloudflare driver; mutation
+> and ownership stay marker-gated), a covering wildcard forward at a chain front
+> satisfies the half-present-chain check when it dials the downstream, and a
+> wildcard relay at the front resolves in chain follow-through instead of warning
+> `chain_unresolved`; (2) **internal-scope services** — structured origins form
+> `svc: {addr, scope: internal}` / `expose --scope internal`, no public
+> record/front forward demanded or created, enforced by the new critical
+> `internal_scope_public_exposure` audit finding (+ the warning-severity
+> `internal_scope_wildcard_covered` combination case); (3) **`crenel triage`** —
+> interactive guided walk of the not-understood set, backed by the new
+> ack-by-locator path (`ack --route '<locator>' --reason <slug>`,
+> `ports.LocatorAcker`, marker within the existing `@id` grammar —
+> `docs/design/ack-marker.md` §12); (4) **full-load admin guard** — a full-config
+> load carries a custom listen-only `admin` block through verbatim
+> (read-back-verified) and refuses loudly on anything a Caddyfile cannot
+> faithfully re-render (trial finding F1); (5) **`init --xdg` + daily-driver
+> setup** (XDG config discovery, `crenel.env` 0600 secrets stub, README
+> daily-driver section); (6) **help-text accuracy pass** (three undocumented
+> global flags surfaced: `-force`, `-allow-unverified`, `-caddy-persist`) and
+> **container distribution** — multi-arch OCI image `ghcr.io/crenelhq/crenel` on
+> release tags + `docs/CONTAINER.md` (sidecar pattern, durable persist in
+> compose, honest not-containerizable list).
 >
 > **2026-07-10 pass (adaptive HUD → audit-any-edge → MCP → Pi-hole → multi-zone DNS →
 > seven dogfood fixes).** Six feature branches plus one dogfood-fix branch merged to
@@ -251,13 +280,12 @@ truth is what the edge reports live. Three load-bearing invariants:
    default-deny is reported ENFORCED only when fully parsed; Crenel **refuses to
    manage** a route/edge it doesn't own.
 
-**Verification status (current — develop `a2def5c`, post adaptive-HUD/audit-any-edge/
-MCP/Pi-hole/multi-zone-DNS/dogfood-fixes):** `go build ./... && go vet ./... && go
-test -race -count=1 ./...` all green — **18 test-package directories, 693 test
-functions**, race-clean. ~27k LOC of non-test Go. (Each PR in the correctness phase
-landed RED→GREEN with an adversarial-neuter RED proof; see §5i and §6. The 545-function
-count as of 2026-07-04 predates this week's M-A1–M-A6/MCP/dual-AdGuard/pihole/
-multi-zone/dogfood-fix tests.)
+**Verification status (current — develop `b791224`, post v0.5.2):** `go build
+./... && go vet ./... && go test -race -count=1 ./...` all green — **18
+test-package directories, 788 test functions**, race-clean. (Each PR in the
+correctness phase landed RED→GREEN with an adversarial-neuter RED proof; see §5i
+and §6. The 693-function count as of 2026-07-10 predates the v0.5.2
+wildcard-presence/internal-scope/triage/admin-guard/xdg tests.)
 
 **KNOWN-RISK BURNDOWN (latest):** four read/verify-side correctness items moved from
 known-risk → correct, each RED-before/GREEN-after with a live-faithful fake, no live infra.
@@ -353,6 +381,12 @@ Historical build order (all **BUILT** unless noted). Narrative in archive/BUILD_
 | **DUAL-ADGUARD** | **Write-path test gate for two same-scope internal DNS providers.** Hermetic tests prove one `expose` fans out to both AdGuard instances (coinciding + vantage-divergent targets), per-instance labeled read-back/rollback/conflict handling. Fakes only — no new live trial this week. See §0a. |
 | **PIHOLE** | **Pi-hole v6 — third internal-DNS provider.** Native `internal/drivers/dns/pihole` driver over the Pi-hole v6 REST API (session auth), IP-only targets, wildcards refused, same-name-duplicate conflict guard. Fake-tested against a real-fixture-captured `piholefake`; no live Pi-hole trial. See §0a. |
 | **MULTIZONE-DNS** | **Zone-aware internal DNS provider routing.** `ports.ZoneReporter` confines a provider to a declared zone; core routes each host only to its zone's providers; `dns_coverage_parity` groups resolvers by zone; a new `edge_route_outside_managed_zones` finding replaces the cross-zone `edge_route_without_dns` cry-wolf. Fake-tested; no live multi-zone trial. See §0b. |
+| **WILDCARD-PRESENCE (v0.5.2)** | **Wildcard-aware presence, everywhere.** Public DNS drift: an unowned `*.zone` wildcard answering with the expected target satisfies public presence (read-only `ports.CoverageReporter` on the surgical Cloudflare driver; mutation/ownership stay marker-gated — previously a permanent `missing_dns_record` cry-wolf that reconcile would have "fixed" by publishing internal hostnames to public DNS). Chain forwards: a covering wildcard forward at the front satisfies the half-present-chain check when it dials the downstream (value-mismatch still flags, naming where it dials). Chain follow-through: a wildcard relay resolves instead of warning `chain_unresolved`. **LIVE-PROVEN** — the maintainer's production two-edge, two-zone, dual-resolver deployment reads `DRIFT: 0` with both edges' default-deny certified (CHANGELOG v0.5.2). |
+| **INTERNAL-SCOPE (v0.5.2)** | **Internal-scope services.** Structured origins form `svc: {addr, scope: internal}` (JSON; block-map in YAML) / `expose --scope internal` (persists the form): no public DNS record demanded or created, no chain-front forward demanded; `status` tags such hosts `[internal]`; audit ENFORCES the declaration — critical `internal_scope_public_exposure` on any observed public reachability (explicit public record, chain-front route, tunnel publication) + warning `internal_scope_wildcard_covered` for the wildcard-DNS-plus-wildcard-front-forward combination. See docs/internal/DESIGN.md "Internal-scope services". |
+| **TRIAGE (v0.5.2)** | **`crenel triage` + ack-by-locator.** Interactive guided walk of every not-understood route (per-route evidence card: edge, structural locator, why it defied modeling, what WAS understood, raw JSON; ack-with-reason / skip / open-full-JSON, with an evidence-derived reason slug suggested). Backed by `crenel ack --route '<locator>' --reason <slug>` (`ports.LocatorAcker`, Caddy) which can address routes with no recoverable host, read-back-verified, markers within the existing `@id` grammar. See docs/design/ack-marker.md §12. |
+| **ADMIN-GUARD (v0.5.2)** | **Full-load admin guard.** A full-config load carries a custom listen-only `admin` block through verbatim (read-back-verified it survived) and refuses loudly when the block holds anything a Caddyfile cannot faithfully re-render — previously a full load silently reverted a customized admin endpoint to the localhost default (trial finding F1). |
+| **XDG (v0.5.2)** | **`init --xdg` + config discovery.** Config resolution order: `-config` → `CRENEL_CONFIG` → `$XDG_CONFIG_HOME/crenel/` → `~/.config/crenel/` → bare defaults. `init --xdg` scaffolds the XDG dir (auto-discovered config, exposures starter, 0600 `crenel.env` secrets stub on the `*_env` convention). Config-free verbs skip discovery entirely; a discovered-but-invalid file errors loudly, never silently falls back. |
+| **CONTAINER (v0.5.2)** | **OCI image + container reference topology.** `ghcr.io/crenelhq/crenel` (multi-arch linux amd64/arm64, alpine, smoke-tested with `crenel version` before push) published on release tags via the release workflow; the root `Dockerfile` is the release image (bundle/Dockerfile stays the demo-bundle build). `docs/CONTAINER.md`: sidecar pattern (`network_mode: "service:caddy"` → loopback admin, no exec transport), durable persist over the docker socket (tradeoffs stated), host-cron drift checks, honest list of what does not work containerized. |
 
 ### CLI surface (verified against `crenel help` + dispatch)
 
@@ -365,16 +399,21 @@ MCP server over stdio (§5l). Mutating (preview → confirm → apply → read-b
 `expose`/`unexpose`/`set <svc> <on|off>`, **`rename <old-host> <new-host>`** (the one-command
 atomic move: add new copying the source backend/auth/mode + remove old, make-before-break,
 durable, rolled back as a unit — `feat/rename-verb`), `resume`, `reconcile`, `ack`/`unack`
-<host> [reason] (operator acknowledgment of an intentionally-unmodeled route — see the
-2026-07-04 headline and this pass's §5m ack fixes), `import [--dry-run]`, `apply <file>
-[--adopt|--prune|--dry-run]`. Scaffold: `init [dir]`. Plus `version`/`help`. **All**
-mutating verbs refuse before any driver `Plan`/`Apply` when `Engine.ReadOnly` is set
-(config `read_only: true` — M-A1, §5k).
+`<host>`/`--route '<locator>'` `--reason <slug>` (operator acknowledgment of an
+intentionally-unmodeled route — the `--route` locator form addresses routes with no
+recoverable host; docs/design/ack-marker.md §12), **`triage [--edge <name>] [--dry-run]`**
+(the interactive guided front-end over the same ack path — v0.5.2), `import [--dry-run]`,
+`apply <file> [--adopt|--prune|--dry-run]`. Scaffold: `init [dir]` / `init --xdg`
+(v0.5.2 — scaffolds `~/.config/crenel/` for flag-free config discovery). Plus
+`version`/`help`/`banner`. **All** mutating verbs refuse before any driver
+`Plan`/`Apply` when `Engine.ReadOnly` is set (config `read_only: true` — M-A1, §5k).
 
-Global flags: `-config -admin-url -zone -fake-seed -yes -force -json -show-secrets
--granular -layer4 -caddy-persist -mode -auth -param`. As of this pass, the post-settings-load
-flags (`-yes -force -json -show-secrets -mode -auth -param`) are also honored **after** the verb
-(see §5, the CLI fix).
+Global flags: `-config -admin-url -zone -fake-seed -yes -force -allow-unverified -json
+-show-secrets -granular -layer4 -caddy-persist -mode -auth -reason -to -no-validate
+-scope -dns -residency -edges -param` (the v0.5.2 help-text accuracy pass audited every
+verb's usage text against actual behavior and surfaced the previously-undocumented
+`-force`/`-allow-unverified`/`-caddy-persist`). The post-settings-load flags are also
+honored **after** the verb (see §5, the CLI fix).
 
 ---
 

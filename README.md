@@ -116,6 +116,25 @@ Or grab a static binary for linux/darwin (amd64/arm64) from
 verify by SHA256. From a clone: `make build` (host platform) or `make release`
 (cross-compile to `./dist`).
 
+Or run the container image — audit an edge with nothing installed:
+
+```bash
+docker run --rm -v ./Caddyfile:/Caddyfile:ro ghcr.io/crenelhq/crenel \
+  audit /Caddyfile --assume-public-boundary
+```
+
+Images are published on release tags (multi-arch, linux amd64/arm64). For
+running crenel itself as a compose sidecar — including making writes survive a
+restart — see [docs/CONTAINER.md](docs/CONTAINER.md).
+
+**Installed? The first ten minutes, in order:** (1) point `crenel audit` at the
+edge you already run — read-only, no config, next section; (2) `crenel init
+--xdg` to scaffold a config crenel auto-discovers; (3) fill it in —
+[`examples/config.example.yaml`](examples/config.example.yaml) is the
+commented canonical starter, and [`examples/README.md`](examples/README.md)
+maps every example to a topology; (4) `crenel status` to see your live edge;
+(5) your first `crenel expose`.
+
 ## Audit any edge in 30 seconds
 
 Point `crenel audit` at the edge you already run — no settings file, read-only,
@@ -143,6 +162,11 @@ A directory containing `Caddyfile.autosave` audits a caddy-docker-proxy edge
 the same way. Only the URL you paste is ever contacted; anything beyond it is
 opt-in via `--probe`. Foreign edges exit 0 when otherwise clean — cron it.
 
+When the audit has earned some trust, the next step is a config so crenel can
+*manage* the edge: `crenel init --xdg` scaffolds one (see
+["Daily driver"](#daily-driver-config-discovery--a-secrets-file) below), or
+adopt in place per the quickstart two sections down.
+
 ## Quickstart: batteries included (one command)
 
 No edge yet? The [`bundle/`](bundle/README.md) brings up a working default-deny
@@ -163,6 +187,9 @@ markers only, zero behavior change) and exposing becomes one command:
 ```bash
 crenel init                       # scaffolds settings + declarative exposures file
 CFG="-config crenel.settings.yaml"
+# (or `crenel init --xdg` for a config crenel finds without any flag — then drop
+#  $CFG below. Filling it in: examples/config.example.yaml is the commented
+#  canonical starter; examples/README.md maps every example to a topology.)
 
 crenel $CFG status                # what's exposed RIGHT NOW, live
 crenel $CFG import --dry-run      # preview what crenel would adopt
@@ -195,6 +222,18 @@ the granular DNS half. All three also work on `unexpose`/`set`. This is the inli
 twin of an apply file's `dns:`/`edges:` fields — same mechanism, one command. See
 [`docs/design/expose-scope-flags.md`](docs/design/expose-scope-flags.md).
 
+Internal-only can also be **declared once in the config** instead of re-said per
+command: an origins entry may be the structured form `ha: {addr, scope: internal}`
+(JSON; block-map in YAML) — plain-string entries keep today's semantics exactly.
+A declared internal service stays fully managed and verified on its internal legs
+(downstream edge route + internal DNS), but crenel never demands or creates a
+public DNS record for it and never asks a chain-front edge to forward it — and
+**audit enforces the declaration**: an internal-scope service that *is* publicly
+reachable (an explicit public DNS record, a chain-front route, a tunnel ingress
+rule) is a critical `internal_scope_public_exposure` finding. `expose <svc> --to
+<addr> --scope internal` persists this form automatically, and `status` tags such
+hosts `[internal]`. See `docs/internal/DESIGN.md` "Internal-scope services".
+
 A host that doesn't live at home gets a **residency class**: `expose vault
 --residency vps` (or `residency: vps` in an apply file) makes each internal
 resolver answer with its *own* vantage-correct address for that host, from a
@@ -210,6 +249,17 @@ Caddy edges: set `caddy_persist_path` so exposures survive a container restart �
 Crenel writes between `# crenel-managed-begin/end` markers, validates, reloads,
 and preserves the rest of your Caddyfile byte-for-byte.
 
+**First audit says "N route(s) not understood — deny UNKNOWN"?** That is normal
+on a hand-built Caddyfile: run **`crenel triage`**. It walks each not-understood
+route interactively — edge, structural path, what crenel *did* understand, the
+raw route JSON — and lets you acknowledge each with a reason. Acks are stamped
+in the live config (the `crenel-ack` marker,
+[`docs/design/ack-marker.md`](docs/design/ack-marker.md)) and read-back-verified;
+acknowledged routes stop blocking default-deny but stay visible as ACK. The
+scriptable equivalents are `crenel ack <host> --reason <slug>` and — for routes
+with no recoverable host — `crenel ack --route '<locator>' --reason <slug>`,
+targeting the structural path the audit prints.
+
 Auth is **forward-auth by reference**: an exposure carries `auth: authelia` and
 Crenel renders the per-edge reference (Caddy `forward_auth`, Traefik middleware,
 nginx `auth_request`); *you* own the actual auth config. See
@@ -221,6 +271,61 @@ nginx `auth_request`); *you* own the actual auth config. See
 go build -o bin/crenel ./cmd/crenel
 ./bin/crenel -config examples/settings-brownfield.json status
 ```
+
+## Daily driver: config discovery + a secrets file
+
+Typing `-config` on every invocation gets old. Crenel resolves its config in
+this order — first hit wins:
+
+1. `-config <path>` flag
+2. `CRENEL_CONFIG` env var
+3. `$XDG_CONFIG_HOME/crenel/{config.json,config.yaml,config.yml}`
+4. `~/.config/crenel/` (same names)
+5. bare defaults (no file)
+
+So put a config at the XDG path once and every `crenel status` / `drift` /
+`expose` after that just works. `init --xdg` scaffolds it:
+
+```bash
+crenel init --xdg
+# writes ~/.config/crenel/config.yaml        (auto-discovered)
+#        ~/.config/crenel/crenel.exposures.yaml
+#        ~/.config/crenel/crenel.env         (0600 secrets stub)
+```
+
+Secrets never go in the config file. The config names an env var (the `*_env`
+convention — `password_env: ADGUARD_PASSWORD`, `api_token_env:
+CLOUDFLARE_API_TOKEN`) and the value lives in `crenel.env`, mode 0600. Load it
+in your shell:
+
+```bash
+# ~/.bashrc
+set -a; . ~/.config/crenel/crenel.env; set +a
+```
+
+or, for units and timers:
+
+```ini
+EnvironmentFile=%h/.config/crenel/crenel.env
+```
+
+`drift` exits non-zero when live state diverges from the canonical set, so a
+cron line with an [ntfy](https://ntfy.sh) push is all the monitoring it needs:
+
+```
+*/30 * * * * crenel drift || curl -s -d "edge drift detected" ntfy.sh/your-topic
+```
+
+Optional, if you check the HUD a lot:
+
+```bash
+alias hud="crenel status --hud"
+```
+
+Config-free verbs (`version`, `help`, `init`, `banner`, `audit <target>`) skip
+discovery entirely — they must work on a box whose discovered config points at
+unreachable providers. A discovered-but-invalid file errors loudly; it never
+silently falls back to defaults.
 
 ## MCP server: let an agent drive it (read-only by default)
 
@@ -237,7 +342,7 @@ an agent the safety contract.
 
 ## Proven, not promised
 
-Beyond the hermetic suite (**715 test functions, race-clean, 18 packages**,
+Beyond the hermetic suite (**788 test functions, race-clean, 18 packages**,
 under the rule *a fake may only accept what the real edge accepts*), the claims
 that matter were exercised against real production edges — the maintainer's own
 homelab + VPS — each run recorded and reverted byte-for-byte (hostnames

@@ -36,6 +36,21 @@ func (e *Engine) roleFor(b EdgeBinding, service string) chainRole {
 	if b.fronts(service) {
 		return roleTerminal
 	}
+	// INTERNAL-SCOPE gate (split-horizon): a service declared internal-only must
+	// never be forwarded through a chain FRONT — the front is the public ingress,
+	// and a forward there is exactly the public reachability the declaration
+	// forbids. Yielding roleNone here gates every roleForward consumer at once:
+	// Plan never synthesizes the forward, reconcile never DEMANDS it (the
+	// missing_route "half-present chain" check skips it — the prod false demand
+	// this feature exists to kill), and verifyReconcile never expects it. The
+	// DOWNSTREAM edge still fronts the service terminally (the branch above), so
+	// its route and internal DNS stay fully managed and verified. A forward that
+	// nonetheless EXISTS at the front is not torn down by unexpose (the front no
+	// longer participates); audit flags it critical
+	// (internal_scope_public_exposure) with removal instructions instead.
+	if e.internalScoped(service) {
+		return roleNone
+	}
 	if b.isChainFront() && e.downstreamParticipates(b, service, map[string]bool{}) {
 		return roleForward
 	}

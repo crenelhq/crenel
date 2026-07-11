@@ -65,7 +65,10 @@ type Settings struct {
 	// Zone derives a host from a service name, e.g. "example.com".
 	Zone string `json:"zone"`
 	// Origins is the static service->backend map for the M0 OriginResolver.
-	Origins map[string]string `json:"origins"`
+	// Entries are polymorphic: a plain address string (today's semantics), or a
+	// structured {addr, scope} object declaring the service internal-only for a
+	// split-horizon topology. See Origin.
+	Origins Origins `json:"origins"`
 	// DNS configures DNS providers (optional in early milestones).
 	DNS DNSSettings `json:"dns"`
 
@@ -358,8 +361,10 @@ type EdgeSettings struct {
 	IngressConfigPath string `json:"ingress_config_path,omitempty"`
 	// Origins is this edge's service->backend map. It is BOTH the resolver source
 	// (per-edge addresses: home proxies a LAN IP, VPS proxies a Tailscale IP) AND
-	// the projection set (this edge fronts exactly these services).
-	Origins map[string]string `json:"origins"`
+	// the projection set (this edge fronts exactly these services). Entries are
+	// polymorphic — plain address string, or a structured {addr, scope} object
+	// declaring the service internal-only (see Origin).
+	Origins Origins `json:"origins"`
 	// AuthDownstream marks this edge as the FRONT of an edge CHAIN (it fronts a
 	// downstream edge that enforces forward-auth), suppressing public_without_auth
 	// for its hosts and labeling them `auth: downstream`. Default false. See
@@ -529,11 +534,11 @@ func Defaults() Settings {
 	return Settings{
 		AdminURL: "http://127.0.0.1:2019",
 		Zone:     "example.com",
-		Origins: map[string]string{
+		Origins: PlainOrigins(map[string]string{
 			"grafana": "10.0.0.5:3000",
 			"photos":  "10.0.0.6:2342",
 			"vault":   "10.0.0.7:8200",
-		},
+		}),
 	}
 }
 

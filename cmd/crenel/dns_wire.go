@@ -283,7 +283,7 @@ func buildDNSProvider(s config.Settings, spec config.DNSProviderSettings, exp *z
 		return pihole.New(pcfg), nil
 
 	default:
-		return nil, fmt.Errorf("dns provider (zone %q): unknown type %q (want mock|cloudflare|adguard|pihole)", zone, spec.Type)
+		return nil, fmt.Errorf("dns provider (zone %q): unknown type %q (want mock|dnscontrol|cloudflare|adguard|pihole)", zone, spec.Type)
 	}
 }
 

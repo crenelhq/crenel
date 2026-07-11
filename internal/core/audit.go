@@ -27,20 +27,32 @@ type wildcardRewrite struct {
 // wildcard shape (it falls into the wildcard bucket rather than into explicit hosts).
 func isWildcardName(name string) bool { return strings.Contains(name, "*") }
 
+// wildcardPatternCovers is THE one wildcard matching rule: `*.zone` covers any name
+// lying strictly UNDER .zone (suffix match, never the apex itself). Every wildcard
+// presence check — internal parity, public DNS coverage, and the chain-forward
+// presence checks in reconcile/audit — routes through this single predicate so they
+// can never drift apart. An unusual wildcard shape (no `*.` prefix) covers nothing:
+// the conservative side for a PRESENCE check made by a drift/audit that would
+// otherwise suppress a finding.
+func wildcardPatternCovers(pattern, host string) bool {
+	p := strings.ToLower(pattern)
+	if !strings.HasPrefix(p, "*.") {
+		return false
+	}
+	suffix := p[1:] // ".zone"
+	h := strings.ToLower(host)
+	return strings.HasSuffix(h, suffix) && len(h) > len(suffix)
+}
+
 // wildcardBacksAnyExposed reports whether at least one exposed host falls under the
 // wildcard pattern's zone. Used by `dns_without_edge_route`: a `*.zone` rewrite is a
 // catch-all that backs ANY exposed host in .zone, so it's only "dangling" when nothing
 // at all is exposed under its zone.
 func wildcardBacksAnyExposed(pattern string, exposed map[string]bool) bool {
-	pattern = strings.ToLower(pattern)
-	if !strings.HasPrefix(pattern, "*.") {
-		// An unusual wildcard shape we don't model (no `*.` prefix). Be conservative:
-		// treat as not backing anything → existing dangling check still fires for it.
-		return false
-	}
-	suffix := pattern[1:] // ".zone"
+	// Unusual wildcard shapes (no `*.` prefix) cover nothing (wildcardPatternCovers),
+	// so the existing dangling check still fires for them — the conservative side here.
 	for host := range exposed {
-		if strings.HasSuffix(strings.ToLower(host), suffix) && len(host) > len(suffix) {
+		if wildcardPatternCovers(pattern, host) {
 			return true
 		}
 	}
@@ -52,14 +64,10 @@ func wildcardBacksAnyExposed(pattern string, exposed map[string]bool) bool {
 // purposely treats AdGuard's wildcard as suffix-covering, which is the SAFE side: if
 // real DNS would resolve a host via the wildcard, the audit must consider it present).
 func wildcardCovering(ws []wildcardRewrite, host string) (wildcardRewrite, bool) {
-	h := strings.ToLower(host)
 	for _, w := range ws {
-		if !strings.HasPrefix(w.pattern, "*.") {
-			continue
-		}
-		suffix := w.pattern[1:] // ".zone"
-		// host must lie UNDER the wildcard zone (not be the apex itself).
-		if strings.HasSuffix(h, suffix) && len(h) > len(suffix) {
+		// host must lie UNDER the wildcard zone (not be the apex itself) —
+		// wildcardPatternCovers, the shared rule.
+		if wildcardPatternCovers(w.pattern, host) {
 			return w, true
 		}
 	}
@@ -173,9 +181,25 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 			// Chain follow-through accounting: surface what was OBSERVED downstream vs.
 			// declared unresolved, so the report is honest about chain coverage.
 			if link := cc.resolveChain(b, r); link != nil {
-				if link.Resolved {
+				// covered is non-empty only for a WILDCARD forward whose pattern covers at
+				// least one downstream-routed host (the healthy zone-relay shape).
+				covered := cc.wildcardForwardCoverage(b, r)
+				switch {
+				case link.Resolved:
 					chainResolved = append(chainResolved, fmt.Sprintf("%s → %s:%s", r.Host, link.DownstreamEdge, link.DownstreamAddress))
-				} else {
+				case len(covered) > 0:
+					// A zone-wide WILDCARD forward (`*.zone → downstream` — the real
+					// front shape) is the relay for every covered host, not a dangling
+					// per-host forward: no downstream edge routes the literal pattern,
+					// so the exact-host lookup can never resolve it. Accounted RESOLVED
+					// (the relay demonstrably carries downstream-routed hosts) instead
+					// of crying wolf as chain_unresolved on every healthy wildcard
+					// front. Auth for the pattern stays asserted-downstream (see
+					// effectiveAuth) — each covered host's auth is what the downstream
+					// terminal route enforces, observed there.
+					chainResolved = append(chainResolved, fmt.Sprintf("%s → %s (wildcard relay carrying %d downstream-routed host(s))",
+						r.Host, link.DownstreamEdge, len(covered)))
+				default:
 					chainUnresolved = append(chainUnresolved, fmt.Sprintf("%s (%s)", r.Host, link.Reason))
 				}
 			}
@@ -528,6 +552,14 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		wildcards []wildcardRewrite // wildcard patterns, e.g. ("*.homelab.example" → IP)
 	}
 	var internalCovs []internalCov
+	// publicCovExplicit / publicCovWildcards capture the PUBLIC-scope COVERAGE view
+	// (owned + foreign — a foreign public record makes a host just as reachable as
+	// a crenel-owned one) split into explicit names and wildcard patterns. They
+	// feed ONLY the internal-scope guarantee check below — presence semantics, the
+	// CoverageReporter contract; the crenel-owned publicDNSHosts map keeps feeding
+	// the auth-posture checks unchanged.
+	publicCovExplicit := map[string]bool{}
+	var publicCovWildcards []wildcardRewrite
 	// allWildcards captures every wildcard rewrite across ALL DNS providers, used by
 	// the dns_without_edge_route and edge_route_without_dns sibling checks to avoid
 	// cry-wolfing on hosts the wildcard already backs/answers (mirrors the parity
@@ -552,12 +584,38 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 			}
 			internalCovs = append(internalCovs, cov)
 		}
-		for _, rec := range recs {
+		// PRESENCE maps come from the COVERAGE view (ports.CoverageReporter — the full
+		// owned+foreign zone list; identical to recs on every provider without the
+		// capability, since AdGuard/Pi-hole LiveRecords are already zone-complete).
+		// On the surgical Cloudflare provider this is what lets an operator's UNOWNED
+		// `*.zone` wildcard satisfy the edge_route_without_dns reverse check — the
+		// exact same treatment the internal resolvers' foreign wildcards already get,
+		// closing the public-scope cry-wolf where every wildcard-covered host was
+		// flagged "exposed but not reachable by name". Coverage feeds ONLY these
+		// presence maps: every finding loop below still iterates recs (crenel-owned on
+		// a marker-filtered provider), so foreign records are never value-checked,
+		// never flagged dangling, and never counted as crenel's public footprint
+		// (publicDNSHosts stays LiveRecords-derived — a foreign record must not flip a
+		// host's public/auth posture; that is observation crenel does not own). A
+		// coverage wildcard's value-correctness for any one host is drift's job
+		// (missing_dns_record with the wildcard-mismatch detail), mirroring how the
+		// internal reverse check already defers wildcard values.
+		covRecs, err := dnsCoverageRecords(ctx, dp, recs)
+		if err != nil {
+			return rep, err
+		}
+		for _, rec := range covRecs {
 			if isWildcardName(rec.Name) {
-				allWildcards = append(allWildcards, wildcardRewrite{
-					pattern: strings.ToLower(rec.Name),
-					value:   rec.Value,
-				})
+				w := wildcardRewrite{pattern: strings.ToLower(rec.Name), value: rec.Value}
+				allWildcards = append(allWildcards, w)
+				if dp.Scope() == model.ScopePublic {
+					publicCovWildcards = append(publicCovWildcards, w)
+				}
+			} else {
+				dnsCovered[strings.ToLower(rec.Name)] = true
+				if dp.Scope() == model.ScopePublic {
+					publicCovExplicit[strings.ToLower(rec.Name)] = true
+				}
 			}
 		}
 		// Owned-record value drift: a provider that returns ONLY crenel-owned records (the
@@ -885,12 +943,102 @@ func (e *Engine) Audit(ctx context.Context) (AuditReport, error) {
 		})
 	}
 
+	// INTERNAL-SCOPE GUARANTEE (split-horizon): a service DECLARED internal-only
+	// (origins `{"addr": ..., "scope": "internal"}`) must not be publicly
+	// reachable. This is the enforcement half of the declaration — what an ack
+	// could never give: the demand gates only stop crenel from CREATING public
+	// legs; this check catches public reachability that exists anyway (a
+	// hand-created Cloudflare record, a leftover chain-front route, a tunnel
+	// ingress rule) and keeps catching it on every audit.
+	//
+	// Severity ladder (the wildcard reasoning, deliberate):
+	//   - an EXPLICIT public DNS record at the host (owned OR foreign — the
+	//     coverage view) is CRITICAL always: someone published this exact name.
+	//   - an explicit route/forward for the host at a chain-FRONT edge, or a
+	//     tunnel-published host, is CRITICAL always: the public ingress carries it.
+	//   - wildcard-only public DNS coverage is NOT a finding by itself: a
+	//     zone-wide `*.zone` public wildcard covers EVERY internal host by
+	//     construction (the maintainer's real architecture), and with no public
+	//     route the name resolves to an edge that default-denies it — unreachable
+	//     in practice, so flagging it would be a permanent cry-wolf on every
+	//     split-horizon zone.
+	//   - wildcard public DNS coverage COMBINED with a covering wildcard FORWARD
+	//     at the chain front is a WARNING note: the combination is real
+	//     reachability (the name resolves publicly AND the front relays it
+	//     downstream), but each half alone is a normal architectural shape, so it
+	//     is a lower-severity "check this" rather than a critical breach.
+	// Hosts are derived from the declared service exactly as expose would derive
+	// them (BuildOp), so the guarantee watches the same name the demands gate.
+	for _, svc := range sortedKeys(e.InternalScope) {
+		host := strings.ToLower(e.BuildOp(model.Expose, svc).Host)
+		if publicCovExplicit[host] {
+			rep.Findings = append(rep.Findings, AuditFinding{
+				Severity: "critical",
+				Code:     "internal_scope_public_exposure",
+				Message: fmt.Sprintf("service %q is declared scope INTERNAL but an explicit PUBLIC DNS record exists for %s — the internal-only guarantee is broken; remove the public record, or change the service's declared scope",
+					svc, host),
+			})
+		}
+		// Chain-front route evidence: read from the shared reads map (an
+		// unreadable front already surfaced edge_unreadable above — nothing to
+		// assert about routes crenel could not see).
+		var frontWildcard bool
+		for _, b := range e.Edges {
+			if !b.isChainFront() {
+				continue
+			}
+			rd := reads[b.Name]
+			if rd.err != nil {
+				continue
+			}
+			if _, has := hostRoute(rd.live.Routes, host); has {
+				rep.Findings = append(rep.Findings, AuditFinding{
+					Severity: "critical",
+					Code:     "internal_scope_public_exposure",
+					Message: fmt.Sprintf("service %q is declared scope INTERNAL but chain-front edge %q routes/forwards %s — the public ingress carries it; remove the front route, or change the service's declared scope",
+						svc, b.Name, host),
+				})
+				continue
+			}
+			if w, ok := wildcardRouteCovering(rd.live.Routes, host); ok && b.chainForward(w) {
+				frontWildcard = true
+			}
+		}
+		if tunnelPublic[host] {
+			rep.Findings = append(rep.Findings, AuditFinding{
+				Severity: "critical",
+				Code:     "internal_scope_public_exposure",
+				Message: fmt.Sprintf("service %q is declared scope INTERNAL but %s is OBSERVED publicly published by a tunnel/overlay ingress — remove the ingress rule, or change the service's declared scope",
+					svc, host),
+			})
+		}
+		if _, covered := wildcardCovering(publicCovWildcards, host); covered && frontWildcard {
+			rep.Findings = append(rep.Findings, AuditFinding{
+				Severity: "warning",
+				Code:     "internal_scope_wildcard_covered",
+				Message: fmt.Sprintf("service %q is declared scope INTERNAL but %s is covered by BOTH a public DNS wildcard and a covering wildcard forward at the chain front — the combination makes it publicly reachable in practice; add a front-edge deny/carve-out for it, or change the service's declared scope",
+					svc, host),
+			})
+		}
+	}
+
 	rep.Findings = append(rep.Findings, AuditFinding{
 		Severity: "ok",
 		Code:     "exposed_count",
 		Message:  fmt.Sprintf("%d host(s) exposed across %d edge(s)", len(exposed), len(e.Edges)),
 	})
 	return rep, nil
+}
+
+// hostRoute returns the route for host in routes (exact, case-insensitive name
+// match — wildcards are patterns, not hosts, and never match here).
+func hostRoute(routes []model.Route, host string) (model.Route, bool) {
+	for _, r := range routes {
+		if strings.EqualFold(r.Host, host) {
+			return r, true
+		}
+	}
+	return model.Route{}, false
 }
 
 // edgeEvidenceRuntime reports whether a binding's provider DECLARES runtime read

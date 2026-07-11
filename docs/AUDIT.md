@@ -23,6 +23,19 @@ and then **reads live again to prove the change actually took effect**. Full
 plain-language explanation: `docs/WHAT-CRENEL-DOES.md`. Full architecture:
 `internal/DESIGN.md`.
 
+Two audit surfaces worth adversarial attention beyond the classic invariants:
+a service can be **declared internal-only** (`scope: internal` in the origins
+map), and audit then enforces the declaration — an internal-scope host that is
+nonetheless publicly reachable (explicit public DNS record, a chain-front
+route, a tunnel publication) is a critical `internal_scope_public_exposure`
+finding, and the combination of a covering public DNS wildcard *plus* a
+covering wildcard forward at the chain front is a warning-severity
+`internal_scope_wildcard_covered` (`internal/core/internal_scope_test.go`
+anchors both). And routes Crenel cannot model don't dead-end: `crenel triage`
+(and the underlying `ack`/`ack --route` markers, `docs/design/ack-marker.md`)
+is the operator's remediation path — try to make an ack certify something it
+shouldn't.
+
 ---
 
 ## 1. Package contents
@@ -60,7 +73,7 @@ here, cited where relevant):
   the ownership gate, the transactional rollback machinery.
 - The model (`internal/model`), the types the invariants are expressed over.
 - Every edge driver (`internal/drivers/edge/{caddy,traefik,nginx,netbird}`).
-- Every DNS driver (`internal/drivers/dns/{dnscontrol,adguard,cloudflare}`).
+- Every DNS driver (`internal/drivers/dns/{dnscontrol,adguard,cloudflare,pihole}`).
 - The transport layer (`internal/drivers/transport`): `direct`/`ssh-exec`/`ssh-tunnel`.
 - The secret redaction layer (`internal/redact`).
 - The MCP server (`cmd/crenel/mcp.go`): read-only by default, opt-in two-phase
@@ -94,7 +107,7 @@ make check     # go build ./... && go vet ./... && go test -race ./...
 ```
 
 `make check` is the same gate every commit must pass. As of this writing it is
-green: **~300 test files**, race-clean, and **no test in the suite ever opens a
+green: **155 test files / 788 test functions**, race-clean, and **no test in the suite ever opens a
 socket to a real edge or DNS provider**. Every driver is exercised against an
 in-repo fake that is built to reject what the real API/service rejects (see
 `docs/DNS-DESIGN.md` §6 for the DNS fakes' documented failure-surface fidelity,

@@ -439,6 +439,19 @@ func AckMarkerFor(host, reason string) string {
 	return AckMarkerPrefix + strings.ToLower(host) + ":" + reason
 }
 
+// ackReasonRE is the reason-slug grammar — exactly the charset ackMarkerRE's
+// reason group accepts, anchored. A reason outside it (uppercase, spaces,
+// colons, slashes, …) would produce a marker ParseAckMarker cannot round-trip,
+// so the write side must refuse it up front instead of stamping a marker the
+// read side silently misclassifies.
+var ackReasonRE = regexp.MustCompile(`^[a-z0-9-]+$`)
+
+// ValidAckReason reports whether reason is a legal crenel-ack reason slug
+// (lowercase letters, digits, hyphens; non-empty). The `ack`/`triage` verbs
+// validate with this BEFORE any write — see ackMarkerRE for why the charset
+// is load-bearing.
+func ValidAckReason(reason string) bool { return ackReasonRE.MatchString(reason) }
+
 // Unparsed is one thing crenel SAW in the live config but did not fully understand.
 // It is first-class output: counted into Coverage, listed by status, surfaced by
 // audit, and (for ownership/ingress kinds) mutation-blocking. The whole point of

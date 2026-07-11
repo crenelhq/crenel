@@ -1,10 +1,12 @@
 {
+  "_comment": "Split-horizon DNS demo: the internal provider answers clients with the LAN edge address while the public provider answers the internet with the public edge address (mock providers — safe, no infra). The `ha` origin shows the STRUCTURED internal-scope form: declared internal-only, so no public DNS record is demanded or created for it, and audit raises a critical internal_scope_public_exposure finding if it ever becomes publicly reachable anyway. `expose <svc> --scope internal` persists this form automatically.",
   "admin_url": "http://127.0.0.1:2019",
   "zone": "example.com",
   "origins": {
     "grafana": "10.0.0.5:3000",
     "photos": "10.0.0.6:2342",
-    "vault": "10.0.0.7:8200"
+    "vault": "10.0.0.7:8200",
+    "ha": { "addr": "10.0.0.19:8123", "scope": "internal" }
   },
   "dns": {
     "enabled": true,

@@ -285,6 +285,31 @@ func (e *Engine) planReconcile(ctx context.Context) (ReconcilePlan, canonicalSta
 			cur, has := modeOf(v.live, host)
 			switch {
 			case !has:
+				// Wildcard-aware chain-forward presence (third instance of the wildcard-
+				// vs-presence cry-wolf, after the internal parity and public-DNS coverage
+				// fixes — same rule, wildcardPatternCovers): a chain FRONT that relays a
+				// whole zone through one WILDCARD route (`*.zone` dialing the downstream
+				// edge — the real front shape the caddy reader surfaces as a literal
+				// `*.zone` leaf) already carries every covered host downstream, so its
+				// per-host forward is NOT missing; reconcile adding one would be a
+				// redundant explicit override. Satisfaction requires the wildcard to
+				// actually forward to the downstream (chainForward — the same host-match
+				// on downstream_address that classifies forwards everywhere): a covering
+				// wildcard dialing somewhere ELSE answers the host at the front but sends
+				// it to the WRONG place, so the explicit forward is genuinely needed (an
+				// exact-host route overrides the wildcard) and the detail names the
+				// wildcard and where it actually dials. NO blanket suppression: a front
+				// with no covering wildcard still flags exactly as before.
+				var wildNote string
+				if role == roleForward {
+					if w, ok := wildcardRouteCovering(v.live.Routes, host); ok {
+						if v.b.chainForward(w) {
+							continue // the wildcard forward already carries this host downstream
+						}
+						wildNote = fmt.Sprintf(" — covering wildcard route %q dials %q, not the downstream address %q, so an explicit forward is needed to override it",
+							w.Host, w.Upstream.Address, v.b.DownstreamAddress)
+					}
+				}
 				route, err := e.canonicalChainRoute(v.b, role, svc, host, mode, canon.auth[key])
 				if err != nil {
 					return ReconcilePlan{}, canon, err
@@ -292,7 +317,7 @@ func (e *Engine) planReconcile(ctx context.Context) (ReconcilePlan, canonicalSta
 				ec.AddRoutes = append(ec.AddRoutes, route)
 				detail := fmt.Sprintf("exposed elsewhere but missing from edge %q which also fronts %q", v.b.Name, svc)
 				if role == roleForward {
-					detail = fmt.Sprintf("half-present chain: edge %q forwards %q downstream but its forward route is missing", v.b.Name, svc)
+					detail = fmt.Sprintf("half-present chain: edge %q forwards %q downstream but its forward route is missing%s", v.b.Name, svc, wildNote)
 				}
 				plan.Drift = append(plan.Drift, Drift{
 					Kind: DriftMissingRoute, Host: host, Target: v.b.Name, Detail: detail,
@@ -334,15 +359,33 @@ func (e *Engine) planReconcile(ctx context.Context) (ReconcilePlan, canonicalSta
 		// its live records are crenel's (ports.OwnedRecordReporter — the surgical Cloudflare
 		// marker). On a marker-less provider (AdGuard) a value mismatch may be a legitimately-
 		// foreign record, so reconcile leaves it untouched rather than clobber it.
-		// liveWildcards captures `*.zone` catch-alls in live; both the missing and stale
-		// checks are wildcard-aware (drift-sibling of the audit fix — #15/#16). See the
-		// per-check comments below for the semantics.
 		liveByKey := make(map[string]model.Record, len(recs))
-		var liveWildcards []wildcardRewrite
 		for _, r := range recs {
 			liveByKey[r.Key()] = r
+		}
+		// COVERAGE view (presence checks ONLY): the missing-record check must reason
+		// about what the ZONE answers, not just what crenel owns. On a marker-filtered
+		// provider (surgical Cloudflare — ports.CoverageReporter) the coverage view
+		// includes FOREIGN records, most importantly an operator's unowned `*.zone`
+		// wildcard that already answers every exposed host: without it, every such
+		// host cries wolf as a permanent missing_dns_record (the prod 64-item case).
+		// On every other provider the coverage view IS LiveRecords (AdGuard/Pi-hole
+		// zone-filter but never ownership-filter — they have no marker), so their
+		// behavior is byte-identical. Both the missing and stale checks are wildcard-
+		// aware (drift-sibling of the audit fix — #15/#16); see the per-check comments.
+		// HARD SEPARATION: coverage never feeds the value-drift re-assert or the stale
+		// removal below — those stay on the crenel-owned recs/liveByKey and the ownsAll
+		// marker gate. Coverage may READ foreign records; crenel never TOUCHES them.
+		covRecs, err := dnsCoverageRecords(ctx, dp, recs)
+		if err != nil {
+			return ReconcilePlan{}, canon, err
+		}
+		covValues := map[string][]string{} // record Key() -> every live zone answer at that name+type
+		var covWildcards []wildcardRewrite // `*.zone` catch-alls live in the zone (owned or foreign)
+		for _, r := range covRecs {
+			covValues[r.Key()] = append(covValues[r.Key()], r.Value)
 			if isWildcardName(r.Name) {
-				liveWildcards = append(liveWildcards, wildcardRewrite{
+				covWildcards = append(covWildcards, wildcardRewrite{
 					pattern: strings.ToLower(r.Name),
 					value:   r.Value,
 				})
@@ -364,6 +407,19 @@ func (e *Engine) planReconcile(ctx context.Context) (ReconcilePlan, canonicalSta
 			if !dnsCoversHost(dp, host) {
 				continue
 			}
+			// INTERNAL-SCOPE gate (split-horizon): a service declared internal-only
+			// gets NO desired record at a PUBLIC-scope provider — no missing_dns_record
+			// demand, no corrective Add, no Managed claim. The internal providers'
+			// demands (this same loop, next provider) are untouched. Reconcile also
+			// deliberately does not REMOVE an existing public record for such a host
+			// (the stale check below never fires while the host is exposed): a public
+			// record that contradicts the declaration is a posture violation, not
+			// mechanical drift, so AUDIT flags it critical
+			// (internal_scope_public_exposure) with the removal instruction instead of
+			// a mutating verb silently deleting a public name.
+			if dp.Scope() == model.ScopePublic && e.internalScoped(e.serviceOf(host)) {
+				continue
+			}
 			// Residency note: reconcile builds the DEFAULT-class desired value (an op's
 			// residency is transient and never persisted, so reconcile cannot know a
 			// host's class). That stays safe: a residency host's record is PRESENT by
@@ -383,14 +439,32 @@ func (e *Engine) planReconcile(ctx context.Context) (ReconcilePlan, canonicalSta
 				desiredSet[rec.Key()] = true
 				switch {
 				case !liveSet[rec.Key()]:
-					// Wildcard-awareness (drift-sibling of #15/#16): if a live wildcard
-					// covers rec.Name AND already answers with the value crenel would set,
-					// the host is not missing — the wildcard is the intentional coverage.
-					// A VALUE mismatch under the wildcard still flags: the wildcard answers
-					// the WRONG target, so an explicit record is genuinely needed to
-					// override it (mirror of the audit's dns_coverage_parity value guard).
-					if w, ok := wildcardCovering(liveWildcards, rec.Name); ok &&
-						strings.EqualFold(strings.TrimSpace(w.value), strings.TrimSpace(rec.Value)) {
+					// No crenel-OWNED record at the key. Before flagging missing, consult
+					// the COVERAGE view (presence semantics only — matching rule identical
+					// to the audit's dns_coverage_parity wildcard treatment):
+					//   1. An exact zone record at the key whose value already matches the
+					//      desired target satisfies presence — the name resolves correctly.
+					//      If it is foreign, crenel could not add one anyway (the driver's
+					//      foreign-conflict guard refuses a shadowing second record).
+					//   2. A wildcard covering rec.Name whose value matches satisfies
+					//      presence — the wildcard is the intentional coverage (the prod
+					//      unowned `*.zone → edge` shape). A VALUE mismatch under the
+					//      wildcard still flags: it answers the WRONG target for this
+					//      host, so an explicit record is genuinely needed to override it
+					//      (mirror of the audit's dns_coverage_parity value guard) — and
+					//      the drift message says exactly that.
+					if exactCoverageMatch(covValues[rec.Key()], rec.Value) {
+						break
+					}
+					if w, ok := wildcardCovering(covWildcards, rec.Name); ok {
+						if sameDNSValue(w.value, rec.Value) {
+							break
+						}
+						change.Add = append(change.Add, rec)
+						plan.Drift = append(plan.Drift, Drift{
+							Kind: DriftMissingDNS, Host: host, Target: label,
+							Detail: fmt.Sprintf("covering DNS wildcard %s answers %q but the expected target is %q — an explicit record is needed to override it", w.pattern, w.value, rec.Value),
+						})
 						break
 					}
 					change.Add = append(change.Add, rec)
@@ -493,8 +567,22 @@ func (e *Engine) verifyReconcile(ctx context.Context, canon canonicalState, cs m
 		ok, detail := true, "consistent with the canonical exposed set"
 		for _, key := range sortedStrKeys(canon.host) {
 			host := canon.host[key]
-			if e.roleFor(b, e.serviceOf(host)) == roleNone {
+			role := e.roleFor(b, e.serviceOf(host))
+			if role == roleNone {
 				continue // neither serves nor forwards this host
+			}
+			// Wildcard-aware chain-forward verification — the read-back mirror of
+			// planReconcile's presence rule: a front whose WILDCARD route forwards this
+			// host to the downstream (chainForward) holds no explicit per-host route,
+			// and reconcile deliberately did not add one, so demanding exact-host
+			// reachability here would fail verification of a healthy wildcard chain
+			// (and roll back an otherwise-correct reconcile). A wildcard dialing
+			// elsewhere does not satisfy — reconcile added an explicit override, which
+			// the normal exact-host checks below then verify.
+			if role == roleForward && !live.Reachable(host) {
+				if w, ok := wildcardRouteCovering(live.Routes, host); ok && b.chainForward(w) {
+					continue
+				}
 			}
 			if !live.Reachable(host) {
 				ok, detail = false, fmt.Sprintf("%s expected reachable but is not", host)

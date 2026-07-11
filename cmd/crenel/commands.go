@@ -53,6 +53,10 @@ type cli struct {
 	// Both default false, so non-interactive callers and tests get plain output.
 	color bool
 	tty   bool
+	// stdinTTY overrides `triage`'s stdin-interactivity check (nil = detect the
+	// real terminal). It is the prompt-loop test seam: tests script c.in and set
+	// this to force interactive (or non-interactive, for the refusal test).
+	stdinTTY func() bool
 }
 
 func (c *cli) dispatch(ctx context.Context, verb string, args []string) error {
@@ -96,6 +100,8 @@ func (c *cli) dispatch(ctx context.Context, verb string, args []string) error {
 		return c.cmdAck(ctx, args)
 	case "unack":
 		return c.cmdUnack(ctx, args)
+	case "triage":
+		return c.cmdTriage(ctx, args)
 	case "serve", "dashboard":
 		return c.cmdServe(ctx, args)
 	case "mcp":
@@ -227,7 +233,7 @@ func (c *cli) writeStatusDetail(rep core.StatusReport) {
 			}
 			fmt.Fprintf(c.out, "  %s (%d):\n", label, len(es.Routes))
 			for _, r := range es.Routes {
-				fmt.Fprintf(c.out, "    %-32s -> %s%s%s\n", r.Host, chainDest(r), modeTag(r.Upstream.Mode), authTag(r.Upstream.Auth))
+				fmt.Fprintf(c.out, "    %-32s -> %s%s%s%s\n", r.Host, chainDest(r), modeTag(r.Upstream.Mode), authTag(r.Upstream.Auth), c.internalTag(r.Host))
 			}
 		}
 
@@ -872,29 +878,91 @@ exposures:
   #   auth: none               # publish unprotected ON PURPOSE (required if public)
 `
 
+// starterEnv is the secrets stub written by `crenel init --xdg` (mode 0600).
+// Comment-only on purpose: the operator uncomments what their config references.
+// The variable NAMES are examples of the *_env convention — the config file
+// carries e.g. `password_env: ADGUARD_PASSWORD` and wiring resolves the secret
+// from the environment, so nothing secret ever lands in the config itself.
+const starterEnv = `# crenel.env — secrets referenced from config.yaml via the *_env convention.
+# The config names the ENV VAR, never the secret: e.g. a DNS provider with
+#   password_env: ADGUARD_PASSWORD      # adguard/pihole control password
+#   api_token_env: CLOUDFLARE_API_TOKEN # cloudflare API token
+# reads the value from your environment. Put the values here, keep this file
+# mode 0600, and load it before running crenel:
+#
+#   shell (e.g. ~/.bashrc):
+#     set -a; . ~/.config/crenel/crenel.env; set +a
+#   systemd unit:
+#     EnvironmentFile=%h/.config/crenel/crenel.env
+#
+# ADGUARD_PASSWORD=
+# CLOUDFLARE_API_TOKEN=
+`
+
 // cmdInit scaffolds a starter settings + exposures file to bootstrap a new setup.
 // It refuses to overwrite existing files. An optional arg sets the directory.
+// With --xdg it scaffolds into $XDG_CONFIG_HOME/crenel (fallback ~/.config/crenel)
+// under the DISCOVERED config name (config.yaml — see discoveredConfigNames),
+// plus a 0600 crenel.env secrets stub, so subsequent runs need no -config flag.
 func (c *cli) cmdInit(args []string) error {
 	dir := "."
+	xdg := false
 	for _, a := range args {
+		if a == "-xdg" || a == "--xdg" {
+			xdg = true
+			continue
+		}
 		if !strings.HasPrefix(a, "-") {
 			dir = a
 		}
 	}
-	files := []struct {
+	type scaffold struct {
 		path, body string
-	}{
-		{filepath.Join(dir, "crenel.settings.yaml"), starterSettings},
-		{filepath.Join(dir, "crenel.exposures.yaml"), starterExposures},
+		mode       os.FileMode
+	}
+	var files []scaffold
+	if xdg {
+		var err error
+		if dir, err = xdgConfigDir(); err != nil {
+			return fmt.Errorf("init --xdg: %w", err)
+		}
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return fmt.Errorf("init --xdg: %w", err)
+		}
+		files = []scaffold{
+			{filepath.Join(dir, "config.yaml"), starterSettings, 0o644},
+			{filepath.Join(dir, "crenel.exposures.yaml"), starterExposures, 0o644},
+			{filepath.Join(dir, "crenel.env"), starterEnv, 0o600},
+		}
+	} else {
+		files = []scaffold{
+			{filepath.Join(dir, "crenel.settings.yaml"), starterSettings, 0o644},
+			{filepath.Join(dir, "crenel.exposures.yaml"), starterExposures, 0o644},
+		}
 	}
 	for _, f := range files {
 		if _, err := os.Stat(f.path); err == nil {
 			return fmt.Errorf("init: %s already exists (refusing to overwrite)", f.path)
 		}
-		if err := os.WriteFile(f.path, []byte(f.body), 0o644); err != nil {
+		if err := os.WriteFile(f.path, []byte(f.body), f.mode); err != nil {
 			return fmt.Errorf("init: write %s: %w", f.path, err)
 		}
 		fmt.Fprintf(c.out, "wrote %s\n", f.path)
+	}
+	if xdg {
+		fmt.Fprintf(c.out, `
+Next steps (brownfield-safe):
+  1. Edit %[1]s/config.yaml — set edge_driver, admin_url/path, and your origins.
+     It is discovered automatically; no -config flag needed from here on.
+  2. Put real secrets in %[1]s/crenel.env (mode 0600) and load it:
+       set -a; . %[1]s/crenel.env; set +a
+  3. crenel status                                      # see what's live right now
+  4. crenel import --dry-run                            # what crenel would adopt
+  5. crenel import                                      # adopt your existing setup
+  6. crenel apply %[1]s/crenel.exposures.yaml --dry-run
+  7. crenel apply %[1]s/crenel.exposures.yaml
+`, dir)
+		return nil
 	}
 	fmt.Fprintf(c.out, `
 Next steps (brownfield-safe):
@@ -906,6 +974,20 @@ Next steps (brownfield-safe):
   6. crenel -config crenel.settings.yaml apply crenel.exposures.yaml
 `)
 	return nil
+}
+
+// xdgConfigDir resolves crenel's XDG config directory: $XDG_CONFIG_HOME/crenel,
+// falling back to ~/.config/crenel — the SAME candidate order discoverSettingsPath
+// probes, so what `init --xdg` writes is exactly what discovery finds.
+func xdgConfigDir() (string, error) {
+	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" {
+		return filepath.Join(x, "crenel"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve home directory: %w", err)
+	}
+	return filepath.Join(home, ".config", "crenel"), nil
 }
 
 // applyDoc is the declarative apply file: an optional zone plus the desired
@@ -1214,8 +1296,29 @@ func (c *cli) cmdRename(ctx context.Context, args []string) error {
 // Traefik/nginx recognize a hand-written marker on read but crenel cannot yet
 // stamp it for them — the error says so.
 func (c *cli) cmdAck(ctx context.Context, args []string) error {
+	// Path-addressed form (`ack --route '<locator>' --reason <slug>`): targets
+	// a route by the STRUCTURAL PATH audit/status report for it — the only
+	// address a host-LESS unparsed route has. Same marker convention, same
+	// engine gates, same read-back verify; `crenel triage`'s [a] uses this
+	// exact path. Mutually exclusive with the positional host.
+	if c.gf.route != "" {
+		if len(args) > 0 {
+			return fmt.Errorf("ack --route takes no positional host — the locator IS the target (usage: ack --route '<locator>' --reason <slug>)")
+		}
+		if c.gf.reason == "" {
+			return fmt.Errorf("ack --route %s: --reason is required (the crenel-ack:<qualifier>:<reason> slug — see docs/design/ack-marker.md)", c.gf.route)
+		}
+		if !model.ValidAckReason(c.gf.reason) {
+			return fmt.Errorf("ack --route %s: invalid --reason %q — must match [a-z0-9-]+ (it becomes part of the @id marker, which forbids spaces/colons/slashes)", c.gf.route, c.gf.reason)
+		}
+		if err := c.engine.AckRoute(ctx, "", c.gf.route, c.gf.reason); err != nil {
+			return err
+		}
+		fmt.Fprintf(c.out, "acknowledged: %s (reason: %s) — no longer blocks default-deny; still listed as ACK in status/audit\n", c.gf.route, c.gf.reason)
+		return nil
+	}
 	if len(args) < 1 {
-		return fmt.Errorf("usage: ack <host> --reason <slug>")
+		return fmt.Errorf("usage: ack <host> --reason <slug>  |  ack --route '<locator>' --reason <slug>")
 	}
 	// docs/design/ack-marker.md §4b sketches `ack <host>[/<path>]`, but the
 	// implementation is host-only, first-match (§11). A slash-form argument used
@@ -1239,8 +1342,20 @@ func (c *cli) cmdAck(ctx context.Context, args []string) error {
 // whatever Unparsed kind it would otherwise classify as. A no-op if host was
 // not currently ack'd.
 func (c *cli) cmdUnack(ctx context.Context, args []string) error {
+	// Path-addressed undo, symmetric with `ack --route` (a host-less route's
+	// marker cannot be removed by host either).
+	if c.gf.route != "" {
+		if len(args) > 0 {
+			return fmt.Errorf("unack --route takes no positional host (usage: unack --route '<locator>')")
+		}
+		if err := c.engine.UnackRoute(ctx, "", c.gf.route); err != nil {
+			return err
+		}
+		fmt.Fprintf(c.out, "unacknowledged: %s\n", c.gf.route)
+		return nil
+	}
 	if len(args) < 1 {
-		return fmt.Errorf("usage: unack <host>")
+		return fmt.Errorf("usage: unack <host>  |  unack --route '<locator>'")
 	}
 	if err := c.engine.Unack(ctx, args[0]); err != nil {
 		return err
@@ -1292,11 +1407,24 @@ func (c *cli) applyOp(ctx context.Context, op model.Op) error {
 	}
 	c.printApplyReport(rep)
 	if op.Verb == model.Expose && op.To != "" {
-		if perr := config.SetTopLevelOrigin(c.settingsPath, op.Service, op.To); perr != nil {
+		// `--scope internal` (or `--dns internal`) alongside --to persists the
+		// STRUCTURED origins entry ({addr, scope: internal}) so the internal-only
+		// intent outlives this invocation: later drift/reconcile/audit honor the
+		// DECLARED scope without the flag being re-said. Any other appointment
+		// (both/public/unset) persists the plain entry, exactly as before.
+		scope := config.OriginScopeDefault
+		if len(op.Scopes) == 1 && op.Scopes[0] == model.ScopeInternal {
+			scope = config.OriginScopeInternal
+		}
+		if perr := config.SetTopLevelOrigin(c.settingsPath, op.Service, op.To, scope); perr != nil {
 			return fmt.Errorf("route applied but origins persistence failed: %w — add `%s: %s` to origins in %s manually so status/drift/reconcile stay coherent",
 				perr, op.Service, op.To, c.settingsPath)
 		}
-		fmt.Fprintf(c.out, "persisted origin: %s -> %s in %s\n", op.Service, op.To, c.settingsPath)
+		if scope == config.OriginScopeInternal {
+			fmt.Fprintf(c.out, "persisted origin: %s -> %s (scope: internal) in %s\n", op.Service, op.To, c.settingsPath)
+		} else {
+			fmt.Fprintf(c.out, "persisted origin: %s -> %s in %s\n", op.Service, op.To, c.settingsPath)
+		}
 	}
 	return nil
 }
@@ -1634,6 +1762,17 @@ func authTag(auth string) string {
 		return ""
 	}
 	return "  [auth:" + auth + "]"
+}
+
+// internalTag annotates a route line for a host whose service is DECLARED
+// internal-only in origins ({addr, scope: internal}) — the declaration is
+// operator intent, so status makes it visible on every listing instead of
+// leaving it buried in the config. Default-scope hosts stay uncluttered.
+func (c *cli) internalTag(host string) string {
+	if c.engine != nil && c.engine.InternalScopedHost(host) {
+		return "  [internal]"
+	}
+	return ""
 }
 
 func parseVerb(s string) (model.Verb, error) {

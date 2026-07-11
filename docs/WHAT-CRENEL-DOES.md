@@ -134,7 +134,7 @@ Crenel is a set of commands ("verbs"). The ones that *look* never touch anything
 
 | Command | What it does, plainly |
 |---|---|
-| `crenel expose <service> [--to host:port]` | **Cut one opening in the wall.** Routes the service on your edge and adds the DNS it needs, and **refuses to publish a public host with no auth gate** unless you explicitly say `--auth none`. Shows the change first, waits for your `y`. Pass `--to <host:port>` (alias `--upstream`) to name the backend inline instead of pre-editing the origins map; Crenel TCP-probes the address first (**refuses to write a route to a dead backend**, the same discipline as default-deny applied pre-flight; the error names the three common shapes to try) and persists the entry into settings on a verified apply, so `status`/`audit`/`drift`/`reconcile` stay coherent afterwards. `--no-validate` skips the probe when the backend is not up yet but the address is known-correct. |
+| `crenel expose <service> [--to host:port]` | **Cut one opening in the wall.** `--scope internal` cuts it for your own network only: edge route + internal DNS, **no** public record, and Crenel remembers the declaration — if that host ever *does* become publicly reachable, `audit` raises a critical finding.  Routes the service on your edge and adds the DNS it needs, and **refuses to publish a public host with no auth gate** unless you explicitly say `--auth none`. Shows the change first, waits for your `y`. Pass `--to <host:port>` (alias `--upstream`) to name the backend inline instead of pre-editing the origins map; Crenel TCP-probes the address first (**refuses to write a route to a dead backend**, the same discipline as default-deny applied pre-flight; the error names the three common shapes to try) and persists the entry into settings on a verified apply, so `status`/`audit`/`drift`/`reconcile` stay coherent afterwards. `--no-validate` skips the probe when the backend is not up yet but the address is known-correct. |
 | `crenel unexpose <service>` | **Close that opening.** Removes the route and DNS in the reverse order (stop announcing the name *before* tearing down the route). |
 | `crenel set <service> on\|off` | A friendlier alias for `expose` / `unexpose`. |
 | `crenel rename <old> <new>` | **Move a service to a new hostname as one atomic step**: add the new, remove the old, copying the exact backend, mode, upstream-TLS, and auth. Proven on a real Caddy edge to survive a restart. |
@@ -142,8 +142,9 @@ Crenel is a set of commands ("verbs"). The ones that *look* never touch anything
 | `crenel import` | **Adopt a setup you built by hand.** Scans your existing edge, shows what it *could* bring under management, and (on confirm) stamps ownership markers **in place with no behavior change**. This is how you point Crenel at your real, running setup. |
 | `crenel apply <file>` | **Declarative mode** (kubectl-style): list the exposures you want in a file and Crenel converges live to match. Diff first, all-or-nothing apply, read-back verify. Optional `--adopt` and `--prune`. |
 | `crenel resume` | If an apply was interrupted partway, figures out which providers already match and finishes the rest (or rolls back cleanly). |
-| `crenel init` | Scaffolds starter `crenel.settings.yaml` + `crenel.exposures.yaml`. |
-| `crenel serve` / `dashboard` | Serves a small read-only status dashboard. |
+| `crenel triage` / `crenel ack` | **"Deal with the routes Crenel couldn't understand."** A brownfield first audit usually flags config Crenel can't fully model. `triage` walks each such route interactively — where it is, why it defied modeling, the raw config — and lets you acknowledge it with a reason. Acknowledged routes stop blocking the default-deny certification but stay visible, marked ACK. `ack <host> --reason <slug>` (or `ack --route '<locator>' …` for a route with no recoverable hostname) is the scriptable equivalent; `unack` reverses it. |
+| `crenel init` | Scaffolds starter `crenel.settings.yaml` + `crenel.exposures.yaml` in the current directory; `init --xdg` scaffolds `~/.config/crenel/` instead (auto-discovered config, exposures starter, a 0600 secrets file), so plain `crenel status`/`drift` work without `-config`. |
+| `crenel serve` / `dashboard` | Serves a small read-only status dashboard. (`crenel mcp` is the same read-only surface for an LLM agent, over the Model Context Protocol.) |
 
 The mental model: **`status`/`audit`/`drift` to look, `preview` to rehearse, then
 `expose`/`unexpose`/`apply`/`reconcile`/`rename` to act**. Every acting command shows you
@@ -265,7 +266,7 @@ byte-for-byte in a `TRIAL-RESULT-*.md` and reverted so production was left exact
   restored byte-for-byte and catching a real divergence between them. The Pi-hole v6 driver ran
   the same full expose→verify→drift→unexpose cycle live against a real throwaway Pi-hole
   (2026-07-10).
-- **The tests are adversarial and catch real bugs.** 715 test functions, race-clean, built on a
+- **The tests are adversarial and catch real bugs.** 788 test functions, race-clean, built on a
   strict rule: *a fake may only accept what the real edge accepts, and must reject what it
   rejects.* A multi-agent adversarial review even caught a real prefix-collision bug in the
   Cloudflare ownership check and fixed it RED→GREEN before the live trial.

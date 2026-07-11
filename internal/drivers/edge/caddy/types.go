@@ -225,7 +225,12 @@ const (
 	denyStatusCode        = 403
 	defaultManagedServer  = "srv0"
 	defaultL4Server       = "crenel-l4" // managed layer4 server key
-	defaultListen         = ":443"
+	// defaultAdminListen is Caddy's built-in admin endpoint address — the one a
+	// full-config load with no `admin` block reverts to. An explicit admin block
+	// pinning exactly this value is indistinguishable from the default, so the
+	// full-load carry-through (adminCarryListen) treats it as nothing-to-carry.
+	defaultAdminListen = "localhost:2019"
+	defaultListen      = ":443"
 	// requestHostPlaceholder is Caddy's runtime placeholder for the inbound request
 	// host. crenel renders it as the upstream SNI (transport.tls.server_name) and the
 	// preserved request Host on a chain-forward to an HTTPS downstream, mirroring the

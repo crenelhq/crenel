@@ -534,3 +534,48 @@ idempotent re-ack, refuse-on-crenel-managed-route, revert-on-unack),
 Ack`/`Unack` fan-out across the `ports.Acker` capability + read-back-verify),
 `cmd/crenel/ack_test.go` (CLI `ack`/`unack` verbs through `dispatch`, including
 the `--reason`-required refusal).
+
+## 12. Second batch: structural-path addressing + `crenel triage`
+
+**Path-addressed ack (`ack --route`) — shipped.** The host-only limitation in
+§11 had a harder edge than the multiple-routes-per-host case: an unparsed
+route with **no recoverable host at all** (a top-level host-less route with an
+unmodeled handler, an undescended host-less subroute) could not be acked by
+any spelling — and those are exactly the shapes a brownfield first audit
+flags. `crenel ack --route '<locator>' --reason <slug>` (and the symmetric
+`unack --route`) now addresses a route by the **structural path** its
+`Unparsed.Locator` reports, e.g.
+`apps.http.servers.srv0.routes[1].handle[subroute].routes[5]` — paste the
+locator straight from `audit`/`status`. Capability: `ports.LocatorAcker`,
+implemented by the Caddy driver (`internal/drivers/edge/caddy/ack_locator.go`);
+core fan-out + locator-exact read-back-verify in `internal/core/triage.go`
+(`Engine.AckRoute`/`UnackRoute`).
+
+**Marker form.** Stays inside the §2 grammar: `crenel-ack:<qualifier>:<reason>`
+where the qualifier is the locator, prefix-stripped and folded to the marker
+charset (`[` → `-`, `]` dropped, lowercased) — e.g.
+`crenel-ack:srv0.routes-1.handle-subroute.routes-5:legacy-php-block`. Unique
+per route position, so reusing a reason slug never collides on Caddy's global
+`@id` index; `ParseAckMarker` reads it with zero read-side changes (the
+qualifier charset was already a superset of a hostname's). The read side's two
+host-less declare sites in `normalizeServer` are now `ackAware` so the stamp
+round-trips. Caveat (documented in usage): locators are positional — if routes
+are reordered, re-run `audit` for a fresh locator before acking. Bare-host and
+legacy bare markers keep parsing unchanged (regression-tested).
+
+**Reason grammar enforced at the write boundary.** `model.ValidAckReason`
+(`^[a-z0-9-]+$`) — a slug with spaces/colons/slashes would mint a marker the
+read side cannot round-trip, so `ack --route` and `triage` refuse it up front.
+
+**`crenel triage` — shipped.** The guided front-end for all of the above: an
+interactive walk over exactly the not-understood set audit counts
+(`Engine.NotUnderstood`, the same `splitAcknowledged` partition), one bounded
+evidence card per route (edge, locator, kind/reason, recovered host matcher +
+handler types, truncated pretty JSON), prompting `[a]ck with reason / [s]kip /
+[o]pen full JSON / [q]uit`. `[a]` writes through `Engine.AckRoute` — the exact
+`ack --route` path, read-back-verified. Refuses a non-TTY stdin (naming the
+scriptable equivalent); `--dry-run` prints the would-run commands; `[q]` leaves
+already-written acks in place and says so; the summary re-reads live state and
+states what audit will now report. Tests: `cmd/crenel/triage_test.go` (scripted
+prompt loop via the `cli.in`/`stdinTTY` seam) and
+`internal/drivers/edge/caddy/ack_locator_test.go`.
